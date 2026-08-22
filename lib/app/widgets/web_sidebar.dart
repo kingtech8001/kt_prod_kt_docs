@@ -1,0 +1,285 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
+import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
+import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
+
+class WebSidebar extends StatelessWidget {
+  final String currentRoute;
+  final ProfileModel? profile;
+  final VoidCallback onSignOut;
+
+  const WebSidebar({
+    super.key,
+    required this.currentRoute,
+    this.profile,
+    required this.onSignOut,
+  });
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required String title,
+    required String route,
+    String? badge,
+    Color? badgeColor,
+  }) {
+    final isSelected = currentRoute == route;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (currentRoute != route) {
+              Get.toNamed(route);
+            }
+          },
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: AppColors.sidebarHover,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.sidebarActive : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isSelected
+                      ? AppColors.sidebarTextActive
+                      : AppColors.sidebarText,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected
+                          ? AppColors.sidebarTextActive
+                          : AppColors.sidebarText,
+                      fontSize: 14,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (badge != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: badgeColor ?? AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isAdmin = profile?.role == 'admin' || profile?.role == 'super_admin';
+
+    return Container(
+      width: 250,
+      color: AppColors.sidebarBg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Brand Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.security,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppConstants.appName,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      'King Technology',
+                      style: TextStyle(
+                        color: AppColors.sidebarText,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(color: AppColors.sidebarHover, height: 1),
+          const SizedBox(height: 12),
+
+          // Main Navigation Items
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildNavItem(
+                  icon: Icons.dashboard_outlined,
+                  title: 'Dashboard',
+                  route: AppRoutes.DASHBOARD,
+                ),
+                _buildNavItem(
+                  icon: Icons.description_outlined,
+                  title: 'All Documents',
+                  route: AppRoutes.DOCUMENTS,
+                ),
+                _buildNavItem(
+                  icon: Icons.bolt_outlined,
+                  title: 'Utility Bills',
+                  route: AppRoutes.UTILITY_BILLS,
+                  badge: 'Light/Gas',
+                  badgeColor: AppColors.utilityAmber,
+                ),
+                _buildNavItem(
+                  icon: Icons.shield_outlined,
+                  title: 'Appliance Vault',
+                  route: AppRoutes.APPLIANCES,
+                  badge: 'Warranty',
+                  badgeColor: AppColors.warrantyEmerald,
+                ),
+                _buildNavItem(
+                  icon: Icons.badge_outlined,
+                  title: 'Personal Vault',
+                  route: AppRoutes.PERSONAL_DOCS,
+                  badge: 'Identity',
+                  badgeColor: const Color(0xFF8B5CF6),
+                ),
+                _buildNavItem(
+                  icon: Icons.folder_outlined,
+                  title: 'Folders',
+                  route: AppRoutes.FOLDERS,
+                ),
+                _buildNavItem(
+                  icon: Icons.star_border_outlined,
+                  title: 'Favorites',
+                  route: AppRoutes.FAVORITES,
+                ),
+                _buildNavItem(
+                  icon: Icons.delete_outline,
+                  title: 'Trash Bin',
+                  route: AppRoutes.TRASH,
+                ),
+                _buildNavItem(
+                  icon: Icons.history_outlined,
+                  title: 'Activity Logs',
+                  route: AppRoutes.ACTIVITY_LOGS,
+                ),
+                if (isAdmin)
+                  _buildNavItem(
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: 'Staff & Roles',
+                    route: AppRoutes.USERS,
+                    badge: 'Admin',
+                    badgeColor: AppColors.primaryLight,
+                  ),
+                _buildNavItem(
+                  icon: Icons.settings_outlined,
+                  title: 'Settings',
+                  route: AppRoutes.SETTINGS,
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(color: AppColors.sidebarHover, height: 1),
+
+          // User Profile Card & Sign Out
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primary,
+                  child: Text(
+                    profile?.fullName.isNotEmpty == true
+                        ? profile!.fullName[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile?.fullName ?? 'User',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        profile?.role.toUpperCase() ?? 'STAFF',
+                        style: const TextStyle(
+                          color: AppColors.primaryLight,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout,
+                      color: AppColors.sidebarText, size: 18),
+                  tooltip: 'Sign Out',
+                  onPressed: onSignOut,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
