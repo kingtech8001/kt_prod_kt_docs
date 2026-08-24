@@ -5,6 +5,7 @@ import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_dropzone.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 
@@ -31,7 +32,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left Column: File Dropzone & Overview
+                      // Left Column: File Dropzone, Compression Card & Overview
                       Expanded(
                         flex: 4,
                         child: Column(
@@ -41,6 +42,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                   onFileSelected: controller.onFileSelected,
                                   currentFile: controller.selectedFile.value,
                                 )),
+                            _buildCompressionCard(context),
                             const SizedBox(height: 20),
                             _buildSecurityBadge(),
                           ],
@@ -63,6 +65,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             onFileSelected: controller.onFileSelected,
                             currentFile: controller.selectedFile.value,
                           )),
+                      _buildCompressionCard(context),
                       const SizedBox(height: 20),
                       _buildFormCard(context),
                     ],
@@ -180,19 +183,27 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
           Obx(() => _buildSubcategoryDropdown()),
           const SizedBox(height: 16),
 
-          // Title
-          const Text(
-            'Document Title *',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: controller.titleController,
-            decoration: const InputDecoration(
-              hintText: 'e.g. Torrent Power Bill - Feb 2026, Havells Fan Invoice',
-            ),
-          ),
-          const SizedBox(height: 20),
+          // Title Field (Conditionally displayed based on Category configuration)
+          Obx(() {
+            if (!controller.showTitleField) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Document Title *',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: controller.titleController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Torrent Power Bill - Feb 2026, Havells Fan Invoice',
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            );
+          }),
 
           // Dynamic Metadata Forms
           Obx(() {
@@ -221,29 +232,49 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             return const SizedBox.shrink();
           }),
 
-          // Address Section (Always relevant for location-based search)
-          _buildAddressSection(),
-          const SizedBox(height: 24),
+          // Address Section (Conditionally displayed based on Category City Filter configuration)
+          Obx(() {
+            if (!controller.showCityFilter) return const SizedBox.shrink();
+            return Column(
+              children: [
+                _buildAddressSection(),
+                const SizedBox(height: 24),
+              ],
+            );
+          }),
 
           // Submit Upload Button
-          Obx(() => SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: controller.isLoading.value ? null : controller.submitUpload,
-                  icon: controller.isLoading.value
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload),
-                  label: Text(
-                    controller.isLoading.value ? 'Encrypting & Uploading...' : 'Save & Secure Document',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
+          Obx(() {
+            final isUploading = controller.isLoading.value;
+            final isCompressing = controller.isCompressing.value;
+            final isBusy = isUploading || isCompressing;
+
+            String buttonText = 'Save & Secure Document';
+            if (isUploading) {
+              buttonText = 'Encrypting & Uploading...';
+            } else if (isCompressing) {
+              buttonText = 'Optimizing Document...';
+            }
+
+            return SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: isBusy ? null : controller.submitUpload,
+                icon: isBusy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_upload),
+                label: Text(
+                  buttonText,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
-              )),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -889,6 +920,523 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompressionCard(BuildContext context) {
+    return Obx(() {
+      final file = controller.selectedFile.value;
+      if (file == null || !controller.isSelectedFileCompressible) {
+        return const SizedBox.shrink();
+      }
+
+      final result = controller.compressionResult.value;
+      final isCompressing = controller.isCompressing.value;
+
+      return Container(
+        margin: const EdgeInsets.only(top: 20),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    result?.isPdf == true ? Icons.picture_as_pdf_outlined : Icons.compress,
+                    color: result?.isPdf == true ? AppColors.error : AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            result?.isPdf == true
+                                ? 'Smart PDF Compressor'
+                                : 'Smart Image Compressor',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: result?.isPdf == true
+                                  ? AppColors.error.withValues(alpha: 0.1)
+                                  : AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              result?.isPdf == true ? 'PDF' : 'IMAGE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: result?.isPdf == true ? AppColors.error : AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Text(
+                        'Optimize size for faster vault loading & preview',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                if (result != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: result.savingsPercent > 0
+                          ? AppColors.successLight
+                          : AppColors.infoLight,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (result.savingsPercent > 0
+                                ? AppColors.success
+                                : AppColors.info)
+                            .withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      result.savingsPercent > 0
+                          ? '🔥 ${result.savingsFormatted} Saved'
+                          : '⚡ Optimized',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: result.savingsPercent > 0
+                            ? AppColors.successDark
+                            : AppColors.info,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Prominent Progressive Loader banner shown whenever compression is actively calculating
+            if (isCompressing)
+              Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Optimizing with ${controller.compressionQuality.value}% quality',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${(controller.compressionProgress.value * 100).toInt()}%',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      controller.compressionProgressText.value.isNotEmpty
+                          ? controller.compressionProgressText.value
+                          : 'Analyzing streams & calculating new compressed file size. Please wait...',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: const BorderRadius.all(Radius.circular(4)),
+                      child: LinearProgressIndicator(
+                        value: controller.compressionProgress.value.clamp(0.05, 1.0),
+                        minHeight: 6,
+                        backgroundColor: AppColors.surface,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Comparison Banner (Before vs After)
+            if (result != null || isCompressing) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Original (Before)',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            result?.originalSizeFormatted ??
+                                (controller.selectedFile.value != null
+                                    ? CompressionResult.formatFileSize(controller.selectedFile.value!.size)
+                                    : '--'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_rounded, color: AppColors.primary, size: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'Compressed (After)',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.successDark),
+                          ),
+                          const SizedBox(height: 2),
+                          if (isCompressing)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${(controller.compressionProgress.value * 100).toInt()}%...',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              result?.compressedSizeFormatted ?? '--',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.success,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (result != null && result.isPdf && !result.hasEmbeddedImages) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.2)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Vector Text PDF: This document consists of clean scalable text and fonts (no heavy raster scans). It is already at optimal minimum size.',
+                          style: TextStyle(fontSize: 11, color: AppColors.primaryDark),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // Upload Target Radios
+              const Text(
+                'Choose Upload Version:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+
+              // Option 1: Compressed (Always Default Selected)
+              InkWell(
+                onTap: () => controller.useCompressed.value = true,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: controller.useCompressed.value
+                        ? AppColors.primarySurface
+                        : AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: controller.useCompressed.value
+                          ? AppColors.primary
+                          : AppColors.border,
+                      width: controller.useCompressed.value ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Radio<bool>(
+                        value: true,
+                        groupValue: controller.useCompressed.value,
+                        onChanged: (val) => controller.useCompressed.value = val ?? true,
+                        activeColor: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Upload Compressed File',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Recommended',
+                                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Optimized size (${result?.compressedSizeFormatted ?? 'calculated on finish'}). Faster preview & saving storage.',
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Option 2: Original Quality
+              InkWell(
+                onTap: () => controller.useCompressed.value = false,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: !controller.useCompressed.value
+                        ? AppColors.primarySurface
+                        : AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: !controller.useCompressed.value
+                          ? AppColors.primary
+                          : AppColors.border,
+                      width: !controller.useCompressed.value ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Radio<bool>(
+                        value: false,
+                        groupValue: controller.useCompressed.value,
+                        onChanged: (val) => controller.useCompressed.value = val ?? false,
+                        activeColor: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Upload Original Quality',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Full original file (${result?.originalSizeFormatted ?? CompressionResult.formatFileSize(controller.selectedFile.value?.size ?? 0)}) without compression.',
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (controller.useCompressed.value) ...[
+                const SizedBox(height: 16),
+
+                // Compression Quality Controls (Only shown for Compressed option)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Compression Quality Level',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            '${controller.compressionQuality.value}%',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Preset buttons
+                      Row(
+                        children: [
+                          _buildQualityPresetButton(85, 'High (85%)'),
+                          const SizedBox(width: 8),
+                          _buildQualityPresetButton(70, 'Balanced (70%)'),
+                          const SizedBox(width: 8),
+                          _buildQualityPresetButton(50, 'Max (50%)'),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Slider
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 4,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                        ),
+                        child: Slider(
+                          value: controller.compressionQuality.value.toDouble(),
+                          min: 30,
+                          max: 95,
+                          divisions: 13,
+                          activeColor: AppColors.primary,
+                          inactiveColor: AppColors.border,
+                          onChanged: (val) {
+                            controller.compressionQuality.value = val.round();
+                          },
+                          onChangeEnd: (val) {
+                            controller.setCompressionQuality(val.round());
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildQualityPresetButton(int quality, String label) {
+    final isSelected = controller.compressionQuality.value == quality;
+    return Expanded(
+      child: InkWell(
+        onTap: () => controller.setCompressionQuality(quality),
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : AppColors.surface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

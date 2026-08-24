@@ -7,6 +7,7 @@ import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -177,16 +178,38 @@ class DocumentRepository {
     final user = _provider.currentUser;
     final docId = const Uuid().v4();
     final sanitizedFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-    final storagePath = 'vault/${user?.id ?? "shared"}/$docId/$sanitizedFileName';
-
-    AppLogger.info('DOC_REPO', 'Creating document: "$title" ($fileName) in path: $storagePath');
+    AppLogger.info('DOC_REPO', 'Creating document: "$title" ($fileName) via provider: ${AppConstants.storageProvider}');
 
     try {
-      await _provider.uploadDocumentFile(
-        storagePath: storagePath,
-        fileBytes: fileBytes,
-        mimeType: mimeType,
-      );
+      String storagePath;
+      Map<String, dynamic> extraAttributes = {};
+
+      if (AppConstants.storageProvider == 'gdrive') {
+        final gdriveRes = await _provider.uploadToGoogleDrive(
+          fileBytes: fileBytes,
+          fileName: fileName,
+          mimeType: mimeType,
+          folderName: subCategory,
+        );
+        final fileId = gdriveRes['fileId'] as String;
+        storagePath = 'gdrive://$fileId';
+        extraAttributes = {
+          'storage_provider': 'gdrive',
+          'gdrive_file_id': fileId,
+          if (gdriveRes['webViewLink'] != null) 'web_view_link': gdriveRes['webViewLink'],
+          if (gdriveRes['webContentLink'] != null) 'web_content_link': gdriveRes['webContentLink'],
+        };
+      } else {
+        storagePath = 'vault/${user?.id ?? "shared"}/$docId/$sanitizedFileName';
+        await _provider.uploadDocumentFile(
+          storagePath: storagePath,
+          fileBytes: fileBytes,
+          mimeType: mimeType,
+        );
+        extraAttributes = {
+          'storage_provider': 'supabase',
+        };
+      }
 
       final fileType = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'pdf';
 
@@ -205,6 +228,7 @@ class DocumentRepository {
         'document_number': documentNumber,
         'status': 'active',
         'uploaded_by': user?.id,
+        'extra_attributes': extraAttributes,
       };
 
       final insertedDoc = await _provider.client.from('documents').insert(docData).select().single();
@@ -304,10 +328,15 @@ class DocumentRepository {
     final user = _provider.currentUser;
     AppLogger.debug('DOC_REPO', 'permanentDeleteDocument for ID: $documentId, path: $filePath');
     try {
-      try {
-        await _provider.client.storage.from('documents').remove([filePath]);
-      } catch (storageErr) {
-        AppLogger.warning('DOC_REPO', 'Storage file remove non-fatal warning: $storageErr');
+      if (filePath.startsWith('gdrive://')) {
+        final fileId = filePath.replaceFirst('gdrive://', '');
+        await _provider.deleteFromGoogleDrive(fileId);
+      } else {
+        try {
+          await _provider.client.storage.from(AppConstants.storageBucket).remove([filePath]);
+        } catch (storageErr) {
+          AppLogger.warning('DOC_REPO', 'Storage file remove non-fatal warning: $storageErr');
+        }
       }
 
       await _provider.client.from('documents').delete().eq('id', documentId);
@@ -351,6 +380,10 @@ class DocumentRepository {
   }
 
   Future<String> getSignedPreviewUrl(String storagePath) async {
+    if (storagePath.startsWith('gdrive://')) {
+      final fileId = storagePath.replaceFirst('gdrive://', '');
+      return _provider.getGoogleDrivePreviewUrl(fileId);
+    }
     return await _provider.createSignedUrl(storagePath: storagePath, expiresInSeconds: 600);
   }
 

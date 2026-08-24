@@ -15,5 +15,7 @@ class AppRoutes {
   static const String TRASH = '/trash';
   static const String ACTIVITY_LOGS = '/activity-logs';
   static const String USERS = '/users';
+  static const String PROFILE = '/profile';
   static const String SETTINGS = '/settings';
 }
+

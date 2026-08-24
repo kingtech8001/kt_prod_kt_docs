@@ -62,7 +62,7 @@ class AuthView extends GetView<AuthController> {
                 const SizedBox(height: 4),
                 const Center(
                   child: Text(
-                    'King Technology Document & Asset Vault',
+                    'King Technology Document Holder & Vault',
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -140,7 +140,7 @@ class AuthView extends GetView<AuthController> {
                                   ),
                                 )
                               : const Text(
-                                  'Sign In to Vault',
+                                  'Sign In to DocHolder',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,

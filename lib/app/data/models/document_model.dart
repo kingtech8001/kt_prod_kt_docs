@@ -87,35 +87,38 @@ class DocumentModel {
   String get personName => personalMetadata?.personName ?? 'Unknown Person';
   String get docTypeName => personalMetadata?.docTypeName ?? subCategory;
 
+  static Map<String, dynamic>? _extractMap(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is List && value.isNotEmpty) {
+      final first = value.first;
+      if (first is Map<String, dynamic>) return first;
+      if (first is Map) return Map<String, dynamic>.from(first);
+    }
+    return null;
+  }
+
+  static List<dynamic>? _extractList(dynamic value) {
+    if (value == null) return null;
+    if (value is List) return value;
+    if (value is Map) return [value];
+    return null;
+  }
+
   factory DocumentModel.fromJson(Map<String, dynamic> json) {
-    final cat = json['document_categories'] as Map<String, dynamic>?;
-    final fld = json['folders'] as Map<String, dynamic>?;
-    final prof = json['profiles'] as Map<String, dynamic>?;
-    final addrList = json['document_addresses'] as List?;
-    final addr = addrList != null && addrList.isNotEmpty
-        ? addrList.first as Map<String, dynamic>
-        : (json['document_addresses'] is Map ? json['document_addresses'] as Map<String, dynamic> : null);
-
-    final utilList = json['utility_metadata'] as List?;
-    final util = utilList != null && utilList.isNotEmpty
-        ? utilList.first as Map<String, dynamic>
-        : (json['utility_metadata'] is Map ? json['utility_metadata'] as Map<String, dynamic> : null);
-
-    final warList = json['appliance_warranty_metadata'] as List?;
-    final warranty = warList != null && warList.isNotEmpty
-        ? warList.first as Map<String, dynamic>
-        : (json['appliance_warranty_metadata'] is Map ? json['appliance_warranty_metadata'] as Map<String, dynamic> : null);
-
-    final personalList = json['personal_document_metadata'] as List?;
-    final personal = personalList != null && personalList.isNotEmpty
-        ? personalList.first as Map<String, dynamic>
-        : (json['personal_document_metadata'] is Map ? json['personal_document_metadata'] as Map<String, dynamic> : null);
-
-    final favs = json['document_favorites'] as List?;
+    final cat = _extractMap(json['document_categories']);
+    final fld = _extractMap(json['folders']);
+    final prof = _extractMap(json['profiles']);
+    final addr = _extractMap(json['document_addresses']);
+    final util = _extractMap(json['utility_metadata']);
+    final warranty = _extractMap(json['appliance_warranty_metadata']);
+    final personal = _extractMap(json['personal_document_metadata']);
+    final favs = _extractList(json['document_favorites']);
 
     return DocumentModel(
       id: json['id'] as String,
-      title: json['title'] as String,
+      title: json['title'] as String? ?? 'Untitled Document',
       description: json['description'] as String?,
       categoryId: json['category_id'] as String?,
       categoryName: cat != null ? cat['name'] as String? : null,
@@ -133,16 +136,18 @@ class DocumentModel {
       status: json['status'] as String? ?? 'active',
       uploadedBy: json['uploaded_by'] as String?,
       uploaderName: prof != null ? prof['full_name'] as String? : null,
-      extraAttributes: (json['extra_attributes'] as Map<String, dynamic>?) ?? {},
+      extraAttributes: (json['extra_attributes'] is Map)
+          ? Map<String, dynamic>.from(json['extra_attributes'] as Map)
+          : {},
       deletedAt: json['deleted_at'] != null
-          ? DateTime.parse(json['deleted_at'] as String)
+          ? DateTime.tryParse(json['deleted_at'] as String)
           : null,
       deletedBy: json['deleted_by'] as String?,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
           : DateTime.now(),
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String) ?? DateTime.now()
           : DateTime.now(),
       address: addr != null ? AddressModel.fromJson(addr) : null,
       utilityMetadata: util != null ? UtilityMetadataModel.fromJson(util) : null,

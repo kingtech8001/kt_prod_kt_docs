@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/data/repositories/category_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/folder_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 
 class InitialBinding extends Bindings {
   @override
@@ -14,6 +15,10 @@ class InitialBinding extends Bindings {
     Get.lazyPut<AuthRepository>(
       () => AuthRepository(Get.find<SupabaseProvider>()),
       fenix: true,
+    );
+    Get.put<AuthService>(
+      AuthService(Get.find<AuthRepository>()),
+      permanent: true,
     );
     Get.lazyPut<MasterDataRepository>(
       () => MasterDataRepository(Get.find<SupabaseProvider>()),

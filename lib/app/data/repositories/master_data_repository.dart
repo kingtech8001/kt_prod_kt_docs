@@ -439,6 +439,8 @@ class MasterDataRepository {
     String? icon,
     String? colorHex,
     String? description,
+    bool hasCityFilter = true,
+    bool hasTitleField = true,
   }) async {
     try {
       final response = await _provider.client
@@ -449,12 +451,40 @@ class MasterDataRepository {
             'icon': icon ?? 'folder',
             'color_hex': colorHex ?? '#1E3A8A',
             'description': description,
+            'has_city_filter': hasCityFilter,
+            'has_title_field': hasTitleField,
           })
           .select()
           .single();
       return CategoryModel.fromJson(response);
     } catch (e, st) {
       AppLogger.error('MASTER_DATA_REPO', 'Error adding document category: $e', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
+  Future<void> updateDocumentCategory({
+    required String id,
+    required String name,
+    required String code,
+    String? icon,
+    String? colorHex,
+    String? description,
+    required bool hasCityFilter,
+    required bool hasTitleField,
+  }) async {
+    try {
+      await _provider.client.from('document_categories').update({
+        'name': name,
+        'code': code,
+        'icon': icon ?? 'folder',
+        'color_hex': colorHex ?? '#1E3A8A',
+        'description': description,
+        'has_city_filter': hasCityFilter,
+        'has_title_field': hasTitleField,
+      }).eq('id', id);
+    } catch (e, st) {
+      AppLogger.error('MASTER_DATA_REPO', 'Error updating document category: $e', error: e, stackTrace: st);
       rethrow;
     }
   }

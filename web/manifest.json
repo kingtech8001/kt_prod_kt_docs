@@ -1,11 +1,11 @@
 {
-    "name": "kt_prod_kt_docs",
-    "short_name": "kt_prod_kt_docs",
+    "name": "Kt DocHolder",
+    "short_name": "DocHolder",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project for document holder.",
+    "background_color": "#1E3A8A",
+    "theme_color": "#1E3A8A",
+    "description": "Kt DocHolder - Document Vault & Management Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

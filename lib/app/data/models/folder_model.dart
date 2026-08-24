@@ -30,7 +30,7 @@ class FolderModel {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
-      documentCount: (json['documents'] as List?)?.length ?? 0,
+      documentCount: (json['documents'] is List) ? (json['documents'] as List).length : 0,
     );
   }
 

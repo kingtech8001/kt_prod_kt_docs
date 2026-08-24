@@ -2,8 +2,8 @@ class AppConstants {
   AppConstants._();
 
   // App Metadata
-  static const String appName = 'KT Vault';
-  static const String appTagline = 'King Technology Document & Asset Vault';
+  static const String appName = 'Kt DocHolder';
+  static const String appTagline = 'King Technology Document Holder & Vault';
   static const String appVersion = '1.0.0';
 
   // Supabase Configuration
@@ -12,6 +12,14 @@ class AppConstants {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhY2t5dWRzenZkbXdybnBiaGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTk5NzUsImV4cCI6MjEwMjk5NTk3NX0.45Z49-uGGjGi1eM4NfLK-ByUA1xrduQ2D4j1GH2u-O0';
   static const String storageBucket = 'documents';
   static const String webBaseUrl = 'https://kt-vault.kingtechnology.com';
+
+  // Storage Provider Configuration
+  // 'gdrive' uploads binary files to Google Drive via Supabase Edge Function
+  // 'supabase' uploads directly to Supabase Storage bucket
+  static const String storageProvider = 'gdrive';
+  static const String edgeFunctionGdriveUpload = 'gdrive-upload';
+  static const String edgeFunctionGdriveProxy = 'gdrive-proxy';
+  static const String edgeFunctionGdriveDelete = 'gdrive-delete';
 
   // Supported Major Cities for Filtering
   static const List<String> supportedCities = [

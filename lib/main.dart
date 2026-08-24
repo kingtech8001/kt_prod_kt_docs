@@ -39,9 +39,10 @@ class KTVaultApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'KT Vault — King Technology DMS',
+      title: 'DocHolder',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      scrollBehavior: AppScrollBehavior(),
       initialBinding: InitialBinding(),
       initialRoute: initialRoute,
       getPages: AppPages.routes,

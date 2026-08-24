@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
@@ -125,17 +125,15 @@ class AuthController extends GetxController {
       AppLogger.info('AUTH_CTRL', 'Calling authRepository.signInWithEmail...');
       await _authRepository.signInWithEmail(email: email, password: password);
 
-      // Hydrate user profile
-      AppLogger.info('AUTH_CTRL', 'Fetching profile from database...');
-      final profile = await _authRepository.getCurrentProfile();
-      if (profile != null) {
-        Get.put<ProfileModel>(profile, permanent: true);
-        AppLogger.info('AUTH_CTRL', 'Profile registered in GetX: ${profile.fullName} (${profile.role})');
+      // Hydrate user profile into reactive AuthService
+      AppLogger.info('AUTH_CTRL', 'Hydrating profile into AuthService...');
+      if (Get.isRegistered<AuthService>()) {
+        await AuthService.to.loadProfile();
       }
 
       Get.snackbar(
         'Welcome',
-        'Successfully signed in to KT Vault',
+        'Successfully signed in to Kt DocHolder',
         backgroundColor: AppColors.success,
         colorText: Colors.white,
       );

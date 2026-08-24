@@ -39,6 +39,7 @@ class AppColors {
   // Status & Badges
   static const Color success = Color(0xFF10B981); // Emerald Green
   static const Color successLight = Color(0xFFD1FAE5);
+  static const Color successDark = Color(0xFF047857);
   static const Color warning = Color(0xFFF59E0B); // Amber
   static const Color warningLight = Color(0xFFFEF3C7);
   static const Color error = Color(0xFFEF4444); // Rose Red

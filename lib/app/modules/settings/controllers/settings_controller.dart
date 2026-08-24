@@ -78,6 +78,8 @@ class SettingsController extends GetxController {
   final docCategoryCodeController = TextEditingController();
   final docCategoryColorController = TextEditingController(text: '#1E3A8A');
   final docCategoryDescController = TextEditingController();
+  final docCategoryHasCityFilter = true.obs;
+  final docCategoryHasTitleField = true.obs;
 
   // New Staff Modal
   final newStaffEmailController = TextEditingController();
@@ -810,6 +812,8 @@ class SettingsController extends GetxController {
     docCategoryCodeController.clear();
     docCategoryColorController.text = '#1E3A8A';
     docCategoryDescController.clear();
+    docCategoryHasCityFilter.value = true;
+    docCategoryHasTitleField.value = true;
 
     Get.dialog(
       AlertDialog(
@@ -822,23 +826,46 @@ class SettingsController extends GetxController {
           ],
         ),
         content: SizedBox(
-          width: 440,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Category Name *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              TextField(controller: docCategoryNameController, decoration: const InputDecoration(hintText: 'e.g. Legal Agreements, HR Records')),
-              const SizedBox(height: 12),
-              const Text('Code Identifier *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              TextField(controller: docCategoryCodeController, decoration: const InputDecoration(hintText: 'e.g. legal_agreements, hr_docs')),
-              const SizedBox(height: 12),
-              const Text('Description', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              TextField(controller: docCategoryDescController, decoration: const InputDecoration(hintText: 'Brief description of category usage')),
-            ],
+          width: 460,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Category Name *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                TextField(controller: docCategoryNameController, decoration: const InputDecoration(hintText: 'e.g. Legal Agreements, HR Records')),
+                const SizedBox(height: 12),
+                const Text('Code Identifier *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                TextField(controller: docCategoryCodeController, decoration: const InputDecoration(hintText: 'e.g. legal_agreements, hr_docs')),
+                const SizedBox(height: 12),
+                const Text('Description', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                TextField(controller: docCategoryDescController, decoration: const InputDecoration(hintText: 'Brief description of category usage')),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text('Category Form Configuration', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
+                const SizedBox(height: 8),
+                Obx(() => CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Require City / Location Filter', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('If enabled, users can assign a city and premise location during upload.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      value: docCategoryHasCityFilter.value,
+                      onChanged: (val) => docCategoryHasCityFilter.value = val ?? true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                    )),
+                Obx(() => CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Require Document Title Input', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('If disabled, the document title field is hidden and auto-derived from the uploaded file name.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      value: docCategoryHasTitleField.value,
+                      onChanged: (val) => docCategoryHasTitleField.value = val ?? true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                    )),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -856,6 +883,8 @@ class SettingsController extends GetxController {
                   code: code,
                   colorHex: docCategoryColorController.text.trim(),
                   description: docCategoryDescController.text.trim(),
+                  hasCityFilter: docCategoryHasCityFilter.value,
+                  hasTitleField: docCategoryHasTitleField.value,
                 );
                 Get.snackbar('Category Added', 'Document category "$name" created.', backgroundColor: AppColors.success, colorText: Colors.white);
                 loadDocumentCategories();
@@ -864,6 +893,99 @@ class SettingsController extends GetxController {
               }
             },
             child: const Text('Add Category'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void openEditDocumentCategoryDialog(CategoryModel cat) {
+    docCategoryNameController.text = cat.name;
+    docCategoryCodeController.text = cat.code;
+    docCategoryColorController.text = cat.colorHex;
+    docCategoryDescController.text = cat.description ?? '';
+    docCategoryHasCityFilter.value = cat.hasCityFilter;
+    docCategoryHasTitleField.value = cat.hasTitleField;
+
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Edit Document Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: SizedBox(
+          width: 460,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Category Name *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                TextField(controller: docCategoryNameController, decoration: const InputDecoration(hintText: 'e.g. Legal Agreements, HR Records')),
+                const SizedBox(height: 12),
+                const Text('Code Identifier *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                TextField(controller: docCategoryCodeController, decoration: const InputDecoration(hintText: 'e.g. legal_agreements, hr_docs')),
+                const SizedBox(height: 12),
+                const Text('Description', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                TextField(controller: docCategoryDescController, decoration: const InputDecoration(hintText: 'Brief description of category usage')),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text('Category Form Configuration', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
+                const SizedBox(height: 8),
+                Obx(() => CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Require City / Location Filter', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('If enabled, users can assign a city and premise location during upload.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      value: docCategoryHasCityFilter.value,
+                      onChanged: (val) => docCategoryHasCityFilter.value = val ?? true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                    )),
+                Obx(() => CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Require Document Title Input', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('If disabled, the document title field is hidden and auto-derived from the uploaded file name.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      value: docCategoryHasTitleField.value,
+                      onChanged: (val) => docCategoryHasTitleField.value = val ?? true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                    )),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final name = docCategoryNameController.text.trim();
+              final code = docCategoryCodeController.text.trim();
+              if (name.isEmpty || code.isEmpty) return;
+
+              Get.back();
+              try {
+                await _masterDataRepository.updateDocumentCategory(
+                  id: cat.id,
+                  name: name,
+                  code: code,
+                  colorHex: docCategoryColorController.text.trim(),
+                  description: docCategoryDescController.text.trim(),
+                  hasCityFilter: docCategoryHasCityFilter.value,
+                  hasTitleField: docCategoryHasTitleField.value,
+                );
+                Get.snackbar('Category Updated', 'Document category "$name" updated.', backgroundColor: AppColors.success, colorText: Colors.white);
+                loadDocumentCategories();
+              } catch (e) {
+                Get.snackbar('Failed', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+              }
+            },
+            child: const Text('Save Changes'),
           ),
         ],
       ),

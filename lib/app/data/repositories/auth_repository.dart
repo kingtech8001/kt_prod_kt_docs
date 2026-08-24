@@ -140,6 +140,29 @@ class AuthRepository {
     }
   }
 
+  Future<void> updateStaffProfile({
+    required String id,
+    required String fullName,
+    String? department,
+    String? phoneNumber,
+    required bool isActive,
+  }) async {
+    AppLogger.debug('AUTH_REPO', 'Updating staff profile for user $id');
+    try {
+      await _provider.client.from('profiles').update({
+        'full_name': fullName,
+        'department': department,
+        'phone_number': phoneNumber,
+        'is_active': isActive,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', id);
+      AppLogger.info('AUTH_REPO', 'Staff profile updated successfully.');
+    } catch (e, st) {
+      AppLogger.error('AUTH_REPO', 'Error in updateStaffProfile: $e', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
   // Admin User & Role Creation Methods
   Future<void> adminCreateStaffUser({
     required String email,

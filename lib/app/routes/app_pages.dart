@@ -17,6 +17,8 @@ import 'package:kt_prod_kt_docs/app/modules/folders/bindings/folders_binding.dar
 import 'package:kt_prod_kt_docs/app/modules/folders/views/folders_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/personal_docs/bindings/personal_docs_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/personal_docs/views/personal_docs_view.dart';
+import 'package:kt_prod_kt_docs/app/modules/profile/bindings/profile_binding.dart';
+import 'package:kt_prod_kt_docs/app/modules/profile/views/profile_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/settings/bindings/settings_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/settings/views/settings_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/trash/bindings/trash_binding.dart';
@@ -92,6 +94,11 @@ class AppPages {
       name: AppRoutes.USERS,
       page: () => const UsersView(),
       binding: UsersBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.PROFILE,
+      page: () => const ProfileView(),
+      binding: ProfileBinding(),
     ),
     GetPage(
       name: AppRoutes.SETTINGS,

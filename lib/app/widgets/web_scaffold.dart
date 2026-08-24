@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_header.dart';
@@ -32,7 +31,7 @@ class WebScaffold extends StatelessWidget {
     Get.dialog(
       AlertDialog(
         title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out of KT Vault?'),
+        content: const Text('Are you sure you want to sign out of Kt DocHolder?'),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
@@ -58,15 +57,8 @@ class WebScaffold extends StatelessWidget {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= AppConstants.desktopBreakpoint;
 
-    // Get current profile if registered
-    ProfileModel? profile;
-    if (Get.isRegistered<ProfileModel>()) {
-      profile = Get.find<ProfileModel>();
-    }
-
     final sidebar = WebSidebar(
       currentRoute: currentRoute,
-      profile: profile,
       onSignOut: _handleSignOut,
     );
 

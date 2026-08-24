@@ -54,4 +54,29 @@ class ProfileModel {
       'created_at': createdAt.toIso8601String(),
     };
   }
+
+  ProfileModel copyWith({
+    String? id,
+    String? fullName,
+    String? email,
+    String? avatarUrl,
+    String? role,
+    String? department,
+    String? phoneNumber,
+    bool? isActive,
+    DateTime? createdAt,
+  }) {
+    return ProfileModel(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      role: role ?? this.role,
+      department: department ?? this.department,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
+

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
@@ -9,7 +10,7 @@ class SupabaseProvider {
   User? get currentUser => client.auth.currentUser;
   bool get isAuthenticated => currentUser != null;
 
-  // Storage Methods
+  // Supabase Storage Bucket Methods
   Future<String> uploadDocumentFile({
     required String storagePath,
     required Uint8List fileBytes,
@@ -86,5 +87,72 @@ class SupabaseProvider {
       );
       rethrow;
     }
+  }
+
+  // Google Drive Edge Function Storage Methods
+  Future<Map<String, dynamic>> uploadToGoogleDrive({
+    required Uint8List fileBytes,
+    required String fileName,
+    required String mimeType,
+    String? folderName,
+  }) async {
+    AppLogger.debug(
+      'GDRIVE_STORAGE',
+      'Uploading ${fileBytes.lengthInBytes} bytes ($fileName) via Edge Function: ${AppConstants.edgeFunctionGdriveUpload}',
+    );
+    try {
+      final response = await client.functions.invoke(
+        AppConstants.edgeFunctionGdriveUpload,
+        body: {
+          'fileName': fileName,
+          'mimeType': mimeType,
+          'fileBase64': base64Encode(fileBytes),
+          'folderName': folderName,
+          'userId': currentUser?.id,
+        },
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['success'] == false || data['error'] != null) {
+          throw Exception(data['error'] ?? 'Google Drive upload failed');
+        }
+        AppLogger.info('GDRIVE_STORAGE', 'Upload to Google Drive success, fileId: ${data["fileId"]}');
+        return data;
+      } else if (data is String) {
+        final decoded = jsonDecode(data) as Map<String, dynamic>;
+        return decoded;
+      }
+      throw Exception('Unexpected response format from Google Drive upload');
+    } catch (e, st) {
+      AppLogger.error(
+        'GDRIVE_STORAGE',
+        'Failed to upload file to Google Drive: $fileName',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> deleteFromGoogleDrive(String fileId) async {
+    AppLogger.debug('GDRIVE_STORAGE', 'Deleting Google Drive file ID: $fileId');
+    try {
+      await client.functions.invoke(
+        AppConstants.edgeFunctionGdriveDelete,
+        body: {'fileId': fileId},
+      );
+      AppLogger.info('GDRIVE_STORAGE', 'Google Drive file $fileId deleted successfully.');
+    } catch (e, st) {
+      AppLogger.warning('GDRIVE_STORAGE', 'Non-fatal error deleting Google Drive file: $e ($st)');
+    }
+  }
+
+  String getGoogleDrivePreviewUrl(String fileId, {bool download = false}) {
+    final baseUrl = '${AppConstants.supabaseUrl}/functions/v1/${AppConstants.edgeFunctionGdriveProxy}?fileId=$fileId';
+    if (download) {
+      return '$baseUrl&download=true';
+    }
+    return baseUrl;
   }
 }

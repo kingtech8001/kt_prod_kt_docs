@@ -11,9 +11,11 @@ class SettingsView extends GetView<SettingsController> {
 
   @override
   Widget build(BuildContext context) {
+    final ScrollController tabScrollController = ScrollController();
+
     return WebScaffold(
       title: 'Settings & Master Configuration',
-      subtitle: 'Manage dynamic cities, brands, appliance types, utility authorities, persons, doc types, and staff roles',
+      subtitle: 'Manage dynamic cities, brands, appliance types, utility authorities, persons, doc types, and corporate categories',
       currentRoute: AppRoutes.SETTINGS,
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -30,30 +32,66 @@ class SettingsView extends GetView<SettingsController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tab Navigation Bar
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+                  // Scrollable Tab Navigation Bar with Arrows & Mouse Drag
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
                     child: Row(
                       children: [
-                        _buildTabButton(0, 'Cities & Locations', Icons.location_city),
-                        const SizedBox(width: 8),
-                        _buildTabButton(1, 'Appliance Brands', Icons.branding_watermark_outlined),
-                        const SizedBox(width: 8),
-                        _buildTabButton(2, 'Appliance Categories', Icons.kitchen_outlined),
-                        const SizedBox(width: 8),
-                        _buildTabButton(3, 'Utility Providers', Icons.bolt_outlined),
-                        const SizedBox(width: 8),
-                        _buildTabButton(4, 'Persons & Beneficiaries', Icons.people_alt_outlined),
-                        const SizedBox(width: 8),
-                        _buildTabButton(5, 'Personal Doc Types', Icons.badge_outlined),
-                        const SizedBox(width: 8),
-                        _buildTabButton(6, 'Document Categories', Icons.folder_outlined),
-                        const SizedBox(width: 8),
-                        if (controller.isAdmin) ...[
-                          _buildTabButton(7, 'Staff & Roles', Icons.admin_panel_settings_outlined),
-                          const SizedBox(width: 8),
-                        ],
-                        _buildTabButton(8, 'Personal Profile', Icons.person_outline),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, size: 20),
+                          tooltip: 'Scroll Left',
+                          onPressed: () {
+                            tabScrollController.animateTo(
+                              tabScrollController.offset - 200,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            controller: tabScrollController,
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            child: Row(
+                              children: [
+                                _buildTabButton(0, 'Cities & Locations', Icons.location_city),
+                                const SizedBox(width: 8),
+                                _buildTabButton(1, 'Appliance Brands', Icons.branding_watermark_outlined),
+                                const SizedBox(width: 8),
+                                _buildTabButton(2, 'Appliance Categories', Icons.kitchen_outlined),
+                                const SizedBox(width: 8),
+                                _buildTabButton(3, 'Utility Providers', Icons.bolt_outlined),
+                                const SizedBox(width: 8),
+                                _buildTabButton(4, 'Persons & Beneficiaries', Icons.people_alt_outlined),
+                                const SizedBox(width: 8),
+                                _buildTabButton(5, 'Personal Doc Types', Icons.badge_outlined),
+                                const SizedBox(width: 8),
+                                _buildTabButton(6, 'Document Categories', Icons.folder_outlined),
+                                if (controller.isAdmin) ...[
+                                  const SizedBox(width: 8),
+                                  _buildTabButton(7, 'Staff & Roles', Icons.admin_panel_settings_outlined),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, size: 20),
+                          tooltip: 'Scroll Right',
+                          onPressed: () {
+                            tabScrollController.animateTo(
+                              tabScrollController.offset + 200,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -69,7 +107,6 @@ class SettingsView extends GetView<SettingsController> {
                   if (selectedTab == 5) _buildPersonalDocTypesTab(),
                   if (selectedTab == 6) _buildDocCategoriesTab(),
                   if (selectedTab == 7) _buildStaffTab(),
-                  if (selectedTab == 8) _buildProfileTab(),
                 ],
               ),
             ),
@@ -88,7 +125,7 @@ class SettingsView extends GetView<SettingsController> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surface,
+          color: isSelected ? AppColors.primary : AppColors.background,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
           boxShadow: isSelected
@@ -224,7 +261,7 @@ class SettingsView extends GetView<SettingsController> {
   Widget _buildPersonalDocTypesTab() {
     return _buildConfigSection(
       title: 'Personal & Identity Document Types',
-      subtitle: 'Configure types of personal records (Aadhaar Card, PAN Card, Chutni Card, Passport, Driving License, etc.).',
+      subtitle: 'Configure types of personal records (Aadhaar Card, PAN Card, Passport, Driving License, etc.).',
       onAdd: controller.openAddPersonalDocTypeDialog,
       addButtonText: 'Add Document Type',
       isLoading: controller.isPersonalDocTypesLoading.value,
@@ -246,16 +283,116 @@ class SettingsView extends GetView<SettingsController> {
   Widget _buildDocCategoriesTab() {
     return _buildConfigSection(
       title: 'Corporate Document Categories',
-      subtitle: 'Primary organizational categories for organizing company records, contracts, and receipts.',
+      subtitle: 'Primary organizational categories for organizing company records, contracts, and receipts. Configure City & Title requirements.',
       onAdd: controller.openAddDocumentCategoryDialog,
       addButtonText: 'Add Document Category',
       isLoading: controller.isCategoriesLoading.value,
       children: controller.documentCategories.map((cat) {
-        return _buildItemTile(
-          title: cat.name,
-          subtitle: 'Code: ${cat.code} • ${cat.description ?? ""}',
-          isActive: true,
-          onDelete: () => controller.deleteDocumentCategory(cat),
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.folder_outlined, color: AppColors.primary, size: 20),
+          ),
+          title: Row(
+            children: [
+              Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text('Code: ${cat.code}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (cat.description != null && cat.description!.isNotEmpty)
+                  Text(cat.description!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: cat.hasCityFilter ? AppColors.info.withValues(alpha: 0.1) : AppColors.background,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: cat.hasCityFilter ? AppColors.info : AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(cat.hasCityFilter ? Icons.location_on : Icons.location_off_outlined,
+                              size: 12, color: cat.hasCityFilter ? AppColors.info : AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            cat.hasCityFilter ? 'City Filter: Active' : 'City Filter: Disabled',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: cat.hasCityFilter ? AppColors.info : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: cat.hasTitleField ? AppColors.primary.withValues(alpha: 0.1) : AppColors.background,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: cat.hasTitleField ? AppColors.primary : AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(cat.hasTitleField ? Icons.title : Icons.text_fields_outlined,
+                              size: 12, color: cat.hasTitleField ? AppColors.primary : AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            cat.hasTitleField ? 'Title: Required' : 'Title: Auto-derived',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: cat.hasTitleField ? AppColors.primary : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                tooltip: 'Edit Category Configuration',
+                onPressed: () => controller.openEditDocumentCategoryDialog(cat),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                tooltip: 'Delete Category',
+                onPressed: () => controller.deleteDocumentCategory(cat),
+              ),
+            ],
+          ),
         );
       }).toList(),
     );
@@ -342,49 +479,6 @@ class SettingsView extends GetView<SettingsController> {
                 );
               },
             ),
-        ],
-      ),
-    );
-  }
-
-  // ================= TAB 8: PERSONAL PROFILE =================
-  Widget _buildProfileTab() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Personal Account Profile',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Update your personal staff details and department information.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-          const Divider(height: 28),
-          const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          TextField(controller: controller.fullNameController, decoration: const InputDecoration(hintText: 'Your full name')),
-          const SizedBox(height: 16),
-          const Text('Department / Role', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          TextField(controller: controller.departmentController, decoration: const InputDecoration(hintText: 'e.g. Executive, IT, Accounts')),
-          const SizedBox(height: 16),
-          const Text('Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          TextField(controller: controller.phoneController, decoration: const InputDecoration(hintText: '+91 9876543210')),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: controller.saveProfile,
-            child: const Text('Save Profile Changes'),
-          ),
         ],
       ),
     );

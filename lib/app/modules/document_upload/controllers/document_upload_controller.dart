@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -13,6 +15,7 @@ import 'package:kt_prod_kt_docs/app/data/repositories/folder_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:mime/mime.dart';
@@ -33,6 +36,14 @@ class DocumentUploadController extends GetxController {
   final isLoading = false.obs;
   final categories = <CategoryModel>[].obs;
   final folders = <FolderModel>[].obs;
+
+  // Compression State
+  final isCompressing = false.obs;
+  final compressionResult = Rxn<CompressionResult>();
+  final useCompressed = true.obs;
+  final compressionQuality = 70.obs;
+  final compressionProgress = 0.0.obs;
+  final compressionProgressText = ''.obs;
 
   // Dynamic Master Data
   final dynamicCities = <String>[].obs;
@@ -97,19 +108,24 @@ class DocumentUploadController extends GetxController {
   final personalIssuingAuthorityController = TextEditingController();
   final personalNotesController = TextEditingController();
 
+  CategoryModel? get currentCategory {
+    if (selectedCategoryId.value.isEmpty) return null;
+    return categories.firstWhereOrNull((c) => c.id == selectedCategoryId.value);
+  }
+
+  bool get showCityFilter => currentCategory?.hasCityFilter ?? true;
+  bool get showTitleField => currentCategory?.hasTitleField ?? true;
+
   bool get isUtilityBill {
-    final cat = categories.firstWhereOrNull((c) => c.id == selectedCategoryId.value);
-    return cat?.code == 'utility_bills';
+    return currentCategory?.code == 'utility_bills';
   }
 
   bool get isApplianceWarranty {
-    final cat = categories.firstWhereOrNull((c) => c.id == selectedCategoryId.value);
-    return cat?.code == 'appliance_warranty';
+    return currentCategory?.code == 'appliance_warranty';
   }
 
   bool get isPersonalDoc {
-    final cat = categories.firstWhereOrNull((c) => c.id == selectedCategoryId.value);
-    return cat?.code == 'identity_docs';
+    return currentCategory?.code == 'identity_docs';
   }
 
   bool get selectedDocTypeHasExpiry {
@@ -240,6 +256,70 @@ class DocumentUploadController extends GetxController {
     }
   }
 
+  bool get isSelectedFileCompressible {
+    final file = selectedFile.value;
+    if (file == null) return false;
+    return FileCompressor.isCompressible(file.name);
+  }
+
+  Future<void> compressSelectedFile() async {
+    final file = selectedFile.value;
+    if (file == null || file.bytes == null) return;
+    if (!FileCompressor.isCompressible(file.name)) {
+      compressionResult.value = null;
+      return;
+    }
+
+    isCompressing.value = true;
+    compressionProgress.value = 0.12;
+    compressionProgressText.value = 'Preparing optimization...';
+
+    // Smooth progressive progress ticker to prevent any freezes during single-threaded execution
+    Timer? ticker;
+    ticker = Timer.periodic(const Duration(milliseconds: 70), (t) {
+      if (compressionProgress.value < 0.90) {
+        compressionProgress.value = (compressionProgress.value + 0.05).clamp(0.12, 0.90);
+      }
+    });
+
+    try {
+      // Yield to event loop to guarantee the UI renders the loader immediately
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      final result = await FileCompressor.compressFile(
+        bytes: file.bytes!,
+        fileName: file.name,
+        quality: compressionQuality.value,
+        onProgress: (progress, message) {
+          if (progress > compressionProgress.value) {
+            compressionProgress.value = progress.clamp(0.12, 0.95);
+          }
+          compressionProgressText.value = message;
+        },
+      );
+
+      ticker.cancel();
+      compressionProgress.value = 1.0;
+      compressionProgressText.value = 'Optimization complete!';
+      await Future.delayed(const Duration(milliseconds: 60));
+
+      compressionResult.value = result;
+      useCompressed.value = true; // Always default to compressed as requested
+    } catch (e, st) {
+      ticker.cancel();
+      AppLogger.error('UPLOAD_CTRL', 'Error compressing file: $e', error: e, stackTrace: st);
+    } finally {
+      ticker.cancel();
+      isCompressing.value = false;
+    }
+  }
+
+  void setCompressionQuality(int quality) {
+    if (compressionQuality.value == quality) return;
+    compressionQuality.value = quality;
+    compressSelectedFile();
+  }
+
   void onFileSelected(PlatformFile file) {
     AppLogger.info('UPLOAD_CTRL', 'File selected: ${file.name}, Size: ${file.size} bytes');
     selectedFile.value = file;
@@ -253,6 +333,9 @@ class DocumentUploadController extends GetxController {
         titleController.text = nameWithoutExt.replaceAll('_', ' ');
       }
     }
+
+    // Trigger local client compression
+    compressSelectedFile();
   }
 
   void updateWarrantyMonths(int months) {
@@ -282,15 +365,24 @@ class DocumentUploadController extends GetxController {
       return;
     }
 
-    final title = titleController.text.trim();
+    String title = titleController.text.trim();
     if (title.isEmpty) {
-      Get.snackbar(
-        'Title Required',
-        'Please enter a descriptive document title.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
-      );
-      return;
+      if (!showTitleField) {
+        // Auto-derive title from file name or subcategory
+        final rawName = file.name;
+        title = rawName.contains('.')
+            ? rawName.substring(0, rawName.lastIndexOf('.'))
+            : rawName;
+        if (title.isEmpty) title = selectedSubcategory.value;
+      } else {
+        Get.snackbar(
+          'Title Required',
+          'Please enter a descriptive document title.',
+          backgroundColor: AppColors.warning,
+          colorText: Colors.white,
+        );
+        return;
+      }
     }
 
     isLoading.value = true;
@@ -299,9 +391,9 @@ class DocumentUploadController extends GetxController {
     try {
       final mimeType = lookupMimeType(file.name) ?? 'application/octet-stream';
 
-      // 1. Prepare Address Metadata
+      // 1. Prepare Address Metadata (Only if city filter is enabled for this category)
       AddressModel? address;
-      if (selectedCity.value.isNotEmpty || areaLocalityController.text.isNotEmpty) {
+      if (showCityFilter && (selectedCity.value.isNotEmpty || areaLocalityController.text.isNotEmpty)) {
         address = AddressModel(
           premiseName: premiseNameController.text.trim().isNotEmpty
               ? premiseNameController.text.trim()
@@ -405,6 +497,26 @@ class DocumentUploadController extends GetxController {
         );
       }
 
+      // Determine file bytes, file name, and mime type based on user's compression selection
+      Uint8List uploadBytes = file.bytes!;
+      String uploadFileName = file.name;
+      String uploadMimeType = mimeType;
+
+      if (useCompressed.value && compressionResult.value != null) {
+        uploadBytes = compressionResult.value!.compressedBytes;
+        uploadFileName = compressionResult.value!.compressedFileName;
+        uploadMimeType = compressionResult.value!.mimeType;
+        AppLogger.info(
+          'UPLOAD_CTRL',
+          'Uploading COMPRESSED version ($uploadFileName, ${uploadBytes.length} bytes, savings: ${compressionResult.value!.savingsFormatted})',
+        );
+      } else {
+        AppLogger.info(
+          'UPLOAD_CTRL',
+          'Uploading ORIGINAL version ($uploadFileName, ${uploadBytes.length} bytes)',
+        );
+      }
+
       // 3. Create Document Record (Repository handles storage upload and db record)
       final createdDoc = await _documentRepository.createDocument(
         title: title,
@@ -417,9 +529,9 @@ class DocumentUploadController extends GetxController {
         categoryId: selectedCategoryId.value,
         subCategory: selectedSubcategory.value,
         folderId: selectedFolderId.value,
-        fileName: file.name,
-        fileBytes: file.bytes!,
-        mimeType: mimeType,
+        fileName: uploadFileName,
+        fileBytes: uploadBytes,
+        mimeType: uploadMimeType,
         address: address,
         utilityMetadata: utilityMeta,
         applianceWarranty: applianceMeta,
@@ -430,7 +542,7 @@ class DocumentUploadController extends GetxController {
 
       Get.snackbar(
         'Upload Successful',
-        'Document "${createdDoc.title}" stored securely in KT Vault.',
+        'Document "${createdDoc.title}" stored securely in Kt DocHolder.',
         backgroundColor: AppColors.success,
         colorText: Colors.white,
         duration: const Duration(seconds: 4),
