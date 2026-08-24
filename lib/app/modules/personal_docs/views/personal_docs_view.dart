@@ -103,52 +103,76 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                   // Metrics Row (Responsive 1/2/4 Columns)
                   LayoutBuilder(builder: (context, constraints) {
                     final width = constraints.maxWidth;
-                    int crossAxis = 4;
-                    if (width < 600) {
-                      crossAxis = 1;
-                    } else if (width < 950) {
-                      crossAxis = 2;
-                    }
-
-                    final items = [
-                      MetricCard(
-                        title: 'TOTAL PERSONAL DOCS',
-                        value: '${controller.totalDocumentsCount.value}',
-                        icon: Icons.badge_outlined,
-                        accentColor: AppColors.primary,
-                      ),
-                      MetricCard(
-                        title: 'PERSONS COVERED',
-                        value: '${controller.totalPersonsCoveredCount.value}',
-                        icon: Icons.people_outline,
-                        accentColor: AppColors.financeBlue,
-                      ),
-                      MetricCard(
-                        title: 'EXPIRING SOON (<60D)',
-                        value: '${controller.expiringSoonCount.value}',
-                        icon: Icons.timelapse_outlined,
-                        accentColor: AppColors.warning,
-                      ),
-                      MetricCard(
-                        title: 'EXPIRED RECORDS',
-                        value: '${controller.expiredCount.value}',
-                        icon: Icons.error_outline_rounded,
-                        accentColor: AppColors.error,
-                      ),
-                    ];
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: items.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxis,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        mainAxisExtent: 110,
-                      ),
-                      itemBuilder: (context, index) => items[index],
+                    final card1 = MetricCard(
+                      title: 'TOTAL PERSONAL DOCS',
+                      value: '${controller.totalDocumentsCount.value}',
+                      icon: Icons.badge_outlined,
+                      accentColor: AppColors.primary,
                     );
+                    final card2 = MetricCard(
+                      title: 'PERSONS COVERED',
+                      value: '${controller.totalPersonsCoveredCount.value}',
+                      icon: Icons.people_outline,
+                      accentColor: AppColors.financeBlue,
+                    );
+                    final card3 = MetricCard(
+                      title: 'EXPIRING SOON (<60D)',
+                      value: '${controller.expiringSoonCount.value}',
+                      icon: Icons.timelapse_outlined,
+                      accentColor: AppColors.warning,
+                    );
+                    final card4 = MetricCard(
+                      title: 'EXPIRED RECORDS',
+                      value: '${controller.expiredCount.value}',
+                      icon: Icons.error_outline_rounded,
+                      accentColor: AppColors.error,
+                    );
+
+                    if (width < 600) {
+                      return Column(
+                        children: [
+                          card1,
+                          const SizedBox(height: 10),
+                          card2,
+                          const SizedBox(height: 10),
+                          card3,
+                          const SizedBox(height: 10),
+                          card4,
+                        ],
+                      );
+                    } else if (width < 950) {
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: card1),
+                              const SizedBox(width: 14),
+                              Expanded(child: card2),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(child: card3),
+                              const SizedBox(width: 14),
+                              Expanded(child: card4),
+                            ],
+                          ),
+                        ],
+                      );
+                    } else {
+                      return Row(
+                        children: [
+                          Expanded(child: card1),
+                          const SizedBox(width: 14),
+                          Expanded(child: card2),
+                          const SizedBox(width: 14),
+                          Expanded(child: card3),
+                          const SizedBox(width: 14),
+                          Expanded(child: card4),
+                        ],
+                      );
+                    }
                   }),
                 ],
               ),
@@ -355,7 +379,8 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
   Widget _buildPersonalDocCard(DocumentModel doc) {
     final meta = doc.personalMetadata;
 
-    return Container(
+    return RepaintBoundary(
+      child: Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -524,7 +549,7 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildListView() {
@@ -536,7 +561,8 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
         final doc = controller.personalDocuments[index];
         final meta = doc.personalMetadata;
 
-        return Container(
+        return RepaintBoundary(
+          child: Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(8),
@@ -616,7 +642,7 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
               ),
             ],
           ),
-        );
+        ));
       },
     );
   }

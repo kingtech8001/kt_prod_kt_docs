@@ -42,55 +42,79 @@ class UsersView extends GetView<UsersController> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
-                  int crossAxis = 4;
-                  if (width < 600) {
-                    crossAxis = 1;
-                  } else if (width < 950) {
-                    crossAxis = 2;
-                  }
-
-                  final items = [
-                    MetricCard(
-                      title: 'TOTAL PROFILES',
-                      value: '${controller.totalUsersCount.value}',
-                      icon: Icons.people_outline,
-                      accentColor: AppColors.primary,
-                    ),
-                    MetricCard(
-                      title: 'EDITORS',
-                      value: '${controller.editorCount.value}',
-                      subtitle: 'Upload & manage documents',
-                      icon: Icons.edit_note_outlined,
-                      accentColor: AppColors.financeBlue,
-                    ),
-                    MetricCard(
-                      title: 'VIEWERS',
-                      value: '${controller.viewerCount.value}',
-                      subtitle: 'Read-only preview access',
-                      icon: Icons.visibility_outlined,
-                      accentColor: AppColors.warrantyEmerald,
-                    ),
-                    MetricCard(
-                      title: 'STANDARD USERS',
-                      value: '${controller.standardUserCount.value}',
-                      subtitle: 'Personal viewing',
-                      icon: Icons.person_outline,
-                      accentColor: AppColors.textSecondary,
-                    ),
-                  ];
-
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: items.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxis,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                      mainAxisExtent: 110,
-                    ),
-                    itemBuilder: (context, index) => items[index],
+                  final card1 = MetricCard(
+                    title: 'TOTAL PROFILES',
+                    value: '${controller.totalUsersCount.value}',
+                    icon: Icons.people_outline,
+                    accentColor: AppColors.primary,
                   );
+                  final card2 = MetricCard(
+                    title: 'EDITORS',
+                    value: '${controller.editorCount.value}',
+                    subtitle: 'Upload & manage documents',
+                    icon: Icons.edit_note_outlined,
+                    accentColor: AppColors.financeBlue,
+                  );
+                  final card3 = MetricCard(
+                    title: 'VIEWERS',
+                    value: '${controller.viewerCount.value}',
+                    subtitle: 'Read-only preview access',
+                    icon: Icons.visibility_outlined,
+                    accentColor: AppColors.warrantyEmerald,
+                  );
+                  final card4 = MetricCard(
+                    title: 'STANDARD USERS',
+                    value: '${controller.standardUserCount.value}',
+                    subtitle: 'Personal viewing',
+                    icon: Icons.person_outline,
+                    accentColor: AppColors.textSecondary,
+                  );
+
+                  if (width < 600) {
+                    return Column(
+                      children: [
+                        card1,
+                        const SizedBox(height: 10),
+                        card2,
+                        const SizedBox(height: 10),
+                        card3,
+                        const SizedBox(height: 10),
+                        card4,
+                      ],
+                    );
+                  } else if (width < 950) {
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: card1),
+                            const SizedBox(width: 14),
+                            Expanded(child: card2),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(child: card3),
+                            const SizedBox(width: 14),
+                            Expanded(child: card4),
+                          ],
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Row(
+                      children: [
+                        Expanded(child: card1),
+                        const SizedBox(width: 14),
+                        Expanded(child: card2),
+                        const SizedBox(width: 14),
+                        Expanded(child: card3),
+                        const SizedBox(width: 14),
+                        Expanded(child: card4),
+                      ],
+                    );
+                  }
                 },
               ),
 
@@ -388,59 +412,61 @@ class UsersView extends GetView<UsersController> {
         final user = users[index];
         final isCurrent = user.id == controller.currentProfile.value?.id;
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primarySurface,
-                    child: Text(
-                      user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                        Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  ),
-                  StatusBadge(
-                    label: user.role.toUpperCase(),
-                    type: user.role == 'admin' ? StatusBadgeType.warning : StatusBadgeType.info,
-                  ),
-                ],
-              ),
-              const Divider(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Dept: ${user.department ?? "General"}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  if (!isCurrent)
-                    IconButton(
-                      icon: Icon(
-                        user.isActive ? Icons.toggle_on : Icons.toggle_off,
-                        color: user.isActive ? AppColors.success : AppColors.textMuted,
-                        size: 28,
+        return RepaintBoundary(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.primarySurface,
+                      child: Text(
+                        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                        style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
                       ),
-                      onPressed: () => controller.toggleUserStatus(user),
                     ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                          Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    StatusBadge(
+                      label: user.role.toUpperCase(),
+                      type: user.role == 'admin' ? StatusBadgeType.warning : StatusBadgeType.info,
+                    ),
+                  ],
+                ),
+                const Divider(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Dept: ${user.department ?? "General"}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    if (!isCurrent)
+                      IconButton(
+                        icon: Icon(
+                          user.isActive ? Icons.toggle_on : Icons.toggle_off,
+                          color: user.isActive ? AppColors.success : AppColors.textMuted,
+                          size: 28,
+                        ),
+                        onPressed: () => controller.toggleUserStatus(user),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },

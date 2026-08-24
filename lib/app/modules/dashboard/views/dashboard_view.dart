@@ -34,63 +34,90 @@ class DashboardView extends GetView<DashboardController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Top Metrics Cards Grid (Responsive 1/2/4 Columns)
+                // 1. Top Metrics Cards (Responsive 1/2/4 Columns)
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final width = constraints.maxWidth;
-                    int crossAxisCount = 4;
-                    if (width < 600) {
-                      crossAxisCount = 1;
-                    } else if (width < 1000) {
-                      crossAxisCount = 2;
-                    }
-
-                    final items = [
-                      MetricCard(
-                        title: 'TOTAL DOCUMENTS',
-                        value: '${m.totalDocuments}',
-                        subtitle: 'Active documents in vault',
-                        icon: Icons.description_outlined,
-                        accentColor: AppColors.primary,
-                        onTap: () => Get.toNamed(AppRoutes.DOCUMENTS),
-                      ),
-                      MetricCard(
-                        title: 'STORAGE UTILIZED',
-                        value: AppFormatters.formatFileSize(m.totalStorageBytes),
-                        subtitle: 'Encrypted private storage',
-                        icon: Icons.cloud_done_outlined,
-                        accentColor: AppColors.financeBlue,
-                      ),
-                      MetricCard(
-                        title: 'EXPIRING WARRANTIES',
-                        value: '${controller.expiringWarranties.length}',
-                        subtitle: 'Due within 30 days',
-                        icon: Icons.shield_outlined,
-                        accentColor: AppColors.warrantyEmerald,
-                        onTap: () => Get.toNamed(AppRoutes.APPLIANCES),
-                      ),
-                      MetricCard(
-                        title: 'PENDING UTILITIES',
-                        value: '${controller.pendingUtilityBills.length}',
-                        subtitle: 'Light, Gas, Water bills',
-                        icon: Icons.bolt_outlined,
-                        accentColor: AppColors.utilityAmber,
-                        onTap: () => Get.toNamed(AppRoutes.UTILITY_BILLS),
-                      ),
-                    ];
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: items.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        mainAxisExtent: 110,
-                      ),
-                      itemBuilder: (context, index) => items[index],
+                    final card1 = MetricCard(
+                      title: 'TOTAL DOCUMENTS',
+                      value: '${m.totalDocuments}',
+                      subtitle: 'Active documents in vault',
+                      icon: Icons.description_outlined,
+                      accentColor: AppColors.primary,
+                      onTap: () => Get.toNamed(AppRoutes.DOCUMENTS),
                     );
+                    final card2 = MetricCard(
+                      title: 'STORAGE UTILIZED',
+                      value: AppFormatters.formatFileSize(m.totalStorageBytes),
+                      subtitle: 'Encrypted private storage',
+                      icon: Icons.cloud_done_outlined,
+                      accentColor: AppColors.financeBlue,
+                    );
+                    final card3 = MetricCard(
+                      title: 'EXPIRING WARRANTIES',
+                      value: '${controller.expiringWarranties.length}',
+                      subtitle: 'Due within 30 days',
+                      icon: Icons.shield_outlined,
+                      accentColor: AppColors.warrantyEmerald,
+                      onTap: () => Get.toNamed(AppRoutes.APPLIANCES),
+                    );
+                    final card4 = MetricCard(
+                      title: 'PENDING UTILITIES',
+                      value: '${controller.pendingUtilityBills.length}',
+                      subtitle: 'Light, Gas, Water bills',
+                      icon: Icons.bolt_outlined,
+                      accentColor: AppColors.utilityAmber,
+                      onTap: () => Get.toNamed(AppRoutes.UTILITY_BILLS),
+                    );
+
+                    if (width < 600) {
+                      // 1 column on mobile phones
+                      return Column(
+                        children: [
+                          card1,
+                          const SizedBox(height: 12),
+                          card2,
+                          const SizedBox(height: 12),
+                          card3,
+                          const SizedBox(height: 12),
+                          card4,
+                        ],
+                      );
+                    } else if (width < 1000) {
+                      // 2 columns on tablets
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: card1),
+                              const SizedBox(width: 16),
+                              Expanded(child: card2),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(child: card3),
+                              const SizedBox(width: 16),
+                              Expanded(child: card4),
+                            ],
+                          ),
+                        ],
+                      );
+                    } else {
+                      // 4 columns on desktop
+                      return Row(
+                        children: [
+                          Expanded(child: card1),
+                          const SizedBox(width: 16),
+                          Expanded(child: card2),
+                          const SizedBox(width: 16),
+                          Expanded(child: card3),
+                          const SizedBox(width: 16),
+                          Expanded(child: card4),
+                        ],
+                      );
+                    }
                   },
                 ),
 

@@ -161,52 +161,76 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                   // Metrics Row (Responsive 1/2/4 Columns)
                   LayoutBuilder(builder: (context, constraints) {
                     final width = constraints.maxWidth;
-                    int crossAxis = 4;
-                    if (width < 600) {
-                      crossAxis = 1;
-                    } else if (width < 950) {
-                      crossAxis = 2;
-                    }
-
-                    final items = [
-                      MetricCard(
-                        title: 'TOTAL APPLIANCES',
-                        value: '${controller.totalAppliancesCount.value}',
-                        icon: Icons.devices_other_outlined,
-                        accentColor: AppColors.warrantyEmerald,
-                      ),
-                      MetricCard(
-                        title: 'ACTIVE WARRANTIES',
-                        value: '${controller.activeWarrantiesCount.value}',
-                        icon: Icons.verified_user_outlined,
-                        accentColor: AppColors.success,
-                      ),
-                      MetricCard(
-                        title: 'EXPIRING IN 30 DAYS',
-                        value: '${controller.expiringSoonCount.value}',
-                        icon: Icons.warning_amber_rounded,
-                        accentColor: AppColors.warning,
-                      ),
-                      MetricCard(
-                        title: 'EXPIRED WARRANTIES',
-                        value: '${controller.expiredCount.value}',
-                        icon: Icons.gpp_bad_outlined,
-                        accentColor: AppColors.textMuted,
-                      ),
-                    ];
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: items.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxis,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        mainAxisExtent: 110,
-                      ),
-                      itemBuilder: (context, index) => items[index],
+                    final card1 = MetricCard(
+                      title: 'TOTAL APPLIANCES',
+                      value: '${controller.totalAppliancesCount.value}',
+                      icon: Icons.devices_other_outlined,
+                      accentColor: AppColors.warrantyEmerald,
                     );
+                    final card2 = MetricCard(
+                      title: 'ACTIVE WARRANTIES',
+                      value: '${controller.activeWarrantiesCount.value}',
+                      icon: Icons.verified_user_outlined,
+                      accentColor: AppColors.success,
+                    );
+                    final card3 = MetricCard(
+                      title: 'EXPIRING IN 30 DAYS',
+                      value: '${controller.expiringSoonCount.value}',
+                      icon: Icons.warning_amber_rounded,
+                      accentColor: AppColors.warning,
+                    );
+                    final card4 = MetricCard(
+                      title: 'EXPIRED WARRANTIES',
+                      value: '${controller.expiredCount.value}',
+                      icon: Icons.gpp_bad_outlined,
+                      accentColor: AppColors.textMuted,
+                    );
+
+                    if (width < 600) {
+                      return Column(
+                        children: [
+                          card1,
+                          const SizedBox(height: 10),
+                          card2,
+                          const SizedBox(height: 10),
+                          card3,
+                          const SizedBox(height: 10),
+                          card4,
+                        ],
+                      );
+                    } else if (width < 950) {
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: card1),
+                              const SizedBox(width: 14),
+                              Expanded(child: card2),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(child: card3),
+                              const SizedBox(width: 14),
+                              Expanded(child: card4),
+                            ],
+                          ),
+                        ],
+                      );
+                    } else {
+                      return Row(
+                        children: [
+                          Expanded(child: card1),
+                          const SizedBox(width: 14),
+                          Expanded(child: card2),
+                          const SizedBox(width: 14),
+                          Expanded(child: card3),
+                          const SizedBox(width: 14),
+                          Expanded(child: card4),
+                        ],
+                      );
+                    }
                   }),
                 ],
               ),
@@ -365,7 +389,8 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
         final w = doc.applianceWarranty;
         final addr = doc.address;
 
-        return Container(
+        return RepaintBoundary(
+          child: Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(10),
@@ -606,7 +631,7 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
               );
             },
           ),
-        );
+        ));
       },
     );
   }

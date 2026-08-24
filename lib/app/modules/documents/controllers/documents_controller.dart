@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
@@ -36,11 +37,19 @@ class DocumentsController extends GetxController {
   final searchQuery = ''.obs;
   final isGridView = true.obs;
 
+  Timer? _searchDebounceTimer;
+
   @override
   void onInit() {
     super.onInit();
     loadCategoriesAndDocuments();
     loadDynamicCities();
+  }
+
+  @override
+  void onClose() {
+    _searchDebounceTimer?.cancel();
+    super.onClose();
   }
 
   Future<void> loadDynamicCities() async {
@@ -108,7 +117,10 @@ class DocumentsController extends GetxController {
 
   void onSearchChanged(String query) {
     searchQuery.value = query;
-    fetchFilteredDocuments();
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      fetchFilteredDocuments();
+    });
   }
 
   void toggleViewMode([bool? grid]) {

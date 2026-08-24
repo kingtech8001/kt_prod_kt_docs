@@ -3,15 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 
-class ShareDocumentDialog extends StatefulWidget {
+class ShareDocumentDialog extends StatelessWidget {
   final String documentTitle;
   final String shareUrl;
 
-  const ShareDocumentDialog({
+  ShareDocumentDialog({
     super.key,
     required this.documentTitle,
     required this.shareUrl,
   });
+
+  final RxBool _copied = false.obs;
 
   static void show({
     required String documentTitle,
@@ -25,16 +27,9 @@ class ShareDocumentDialog extends StatefulWidget {
     );
   }
 
-  @override
-  State<ShareDocumentDialog> createState() => _ShareDocumentDialogState();
-}
-
-class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
-  bool _copied = false;
-
   void _copyToClipboard() {
-    Clipboard.setData(ClipboardData(text: widget.shareUrl));
-    setState(() => _copied = true);
+    Clipboard.setData(ClipboardData(text: shareUrl));
+    _copied.value = true;
     Get.snackbar(
       'Link Copied',
       'Secure document share link copied to clipboard',
@@ -82,7 +77,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Share access to "${widget.documentTitle}". Anyone with this signed link can view the document for the designated expiration time.',
+              'Share access to "$documentTitle". Anyone with this signed link can view the document for the designated expiration time.',
               style: const TextStyle(
                 fontSize: 13,
                 color: AppColors.textSecondary,
@@ -101,7 +96,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
                 children: [
                   Expanded(
                     child: SelectableText(
-                      widget.shareUrl,
+                      shareUrl,
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textPrimary,
@@ -111,14 +106,14 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _copyToClipboard,
-                    icon: Icon(_copied ? Icons.check : Icons.copy, size: 16),
-                    label: Text(_copied ? 'Copied' : 'Copy Link'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                  ),
+                  Obx(() => ElevatedButton.icon(
+                        onPressed: _copyToClipboard,
+                        icon: Icon(_copied.value ? Icons.check : Icons.copy, size: 16),
+                        label: Text(_copied.value ? 'Copied' : 'Copy Link'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      )),
                 ],
               ),
             ),

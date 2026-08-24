@@ -54,20 +54,26 @@ class WebScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= AppConstants.desktopBreakpoint;
-
-    final sidebar = WebSidebar(
-      currentRoute: currentRoute,
-      onSignOut: _handleSignOut,
-    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: isDesktop ? null : Drawer(child: sidebar),
+      drawer: isDesktop
+          ? null
+          : Drawer(
+              child: WebSidebar(
+                currentRoute: currentRoute,
+                onSignOut: _handleSignOut,
+              ),
+            ),
       body: Row(
         children: [
-          if (isDesktop) sidebar,
+          if (isDesktop)
+            WebSidebar(
+              currentRoute: currentRoute,
+              onSignOut: _handleSignOut,
+            ),
           Expanded(
             child: Column(
               children: [

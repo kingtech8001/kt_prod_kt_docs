@@ -82,70 +82,72 @@ class FoldersView extends GetView<FoldersController> {
               ),
               itemBuilder: (context, index) {
                 final folder = controller.folders[index];
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primarySurface,
-                          borderRadius: BorderRadius.circular(10),
+                return RepaintBoundary(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySurface,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.folder, color: AppColors.primary, size: 28),
                         ),
-                        child: const Icon(Icons.folder, color: AppColors.primary, size: 28),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  folder.name,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    folder.name,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Created: ${AppFormatters.formatDate(folder.createdAt)}',
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                TextButton(
-                                  onPressed: () => Get.toNamed(
-                                    '${AppRoutes.DOCUMENTS}?folderId=${folder.id}',
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Created: ${AppFormatters.formatDate(folder.createdAt)}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                                   ),
-                                  child: const Text('Open Folder', style: TextStyle(fontSize: 12)),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-                                  tooltip: 'Delete Folder',
-                                  onPressed: () => controller.deleteFolder(folder),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  TextButton(
+                                    onPressed: () => Get.toNamed(
+                                      '${AppRoutes.DOCUMENTS}?folderId=${folder.id}',
+                                    ),
+                                    child: const Text('Open Folder', style: TextStyle(fontSize: 12)),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                                    tooltip: 'Delete Folder',
+                                    onPressed: () => controller.deleteFolder(folder),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },

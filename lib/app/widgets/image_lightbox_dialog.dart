@@ -3,19 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:photo_view/photo_view.dart';
 
-class ImageLightboxDialog extends StatefulWidget {
+class ImageLightboxDialog extends StatelessWidget {
   final String title;
   final String? imageUrl;
   final Uint8List? imageBytes;
   final VoidCallback? onDownload;
 
-  const ImageLightboxDialog({
+  ImageLightboxDialog({
     super.key,
     required this.title,
     this.imageUrl,
     this.imageBytes,
     this.onDownload,
   });
+
+  final RxInt _quarterTurns = 0.obs;
 
   static void show({
     required String title,
@@ -34,35 +36,27 @@ class ImageLightboxDialog extends StatefulWidget {
     );
   }
 
-  @override
-  State<ImageLightboxDialog> createState() => _ImageLightboxDialogState();
-}
-
-class _ImageLightboxDialogState extends State<ImageLightboxDialog> {
-  int _quarterTurns = 0;
-
   void _rotateClockwise() {
-    setState(() {
-      _quarterTurns = (_quarterTurns + 1) % 4;
-    });
+    _quarterTurns.value = (_quarterTurns.value + 1) % 4;
   }
 
   void _rotateCounterClockwise() {
-    setState(() {
-      _quarterTurns = (_quarterTurns - 1 + 4) % 4;
-    });
+    _quarterTurns.value = (_quarterTurns.value - 1 + 4) % 4;
   }
 
   @override
   Widget build(BuildContext context) {
     ImageProvider imageProvider;
-    if (widget.imageBytes != null) {
-      imageProvider = MemoryImage(widget.imageBytes!);
-    } else if (widget.imageUrl != null) {
-      imageProvider = NetworkImage(widget.imageUrl!);
+    if (imageBytes != null) {
+      imageProvider = MemoryImage(imageBytes!);
+    } else if (imageUrl != null) {
+      imageProvider = NetworkImage(imageUrl!);
     } else {
       return const SizedBox.shrink();
     }
+
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -74,22 +68,22 @@ class _ImageLightboxDialogState extends State<ImageLightboxDialog> {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.85,
-              height: MediaQuery.of(context).size.height * 0.85,
-              child: RotatedBox(
-                quarterTurns: _quarterTurns,
-                child: PhotoView(
-                  imageProvider: imageProvider,
-                  backgroundDecoration: const BoxDecoration(
-                    color: Color(0xFF0F172A),
-                  ),
-                  minScale: PhotoViewComputedScale.contained * 0.8,
-                  maxScale: PhotoViewComputedScale.covered * 3.0,
-                  loadingBuilder: (context, event) => const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  ),
-                ),
-              ),
+              width: screenWidth * 0.85,
+              height: screenHeight * 0.85,
+              child: Obx(() => RotatedBox(
+                    quarterTurns: _quarterTurns.value,
+                    child: PhotoView(
+                      imageProvider: imageProvider,
+                      backgroundDecoration: const BoxDecoration(
+                        color: Color(0xFF0F172A),
+                      ),
+                      minScale: PhotoViewComputedScale.contained * 0.8,
+                      maxScale: PhotoViewComputedScale.covered * 3.0,
+                      loadingBuilder: (context, event) => const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    ),
+                  )),
             ),
           ),
 
@@ -108,7 +102,7 @@ class _ImageLightboxDialogState extends State<ImageLightboxDialog> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.title,
+                      title,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -127,11 +121,11 @@ class _ImageLightboxDialogState extends State<ImageLightboxDialog> {
                     tooltip: 'Rotate Right',
                     onPressed: _rotateClockwise,
                   ),
-                  if (widget.onDownload != null)
+                  if (onDownload != null)
                     IconButton(
                       icon: const Icon(Icons.download, color: Colors.white),
                       tooltip: 'Download File',
-                      onPressed: widget.onDownload,
+                      onPressed: onDownload,
                     ),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white),

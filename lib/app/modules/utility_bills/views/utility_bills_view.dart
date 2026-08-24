@@ -93,54 +93,78 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
                   // Metrics Row (Responsive 1/2/4 Columns)
                   LayoutBuilder(builder: (context, constraints) {
                     final width = constraints.maxWidth;
-                    int crossAxis = 4;
-                    if (width < 600) {
-                      crossAxis = 1;
-                    } else if (width < 950) {
-                      crossAxis = 2;
-                    }
-
-                    final items = [
-                      MetricCard(
-                        title: 'TOTAL UTILITY SPEND',
-                        value: AppFormatters.formatCurrency(
-                            controller.totalBillsAmount.value),
-                        icon: Icons.account_balance_wallet_outlined,
-                        accentColor: AppColors.financeBlue,
-                      ),
-                      MetricCard(
-                        title: 'PENDING BILLS AMOUNT',
-                        value: AppFormatters.formatCurrency(
-                            controller.pendingBillsAmount.value),
-                        icon: Icons.pending_actions_outlined,
-                        accentColor: AppColors.warning,
-                      ),
-                      MetricCard(
-                        title: 'PAID BILLS',
-                        value: '${controller.paidCount.value}',
-                        icon: Icons.check_circle_outline,
-                        accentColor: AppColors.success,
-                      ),
-                      MetricCard(
-                        title: 'PENDING / OVERDUE',
-                        value: '${controller.pendingCount.value}',
-                        icon: Icons.warning_amber_rounded,
-                        accentColor: AppColors.error,
-                      ),
-                    ];
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: items.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxis,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        mainAxisExtent: 110,
-                      ),
-                      itemBuilder: (context, index) => items[index],
+                    final card1 = MetricCard(
+                      title: 'TOTAL UTILITY SPEND',
+                      value: AppFormatters.formatCurrency(
+                          controller.totalBillsAmount.value),
+                      icon: Icons.account_balance_wallet_outlined,
+                      accentColor: AppColors.financeBlue,
                     );
+                    final card2 = MetricCard(
+                      title: 'PENDING BILLS AMOUNT',
+                      value: AppFormatters.formatCurrency(
+                          controller.pendingBillsAmount.value),
+                      icon: Icons.pending_actions_outlined,
+                      accentColor: AppColors.warning,
+                    );
+                    final card3 = MetricCard(
+                      title: 'PAID BILLS',
+                      value: '${controller.paidCount.value}',
+                      icon: Icons.check_circle_outline,
+                      accentColor: AppColors.success,
+                    );
+                    final card4 = MetricCard(
+                      title: 'PENDING / OVERDUE',
+                      value: '${controller.pendingCount.value}',
+                      icon: Icons.warning_amber_rounded,
+                      accentColor: AppColors.error,
+                    );
+
+                    if (width < 600) {
+                      return Column(
+                        children: [
+                          card1,
+                          const SizedBox(height: 10),
+                          card2,
+                          const SizedBox(height: 10),
+                          card3,
+                          const SizedBox(height: 10),
+                          card4,
+                        ],
+                      );
+                    } else if (width < 950) {
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: card1),
+                              const SizedBox(width: 14),
+                              Expanded(child: card2),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(child: card3),
+                              const SizedBox(width: 14),
+                              Expanded(child: card4),
+                            ],
+                          ),
+                        ],
+                      );
+                    } else {
+                      return Row(
+                        children: [
+                          Expanded(child: card1),
+                          const SizedBox(width: 14),
+                          Expanded(child: card2),
+                          const SizedBox(width: 14),
+                          Expanded(child: card3),
+                          const SizedBox(width: 14),
+                          Expanded(child: card4),
+                        ],
+                      );
+                    }
                   }),
                 ],
               ),
@@ -299,7 +323,8 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
         final u = doc.utilityMetadata;
         final addr = doc.address;
 
-        return Container(
+        return RepaintBoundary(
+          child: Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(10),
@@ -551,7 +576,7 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
               );
             },
           ),
-        );
+        ));
       },
     );
   }

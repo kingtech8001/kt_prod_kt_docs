@@ -304,77 +304,79 @@ class DocumentsView extends GetView<DocumentsController> {
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final doc = controller.documents[index];
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-          ),
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: doc.isPdf
-                      ? AppColors.error.withValues(alpha: 0.1)
-                      : AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(8),
+        return RepaintBoundary(
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: doc.isPdf
+                        ? AppColors.error.withValues(alpha: 0.1)
+                        : AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    doc.isPdf ? Icons.picture_as_pdf : Icons.image,
+                    color: doc.isPdf ? AppColors.error : AppColors.primary,
+                    size: 22,
+                  ),
                 ),
-                child: Icon(
-                  doc.isPdf ? Icons.picture_as_pdf : Icons.image,
-                  color: doc.isPdf ? AppColors.error : AppColors.primary,
-                  size: 22,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doc.title,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${doc.subCategory} • ${doc.city} • ${AppFormatters.formatFileSize(doc.fileSize)} • ${AppFormatters.formatDate(doc.createdAt)}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      doc.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${doc.subCategory} • ${doc.city} • ${AppFormatters.formatFileSize(doc.fileSize)} • ${AppFormatters.formatDate(doc.createdAt)}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ],
+                StatusBadge(
+                  label: doc.categoryName ?? doc.subCategory,
+                  type: StatusBadgeType.info,
                 ),
-              ),
-              StatusBadge(
-                label: doc.categoryName ?? doc.subCategory,
-                type: StatusBadgeType.info,
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Icon(
-                  doc.isFavorite ? Icons.star : Icons.star_border,
-                  color: doc.isFavorite ? AppColors.starFilled : AppColors.textMuted,
-                  size: 20,
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(
+                    doc.isFavorite ? Icons.star : Icons.star_border,
+                    color: doc.isFavorite ? AppColors.starFilled : AppColors.textMuted,
+                    size: 20,
+                  ),
+                  onPressed: () => controller.toggleFavorite(doc),
                 ),
-                onPressed: () => controller.toggleFavorite(doc),
-              ),
-              IconButton(
-                icon: const Icon(Icons.visibility_outlined, size: 20),
-                onPressed: () => controller.previewDocument(doc),
-              ),
-              IconButton(
-                icon: const Icon(Icons.download_outlined, size: 20),
-                onPressed: () => controller.downloadDocument(doc),
-              ),
-              IconButton(
-                icon: const Icon(Icons.share_outlined, size: 20),
-                onPressed: () => controller.shareDocument(doc),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
-                onPressed: () => controller.moveToTrash(doc),
-              ),
-            ],
+                IconButton(
+                  icon: const Icon(Icons.visibility_outlined, size: 20),
+                  onPressed: () => controller.previewDocument(doc),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.download_outlined, size: 20),
+                  onPressed: () => controller.downloadDocument(doc),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.share_outlined, size: 20),
+                  onPressed: () => controller.shareDocument(doc),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                  onPressed: () => controller.moveToTrash(doc),
+                ),
+              ],
+            ),
           ),
         );
       },

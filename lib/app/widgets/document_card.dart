@@ -4,7 +4,7 @@ import 'package:kt_prod_kt_docs/app/widgets/status_badge.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 
-class DocumentCard extends StatefulWidget {
+class DocumentCard extends StatelessWidget {
   final DocumentModel document;
   final VoidCallback? onPreview;
   final VoidCallback? onDownload;
@@ -26,268 +26,251 @@ class DocumentCard extends StatefulWidget {
     this.isTrash = false,
   });
 
-  @override
-  State<DocumentCard> createState() => _DocumentCardState();
-}
-
-class _DocumentCardState extends State<DocumentCard> {
-  bool _isHovered = false;
-
   IconData _getFileIcon() {
-    if (widget.document.isPdf) return Icons.picture_as_pdf;
-    if (widget.document.isImage) return Icons.image;
+    if (document.isPdf) return Icons.picture_as_pdf;
+    if (document.isImage) return Icons.image;
     return Icons.insert_drive_file;
   }
 
   Color _getFileColor() {
-    if (widget.document.isPdf) return AppColors.error;
-    if (widget.document.isImage) return AppColors.secondary;
+    if (document.isPdf) return AppColors.error;
+    if (document.isImage) return AppColors.secondary;
     return AppColors.primary;
   }
 
   @override
   Widget build(BuildContext context) {
-    final doc = widget.document;
+    final doc = document;
     final hasAddress = doc.address != null && doc.address!.city.isNotEmpty;
     final hasUtility = doc.utilityMetadata != null;
     final hasWarranty = doc.applianceWarranty != null;
+    final fileColor = _getFileColor();
+    final fileIcon = _getFileIcon();
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onPreview,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _isHovered ? AppColors.primaryLight : AppColors.border,
-              width: _isHovered ? 1.5 : 1,
+    return RepaintBoundary(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPreview,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
             ),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
-                  ]
-                : [],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Header Row: Icon + Title + Actions
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _getFileColor().withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Header Row: Icon + Title + Actions
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: fileColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(fileIcon, color: fileColor, size: 24),
                     ),
-                    child: Icon(_getFileIcon(), color: _getFileColor(), size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            doc.title,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            doc.subCategory,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!isTrash && onToggleFavorite != null)
+                      IconButton(
+                        icon: Icon(
+                          doc.isFavorite ? Icons.star : Icons.star_border,
+                          color: doc.isFavorite ? AppColors.warning : AppColors.textMuted,
+                          size: 20,
+                        ),
+                        onPressed: onToggleFavorite,
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Metadata Badges Row (City, Status, Warranty)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if (hasAddress)
+                      StatusBadge.city(cityName: doc.address!.city),
+                    if (hasUtility) ...[
+                      if (doc.utilityMetadata!.isPaid)
+                        StatusBadge.paid()
+                      else if (doc.utilityMetadata!.isOverdue)
+                        StatusBadge.overdue()
+                      else
+                        StatusBadge.pending(),
+                    ],
+                    if (hasWarranty) ...[
+                      if (doc.applianceWarranty!.isExpired)
+                        StatusBadge.warrantyExpired()
+                      else if (doc.applianceWarranty!.isExpiringSoon)
+                        StatusBadge.warrantyExpiringSoon(
+                          daysRemaining: doc.applianceWarranty!.remainingDays,
+                        )
+                      else
+                        StatusBadge.warrantyActive(
+                          daysRemaining: doc.applianceWarranty!.remainingDays,
+                        ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Specific Utility / Appliance Information
+                if (hasUtility)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          doc.title,
+                          'Amount: ${AppFormatters.formatCurrency(doc.utilityMetadata!.billAmount)}',
                           style: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        if (doc.utilityMetadata!.dueDate != null)
+                          Text(
+                            'Due: ${AppFormatters.formatDate(doc.utilityMetadata!.dueDate)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                if (hasWarranty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Text(
-                          doc.subCategory,
+                          'Brand: ${doc.applianceWarranty!.brand}',
                           style: const TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Warranty: ${AppFormatters.formatDate(doc.applianceWarranty!.warrantyValidUpto)}',
+                          style: const TextStyle(
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  if (!widget.isTrash && widget.onToggleFavorite != null)
-                    IconButton(
-                      icon: Icon(
-                        doc.isFavorite ? Icons.star : Icons.star_border,
-                        color: doc.isFavorite ? AppColors.warning : AppColors.textMuted,
-                        size: 20,
+
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+
+                // Footer: Size + Date + Quick Action Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${AppFormatters.formatFileSize(doc.fileSize)} • ${AppFormatters.formatDate(doc.createdAt)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
                       ),
-                      onPressed: widget.onToggleFavorite,
                     ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Metadata Badges Row (City, Status, Warranty)
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  if (hasAddress)
-                    StatusBadge.city(cityName: doc.address!.city),
-                  if (hasUtility) ...[
-                    if (doc.utilityMetadata!.isPaid)
-                      StatusBadge.paid()
-                    else if (doc.utilityMetadata!.isOverdue)
-                      StatusBadge.overdue()
-                    else
-                      StatusBadge.pending(),
-                  ],
-                  if (hasWarranty) ...[
-                    if (doc.applianceWarranty!.isExpired)
-                      StatusBadge.warrantyExpired()
-                    else if (doc.applianceWarranty!.isExpiringSoon)
-                      StatusBadge.warrantyExpiringSoon(
-                        daysRemaining: doc.applianceWarranty!.remainingDays,
-                      )
-                    else
-                      StatusBadge.warrantyActive(
-                        daysRemaining: doc.applianceWarranty!.remainingDays,
-                      ),
-                  ],
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Specific Utility / Appliance Information
-              if (hasUtility)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Amount: ${AppFormatters.formatCurrency(doc.utilityMetadata!.billAmount)}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (doc.utilityMetadata!.dueDate != null)
-                        Text(
-                          'Due: ${AppFormatters.formatDate(doc.utilityMetadata!.dueDate)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-              if (hasWarranty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Brand: ${doc.applianceWarranty!.brand}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'Warranty: ${AppFormatters.formatDate(doc.applianceWarranty!.warrantyValidUpto)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 8),
-
-              // Footer: Size + Date + Quick Action Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${AppFormatters.formatFileSize(doc.fileSize)} • ${AppFormatters.formatDate(doc.createdAt)}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      if (!widget.isTrash) ...[
-                        if (widget.onPreview != null)
-                          IconButton(
-                            icon: const Icon(Icons.visibility_outlined, size: 18),
-                            tooltip: 'Preview',
-                            onPressed: widget.onPreview,
-                          ),
-                        if (widget.onDownload != null)
-                          IconButton(
-                            icon: const Icon(Icons.download_outlined, size: 18),
-                            tooltip: 'Download',
-                            onPressed: widget.onDownload,
-                          ),
-                        if (widget.onShare != null)
-                          IconButton(
-                            icon: const Icon(Icons.share_outlined, size: 18),
-                            tooltip: 'Share',
-                            onPressed: widget.onShare,
-                          ),
-                        if (widget.onDelete != null)
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                            tooltip: 'Move to Trash',
-                            onPressed: widget.onDelete,
-                          ),
-                      ] else ...[
-                        if (widget.onRestore != null)
-                          TextButton.icon(
-                            icon: const Icon(Icons.restore, size: 16, color: AppColors.success),
-                            label: const Text('Restore', style: TextStyle(color: AppColors.success)),
-                            onPressed: widget.onRestore,
-                          ),
-                        if (widget.onDelete != null)
-                          IconButton(
-                            icon: const Icon(Icons.delete_forever, size: 18, color: AppColors.error),
-                            tooltip: 'Permanent Delete',
-                            onPressed: widget.onDelete,
-                          ),
+                    Row(
+                      children: [
+                        if (!isTrash) ...[
+                          if (onPreview != null)
+                            IconButton(
+                              icon: const Icon(Icons.visibility_outlined, size: 18),
+                              tooltip: 'Preview',
+                              onPressed: onPreview,
+                            ),
+                          if (onDownload != null)
+                            IconButton(
+                              icon: const Icon(Icons.download_outlined, size: 18),
+                              tooltip: 'Download',
+                              onPressed: onDownload,
+                            ),
+                          if (onShare != null)
+                            IconButton(
+                              icon: const Icon(Icons.share_outlined, size: 18),
+                              tooltip: 'Share',
+                              onPressed: onShare,
+                            ),
+                          if (onDelete != null)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                              tooltip: 'Move to Trash',
+                              onPressed: onDelete,
+                            ),
+                        ] else ...[
+                          if (onRestore != null)
+                            TextButton.icon(
+                              icon: const Icon(Icons.restore, size: 16, color: AppColors.success),
+                              label: const Text('Restore', style: TextStyle(color: AppColors.success)),
+                              onPressed: onRestore,
+                            ),
+                          if (onDelete != null)
+                            IconButton(
+                              icon: const Icon(Icons.delete_forever, size: 18, color: AppColors.error),
+                              tooltip: 'Permanent Delete',
+                              onPressed: onDelete,
+                            ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

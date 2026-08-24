@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
@@ -34,11 +35,19 @@ class PersonalDocsController extends GetxController {
   final expiringSoonCount = 0.obs;
   final expiredCount = 0.obs;
 
+  Timer? _searchDebounceTimer;
+
   @override
   void onInit() {
     super.onInit();
     loadMasterData();
     loadPersonalDocuments();
+  }
+
+  @override
+  void onClose() {
+    _searchDebounceTimer?.cancel();
+    super.onClose();
   }
 
   Future<void> loadMasterData() async {
@@ -115,7 +124,10 @@ class PersonalDocsController extends GetxController {
 
   void onSearchChanged(String query) {
     searchQuery.value = query;
-    loadPersonalDocuments();
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      loadPersonalDocuments();
+    });
   }
 
   void toggleViewMode([bool? grid]) {
