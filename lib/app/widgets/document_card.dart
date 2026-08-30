@@ -10,6 +10,7 @@ class DocumentCard extends StatelessWidget {
   final VoidCallback? onDownload;
   final VoidCallback? onShare;
   final VoidCallback? onToggleFavorite;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onRestore;
   final bool isTrash;
@@ -21,6 +22,7 @@ class DocumentCard extends StatelessWidget {
     this.onDownload,
     this.onShare,
     this.onToggleFavorite,
+    this.onEdit,
     this.onDelete,
     this.onRestore,
     this.isTrash = false,
@@ -107,7 +109,9 @@ class DocumentCard extends StatelessWidget {
                       IconButton(
                         icon: Icon(
                           doc.isFavorite ? Icons.star : Icons.star_border,
-                          color: doc.isFavorite ? AppColors.warning : AppColors.textMuted,
+                          color: doc.isFavorite
+                              ? AppColors.warning
+                              : AppColors.textMuted,
                           size: 20,
                         ),
                         onPressed: onToggleFavorite,
@@ -152,7 +156,10 @@ class DocumentCard extends StatelessWidget {
                 // Specific Utility / Appliance Information
                 if (hasUtility)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(6),
@@ -182,7 +189,10 @@ class DocumentCard extends StatelessWidget {
 
                 if (hasWarranty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(6),
@@ -229,13 +239,19 @@ class DocumentCard extends StatelessWidget {
                         if (!isTrash) ...[
                           if (onPreview != null)
                             IconButton(
-                              icon: const Icon(Icons.visibility_outlined, size: 18),
+                              icon: const Icon(
+                                Icons.visibility_outlined,
+                                size: 18,
+                              ),
                               tooltip: 'Preview',
                               onPressed: onPreview,
                             ),
                           if (onDownload != null)
                             IconButton(
-                              icon: const Icon(Icons.download_outlined, size: 18),
+                              icon: const Icon(
+                                Icons.download_outlined,
+                                size: 18,
+                              ),
                               tooltip: 'Download',
                               onPressed: onDownload,
                             ),
@@ -245,22 +261,43 @@ class DocumentCard extends StatelessWidget {
                               tooltip: 'Share',
                               onPressed: onShare,
                             ),
+                          if (onEdit != null)
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              tooltip: 'Edit details',
+                              onPressed: onEdit,
+                            ),
                           if (onDelete != null)
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
                               tooltip: 'Move to Trash',
                               onPressed: onDelete,
                             ),
                         ] else ...[
                           if (onRestore != null)
                             TextButton.icon(
-                              icon: const Icon(Icons.restore, size: 16, color: AppColors.success),
-                              label: const Text('Restore', style: TextStyle(color: AppColors.success)),
+                              icon: const Icon(
+                                Icons.restore,
+                                size: 16,
+                                color: AppColors.success,
+                              ),
+                              label: const Text(
+                                'Restore',
+                                style: TextStyle(color: AppColors.success),
+                              ),
                               onPressed: onRestore,
                             ),
                           if (onDelete != null)
                             IconButton(
-                              icon: const Icon(Icons.delete_forever, size: 18, color: AppColors.error),
+                              icon: const Icon(
+                                Icons.delete_forever,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
                               tooltip: 'Permanent Delete',
                               onPressed: onDelete,
                             ),

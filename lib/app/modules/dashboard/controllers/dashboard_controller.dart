@@ -4,6 +4,7 @@ import 'package:kt_prod_kt_docs/app/data/models/dashboard_metrics_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -62,7 +63,12 @@ class DashboardController extends GetxController {
 
       AppLogger.info('DASHBOARD_CTRL', 'Dashboard data loaded successfully.');
     } catch (e, st) {
-      AppLogger.error('DASHBOARD_CTRL', 'Error loading dashboard data: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Error loading dashboard data: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error Loading Dashboard',
         e.toString(),
@@ -77,7 +83,9 @@ class DashboardController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Previewing document: ${doc.title}');
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       if (doc.isPdf) {
         PdfViewerDialog.show(
           title: doc.title,
@@ -97,7 +105,12 @@ class DashboardController extends GetxController {
         }
       }
     } catch (e, st) {
-      AppLogger.error('DASHBOARD_CTRL', 'Preview failed: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Preview failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Preview Failed',
         e.toString(),
@@ -110,13 +123,20 @@ class DashboardController extends GetxController {
   Future<void> downloadDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Downloading document: ${doc.title}');
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       final uri = Uri.parse(signedUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e, st) {
-      AppLogger.error('DASHBOARD_CTRL', 'Download failed: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Download failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Download Failed',
         e.toString(),
@@ -129,13 +149,17 @@ class DashboardController extends GetxController {
   Future<void> shareDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Sharing document: ${doc.title}');
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
-      ShareDocumentDialog.show(
-        documentTitle: doc.title,
-        shareUrl: signedUrl,
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
       );
+      ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: signedUrl);
     } catch (e, st) {
-      AppLogger.error('DASHBOARD_CTRL', 'Share failed: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Share failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Share Failed',
         e.toString(),
@@ -148,14 +172,29 @@ class DashboardController extends GetxController {
   Future<void> toggleFavorite(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Toggling favorite for: ${doc.title}');
     try {
-      final isFav = await _documentRepository.toggleFavorite(doc.id, doc.isFavorite);
+      final isFav = await _documentRepository.toggleFavorite(
+        doc.id,
+        doc.isFavorite,
+      );
       final index = recentDocuments.indexWhere((d) => d.id == doc.id);
       if (index != -1) {
-        recentDocuments[index] = recentDocuments[index].copyWith(isFavorite: isFav);
+        recentDocuments[index] = recentDocuments[index].copyWith(
+          isFavorite: isFav,
+        );
       }
     } catch (e, st) {
-      AppLogger.error('DASHBOARD_CTRL', 'Favorite toggle failed: $e', error: e, stackTrace: st);
-      Get.snackbar('Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Favorite toggle failed: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -166,12 +205,70 @@ class DashboardController extends GetxController {
       recentDocuments.removeWhere((d) => d.id == doc.id);
       expiringWarranties.removeWhere((d) => d.id == doc.id);
       pendingUtilityBills.removeWhere((d) => d.id == doc.id);
-      Get.snackbar('Moved to Trash', '${doc.title} moved to trash bin',
-          backgroundColor: AppColors.warning, colorText: Colors.white);
+      Get.snackbar(
+        'Moved to Trash',
+        '${doc.title} moved to trash bin',
+        backgroundColor: AppColors.warning,
+        colorText: Colors.white,
+      );
       loadDashboardData();
     } catch (e, st) {
-      AppLogger.error('DASHBOARD_CTRL', 'Move to trash failed: $e', error: e, stackTrace: st);
-      Get.snackbar('Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Move to trash failed: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
+  }
+
+  void confirmMoveToTrash(DocumentModel doc) {
+    DocumentDeleteDialog.show(
+      documentTitle: doc.title,
+      onConfirm: () => moveToTrash(doc),
+    );
+  }
+
+  void openEditDocumentDialog(DocumentModel doc) {
+    DocumentEditDialog.show(
+      document: doc,
+      onSave: ({required title, description, documentNumber}) async {
+        try {
+          await _documentRepository.updateDocumentDetails(
+            documentId: doc.id,
+            title: title,
+            description: description,
+            documentNumber: documentNumber,
+          );
+          await loadDashboardData();
+          Get.snackbar(
+            'Document Updated',
+            'Document details were saved.',
+            backgroundColor: AppColors.success,
+            colorText: Colors.white,
+          );
+        } catch (e, st) {
+          AppLogger.error(
+            'DASHBOARD_CTRL',
+            'Document update failed: $e',
+            error: e,
+            stackTrace: st,
+          );
+          Get.snackbar(
+            'Update Error',
+            e.toString(),
+            backgroundColor: AppColors.error,
+            colorText: Colors.white,
+          );
+          rethrow;
+        }
+      },
+    );
   }
 }

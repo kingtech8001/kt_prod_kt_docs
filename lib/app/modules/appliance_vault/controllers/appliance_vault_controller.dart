@@ -4,6 +4,7 @@ import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -15,7 +16,10 @@ class ApplianceVaultController extends GetxController {
   final DocumentRepository _documentRepository;
   final MasterDataRepository _masterDataRepository;
 
-  ApplianceVaultController(this._documentRepository, this._masterDataRepository);
+  ApplianceVaultController(
+    this._documentRepository,
+    this._masterDataRepository,
+  );
 
   final isLoading = true.obs;
   final applianceDocuments = <DocumentModel>[].obs;
@@ -25,7 +29,8 @@ class ApplianceVaultController extends GetxController {
   // Filters
   final selectedBrand = 'All Brands'.obs;
   final selectedSubcategory = 'All Appliances'.obs;
-  final selectedWarrantyStatus = 'all'.obs; // 'all', 'active', 'expiring_soon', 'expired'
+  final selectedWarrantyStatus =
+      'all'.obs; // 'all', 'active', 'expiring_soon', 'expired'
 
   // Summary Metrics
   final totalAppliancesCount = 0.obs;
@@ -42,18 +47,30 @@ class ApplianceVaultController extends GetxController {
 
   Future<void> loadMasterData() async {
     try {
-      final brandsList = await _masterDataRepository.getBrands(activeOnly: true);
+      final brandsList = await _masterDataRepository.getBrands(
+        activeOnly: true,
+      );
       dynamicBrands.assignAll(brandsList.map((b) => b.name));
 
-      final subsList = await _masterDataRepository.getApplianceSubcategories(activeOnly: true);
+      final subsList = await _masterDataRepository.getApplianceSubcategories(
+        activeOnly: true,
+      );
       dynamicSubcategories.assignAll(subsList.map((s) => s.name));
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_CTRL', 'Error loading master data: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'APPLIANCE_CTRL',
+        'Error loading master data: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
   Future<void> loadApplianceVault() async {
-    AppLogger.debug('APPLIANCE_CTRL', 'Loading appliance vault for brand: ${selectedBrand.value}, sub: ${selectedSubcategory.value}');
+    AppLogger.debug(
+      'APPLIANCE_CTRL',
+      'Loading appliance vault for brand: ${selectedBrand.value}, sub: ${selectedSubcategory.value}',
+    );
     isLoading.value = true;
     try {
       final docs = await _documentRepository.getDocuments(
@@ -67,17 +84,28 @@ class ApplianceVaultController extends GetxController {
       var filtered = docs.where((d) => d.applianceWarranty != null).toList();
 
       if (selectedWarrantyStatus.value == 'active') {
-        filtered = filtered.where((d) => !d.applianceWarranty!.isExpired).toList();
+        filtered = filtered
+            .where((d) => !d.applianceWarranty!.isExpired)
+            .toList();
       } else if (selectedWarrantyStatus.value == 'expiring_soon') {
-        filtered = filtered.where((d) => d.applianceWarranty!.isExpiringSoon).toList();
+        filtered = filtered
+            .where((d) => d.applianceWarranty!.isExpiringSoon)
+            .toList();
       } else if (selectedWarrantyStatus.value == 'expired') {
-        filtered = filtered.where((d) => d.applianceWarranty!.isExpired).toList();
+        filtered = filtered
+            .where((d) => d.applianceWarranty!.isExpired)
+            .toList();
       }
 
       applianceDocuments.assignAll(filtered);
       _computeSummaryMetrics(filtered);
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_CTRL', 'Error loading appliance vault: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'APPLIANCE_CTRL',
+        'Error loading appliance vault: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error Loading Appliance Vault',
         e.toString(),
@@ -132,7 +160,9 @@ class ApplianceVaultController extends GetxController {
 
   void previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       if (doc.isPdf) {
         PdfViewerDialog.show(title: doc.title, signedPdfUrl: signedUrl);
       } else if (doc.isImage) {
@@ -144,21 +174,43 @@ class ApplianceVaultController extends GetxController {
         }
       }
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_CTRL', 'Error opening preview: $e', error: e, stackTrace: st);
-      Get.snackbar('Preview Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'APPLIANCE_CTRL',
+        'Error opening preview: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Preview Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
   void downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       final uri = Uri.parse(signedUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_CTRL', 'Error downloading: $e', error: e, stackTrace: st);
-      Get.snackbar('Download Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'APPLIANCE_CTRL',
+        'Error downloading: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Download Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -176,8 +228,18 @@ class ApplianceVaultController extends GetxController {
       final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_CTRL', 'Error creating share link: $e', error: e, stackTrace: st);
-      Get.snackbar('Share Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'APPLIANCE_CTRL',
+        'Error creating share link: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Share Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -192,7 +254,12 @@ class ApplianceVaultController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_CTRL', 'Error moving to trash: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'APPLIANCE_CTRL',
+        'Error moving to trash: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error',
         e.toString(),
@@ -200,5 +267,49 @@ class ApplianceVaultController extends GetxController {
         colorText: Colors.white,
       );
     }
+  }
+
+  void confirmMoveToTrash(DocumentModel doc) {
+    DocumentDeleteDialog.show(
+      documentTitle: doc.title,
+      onConfirm: () => moveToTrash(doc),
+    );
+  }
+
+  void openEditDocumentDialog(DocumentModel doc) {
+    DocumentEditDialog.show(
+      document: doc,
+      onSave: ({required title, description, documentNumber}) async {
+        try {
+          await _documentRepository.updateDocumentDetails(
+            documentId: doc.id,
+            title: title,
+            description: description,
+            documentNumber: documentNumber,
+          );
+          await loadApplianceVault();
+          Get.snackbar(
+            'Document Updated',
+            'Invoice details were saved.',
+            backgroundColor: AppColors.success,
+            colorText: Colors.white,
+          );
+        } catch (e, st) {
+          AppLogger.error(
+            'APPLIANCE_CTRL',
+            'Error editing invoice: $e',
+            error: e,
+            stackTrace: st,
+          );
+          Get.snackbar(
+            'Update Error',
+            e.toString(),
+            backgroundColor: AppColors.error,
+            colorText: Colors.white,
+          );
+          rethrow;
+        }
+      },
+    );
   }
 }

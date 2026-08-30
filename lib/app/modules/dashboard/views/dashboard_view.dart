@@ -16,7 +16,8 @@ class DashboardView extends GetView<DashboardController> {
   Widget build(BuildContext context) {
     return WebScaffold(
       title: 'Dashboard Overview',
-      subtitle: 'King Technology document analytics, pending utility bills & warranty alerts',
+      subtitle:
+          'King Technology document analytics, pending utility bills & warranty alerts',
       currentRoute: AppRoutes.DASHBOARD,
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -173,7 +174,10 @@ class DashboardView extends GetView<DashboardController> {
                           const SizedBox(height: 4),
                           const Text(
                             'Latest bills, invoices, and files uploaded across all departments',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           OutlinedButton.icon(
@@ -231,7 +235,11 @@ class DashboardView extends GetView<DashboardController> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.folder_open_outlined, size: 48, color: AppColors.textMuted),
+                        const Icon(
+                          Icons.folder_open_outlined,
+                          size: 48,
+                          color: AppColors.textMuted,
+                        ),
                         const SizedBox(height: 12),
                         const Text(
                           'No documents uploaded yet',
@@ -244,13 +252,19 @@ class DashboardView extends GetView<DashboardController> {
                         const SizedBox(height: 6),
                         const Text(
                           'Click "Upload" in the header to add your first bill or warranty invoice.',
-                          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: () => Get.toNamed(AppRoutes.UPLOAD),
-                          icon: const Icon(Icons.cloud_upload_outlined, size: 16),
+                          icon: const Icon(
+                            Icons.cloud_upload_outlined,
+                            size: 16,
+                          ),
                           label: const Text('Upload Document Now'),
                         ),
                       ],
@@ -284,8 +298,11 @@ class DashboardView extends GetView<DashboardController> {
                             onPreview: () => controller.previewDocument(doc),
                             onDownload: () => controller.downloadDocument(doc),
                             onShare: () => controller.shareDocument(doc),
-                            onToggleFavorite: () => controller.toggleFavorite(doc),
-                            onDelete: () => controller.moveToTrash(doc),
+                            onToggleFavorite: () =>
+                                controller.toggleFavorite(doc),
+                            onEdit: () =>
+                                controller.openEditDocumentDialog(doc),
+                            onDelete: () => controller.confirmMoveToTrash(doc),
                           );
                         },
                       );
@@ -315,7 +332,11 @@ class DashboardView extends GetView<DashboardController> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.warning,
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Warranties Expiring Soon',
@@ -340,7 +361,10 @@ class DashboardView extends GetView<DashboardController> {
               child: Center(
                 child: Text(
                   'No warranties expiring in next 30 days 🎉',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             )
@@ -363,7 +387,11 @@ class DashboardView extends GetView<DashboardController> {
                         color: AppColors.warningLight.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.shield_outlined, color: AppColors.warning, size: 18),
+                      child: const Icon(
+                        Icons.shield_outlined,
+                        color: AppColors.warning,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -372,13 +400,19 @@ class DashboardView extends GetView<DashboardController> {
                         children: [
                           Text(
                             doc.title,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             'Brand: ${w?.brand ?? "N/A"} • Valid: ${AppFormatters.formatDate(w?.warrantyValidUpto)}',
-                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -437,7 +471,10 @@ class DashboardView extends GetView<DashboardController> {
               child: Center(
                 child: Text(
                   'All utility bills are up to date! ✅',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             )
@@ -459,7 +496,11 @@ class DashboardView extends GetView<DashboardController> {
                         color: AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.receipt_long_outlined, color: AppColors.primary, size: 18),
+                      child: const Icon(
+                        Icons.receipt_long_outlined,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -468,13 +509,19 @@ class DashboardView extends GetView<DashboardController> {
                         children: [
                           Text(
                             doc.title,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             'Due: ${AppFormatters.formatDate(u?.dueDate)} • ${doc.city}',
-                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),

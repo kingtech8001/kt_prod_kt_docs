@@ -17,7 +17,9 @@ class FavoritesView extends GetView<FavoritesController> {
       currentRoute: AppRoutes.FAVORITES,
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          );
         }
 
         if (controller.favoriteDocuments.isEmpty) {
@@ -25,7 +27,11 @@ class FavoritesView extends GetView<FavoritesController> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_border_outlined, size: 56, color: AppColors.warning),
+                const Icon(
+                  Icons.star_border_outlined,
+                  size: 56,
+                  color: AppColors.warning,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'No starred documents yet',
@@ -38,7 +44,10 @@ class FavoritesView extends GetView<FavoritesController> {
                 const SizedBox(height: 6),
                 const Text(
                   'Click the star icon on any document card to add it to your favorites list.',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -72,7 +81,8 @@ class FavoritesView extends GetView<FavoritesController> {
                   onDownload: () => controller.downloadDocument(doc),
                   onShare: () => controller.shareDocument(doc),
                   onToggleFavorite: () => controller.toggleFavorite(doc),
-                  onDelete: () => controller.moveToTrash(doc),
+                  onEdit: () => controller.openEditDocumentDialog(doc),
+                  onDelete: () => controller.confirmMoveToTrash(doc),
                 );
               },
             );

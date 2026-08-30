@@ -91,81 +91,85 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
                   const SizedBox(height: 16),
 
                   // Metrics Row (Responsive 1/2/4 Columns)
-                  LayoutBuilder(builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-                    final card1 = MetricCard(
-                      title: 'TOTAL UTILITY SPEND',
-                      value: AppFormatters.formatCurrency(
-                          controller.totalBillsAmount.value),
-                      icon: Icons.account_balance_wallet_outlined,
-                      accentColor: AppColors.financeBlue,
-                    );
-                    final card2 = MetricCard(
-                      title: 'PENDING BILLS AMOUNT',
-                      value: AppFormatters.formatCurrency(
-                          controller.pendingBillsAmount.value),
-                      icon: Icons.pending_actions_outlined,
-                      accentColor: AppColors.warning,
-                    );
-                    final card3 = MetricCard(
-                      title: 'PAID BILLS',
-                      value: '${controller.paidCount.value}',
-                      icon: Icons.check_circle_outline,
-                      accentColor: AppColors.success,
-                    );
-                    final card4 = MetricCard(
-                      title: 'PENDING / OVERDUE',
-                      value: '${controller.pendingCount.value}',
-                      icon: Icons.warning_amber_rounded,
-                      accentColor: AppColors.error,
-                    );
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      final card1 = MetricCard(
+                        title: 'TOTAL UTILITY SPEND',
+                        value: AppFormatters.formatCurrency(
+                          controller.totalBillsAmount.value,
+                        ),
+                        icon: Icons.account_balance_wallet_outlined,
+                        accentColor: AppColors.financeBlue,
+                      );
+                      final card2 = MetricCard(
+                        title: 'PENDING BILLS AMOUNT',
+                        value: AppFormatters.formatCurrency(
+                          controller.pendingBillsAmount.value,
+                        ),
+                        icon: Icons.pending_actions_outlined,
+                        accentColor: AppColors.warning,
+                      );
+                      final card3 = MetricCard(
+                        title: 'PAID BILLS',
+                        value: '${controller.paidCount.value}',
+                        icon: Icons.check_circle_outline,
+                        accentColor: AppColors.success,
+                      );
+                      final card4 = MetricCard(
+                        title: 'PENDING / OVERDUE',
+                        value: '${controller.pendingCount.value}',
+                        icon: Icons.warning_amber_rounded,
+                        accentColor: AppColors.error,
+                      );
 
-                    if (width < 600) {
-                      return Column(
-                        children: [
-                          card1,
-                          const SizedBox(height: 10),
-                          card2,
-                          const SizedBox(height: 10),
-                          card3,
-                          const SizedBox(height: 10),
-                          card4,
-                        ],
-                      );
-                    } else if (width < 950) {
-                      return Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(child: card1),
-                              const SizedBox(width: 14),
-                              Expanded(child: card2),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(child: card3),
-                              const SizedBox(width: 14),
-                              Expanded(child: card4),
-                            ],
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Row(
-                        children: [
-                          Expanded(child: card1),
-                          const SizedBox(width: 14),
-                          Expanded(child: card2),
-                          const SizedBox(width: 14),
-                          Expanded(child: card3),
-                          const SizedBox(width: 14),
-                          Expanded(child: card4),
-                        ],
-                      );
-                    }
-                  }),
+                      if (width < 600) {
+                        return Column(
+                          children: [
+                            card1,
+                            const SizedBox(height: 10),
+                            card2,
+                            const SizedBox(height: 10),
+                            card3,
+                            const SizedBox(height: 10),
+                            card4,
+                          ],
+                        );
+                      } else if (width < 950) {
+                        return Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: card1),
+                                const SizedBox(width: 14),
+                                Expanded(child: card2),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(child: card3),
+                                const SizedBox(width: 14),
+                                Expanded(child: card4),
+                              ],
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Row(
+                          children: [
+                            Expanded(child: card1),
+                            const SizedBox(width: 14),
+                            Expanded(child: card2),
+                            const SizedBox(width: 14),
+                            Expanded(child: card3),
+                            const SizedBox(width: 14),
+                            Expanded(child: card4),
+                          ],
+                        );
+                      }
+                    },
+                  ),
                 ],
               ),
             ),
@@ -193,20 +197,28 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
                         items: [
                           const DropdownMenuItem(
                             value: 'All Utilities',
-                            child: Text('All Utilities',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'All Utilities',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           ...(controller.dynamicUtilityTypes.isNotEmpty
                                   ? controller.dynamicUtilityTypes
                                   : AppConstants.utilitySubcategories)
-                              .map((sub) => DropdownMenuItem(
-                                    value: sub,
-                                    child: Text(sub,
-                                        style: const TextStyle(fontSize: 13)),
-                                  )),
+                              .map(
+                                (sub) => DropdownMenuItem(
+                                  value: sub,
+                                  child: Text(
+                                    sub,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
                         ],
                         onChanged: (val) {
-                          if (val != null) controller.onUtilityTypeSelected(val);
+                          if (val != null) {
+                            controller.onUtilityTypeSelected(val);
+                          }
                         },
                       ),
                     ),
@@ -226,23 +238,31 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
                         items: const [
                           DropdownMenuItem(
                             value: 'all',
-                            child: Text('All Payment Statuses',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'All Payment Statuses',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'paid',
-                            child:
-                                Text('Paid Only', style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'Paid Only',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'pending',
-                            child: Text('Pending Only',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'Pending Only',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'overdue',
-                            child: Text('Overdue Only',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'Overdue Only',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                         ],
                         onChanged: (val) {
@@ -257,9 +277,10 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
                   Text(
                     '${controller.utilityBills.length} records',
                     style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -269,11 +290,13 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
             Expanded(
               child: controller.isLoading.value
                   ? const Center(
-                      child:
-                          CircularProgressIndicator(color: AppColors.primary))
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
                   : controller.utilityBills.isEmpty
-                      ? _buildEmptyState()
-                      : _buildBillsList(),
+                  ? _buildEmptyState()
+                  : _buildBillsList(),
             ),
           ],
         );
@@ -286,8 +309,11 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.receipt_outlined,
-              size: 48, color: AppColors.textMuted),
+          const Icon(
+            Icons.receipt_outlined,
+            size: 48,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(height: 12),
           const Text(
             'No utility bills found',
@@ -325,258 +351,299 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
 
         return RepaintBoundary(
           child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: u?.isOverdue == true
-                  ? AppColors.error.withValues(alpha: 0.4)
-                  : AppColors.border,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: u?.isOverdue == true
+                    ? AppColors.error.withValues(alpha: 0.4)
+                    : AppColors.border,
               ),
-            ],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 700;
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 700;
 
-              if (isNarrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _buildCategoryIcon(doc.subCategory),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _buildCategoryIcon(doc.subCategory),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  doc.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  '${u?.providerName ?? "Provider"} • Consumer: ${u?.consumerNumber ?? "N/A"}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          StatusBadge(
+                            label: u?.isPaid == true
+                                ? 'PAID'
+                                : (u?.isOverdue == true
+                                      ? 'OVERDUE'
+                                      : 'PENDING'),
+                            type: u?.isPaid == true
+                                ? StatusBadgeType.success
+                                : (u?.isOverdue == true
+                                      ? StatusBadgeType.error
+                                      : StatusBadgeType.warning),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                doc.title,
+                                'City: ${addr?.city ?? "N/A"} • Due: ${AppFormatters.formatDate(u?.dueDate)}',
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: AppColors.textPrimary,
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               Text(
-                                '${u?.providerName ?? "Provider"} • Consumer: ${u?.consumerNumber ?? "N/A"}',
+                                'Amount: ${AppFormatters.formatCurrency(u?.billAmount)}',
                                 style: const TextStyle(
-                                    fontSize: 12, color: AppColors.textSecondary),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        StatusBadge(
-                          label: u?.isPaid == true
-                              ? 'PAID'
-                              : (u?.isOverdue == true ? 'OVERDUE' : 'PENDING'),
-                          type: u?.isPaid == true
-                              ? StatusBadgeType.success
-                              : (u?.isOverdue == true
-                                  ? StatusBadgeType.error
-                                  : StatusBadgeType.warning),
-                        ),
-                      ],
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility_outlined,
+                                  size: 18,
+                                ),
+                                onPressed: () =>
+                                    controller.previewDocument(doc),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.download_outlined,
+                                  size: 18,
+                                ),
+                                onPressed: () =>
+                                    controller.downloadDocument(doc),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                tooltip: 'Edit bill details',
+                                onPressed: () =>
+                                    controller.openEditDocumentDialog(doc),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  u?.isPaid == true
+                                      ? Icons.check_circle
+                                      : Icons.radio_button_unchecked,
+                                  color: u?.isPaid == true
+                                      ? AppColors.success
+                                      : AppColors.textMuted,
+                                  size: 20,
+                                ),
+                                tooltip: u?.isPaid == true
+                                    ? 'Mark as Pending'
+                                    : 'Mark as Paid',
+                                onPressed: () =>
+                                    controller.confirmPaymentStatus(doc),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    _buildCategoryIcon(doc.subCategory),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            doc.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${u?.providerName ?? "Provider"} • Consumer No: ${u?.consumerNumber ?? "N/A"}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const Divider(height: 16),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            addr?.city ?? 'All Cities',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            addr?.premiseName ??
+                                addr?.areaLocality ??
+                                'Premises',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Due: ${AppFormatters.formatDate(u?.dueDate)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: u?.isOverdue == true
+                                  ? AppColors.error
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Bill: ${AppFormatters.formatDate(u?.billDate)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppFormatters.formatCurrency(u?.billAmount),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          StatusBadge(
+                            label: u?.isPaid == true
+                                ? 'PAID'
+                                : (u?.isOverdue == true
+                                      ? 'OVERDUE'
+                                      : 'PENDING'),
+                            type: u?.isPaid == true
+                                ? StatusBadgeType.success
+                                : (u?.isOverdue == true
+                                      ? StatusBadgeType.error
+                                      : StatusBadgeType.warning),
+                          ),
+                        ],
+                      ),
+                    ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'City: ${addr?.city ?? "N/A"} • Due: ${AppFormatters.formatDate(u?.dueDate)}',
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                            Text(
-                              'Amount: ${AppFormatters.formatCurrency(u?.billAmount)}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
+                        IconButton(
+                          icon: Icon(
+                            u?.isPaid == true
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked,
+                            color: u?.isPaid == true
+                                ? AppColors.success
+                                : AppColors.textMuted,
+                          ),
+                          tooltip: u?.isPaid == true
+                              ? 'Mark as Pending'
+                              : 'Mark as Paid',
+                          onPressed: () => controller.confirmPaymentStatus(doc),
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.visibility_outlined, size: 18),
-                              onPressed: () => controller.previewDocument(doc),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.download_outlined, size: 18),
-                              onPressed: () => controller.downloadDocument(doc),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                u?.isPaid == true
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                color: u?.isPaid == true
-                                    ? AppColors.success
-                                    : AppColors.textMuted,
-                                size: 20,
-                              ),
-                              tooltip: u?.isPaid == true
-                                  ? 'Mark as Pending'
-                                  : 'Mark as Paid',
-                              onPressed: () => controller.togglePaymentStatus(doc),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.visibility_outlined, size: 20),
+                          tooltip: 'Preview Bill',
+                          onPressed: () => controller.previewDocument(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.download_outlined, size: 20),
+                          tooltip: 'Download File',
+                          onPressed: () => controller.downloadDocument(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          tooltip: 'Edit Bill Details',
+                          onPressed: () =>
+                              controller.openEditDocumentDialog(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                            color: AppColors.error,
+                          ),
+                          tooltip: 'Move to Trash',
+                          onPressed: () => controller.confirmMoveToTrash(doc),
                         ),
                       ],
                     ),
                   ],
                 );
-              }
-
-              return Row(
-                children: [
-                  _buildCategoryIcon(doc.subCategory),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          doc.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${u?.providerName ?? "Provider"} • Consumer No: ${u?.consumerNumber ?? "N/A"}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          addr?.city ?? 'All Cities',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
-                        Text(
-                          addr?.premiseName ??
-                              addr?.areaLocality ??
-                              'Premises',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Due: ${AppFormatters.formatDate(u?.dueDate)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: u?.isOverdue == true
-                                ? AppColors.error
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          'Bill: ${AppFormatters.formatDate(u?.billDate)}',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppFormatters.formatCurrency(u?.billAmount),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        StatusBadge(
-                          label: u?.isPaid == true
-                              ? 'PAID'
-                              : (u?.isOverdue == true ? 'OVERDUE' : 'PENDING'),
-                          type: u?.isPaid == true
-                              ? StatusBadgeType.success
-                              : (u?.isOverdue == true
-                                  ? StatusBadgeType.error
-                                  : StatusBadgeType.warning),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          u?.isPaid == true
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          color: u?.isPaid == true
-                              ? AppColors.success
-                              : AppColors.textMuted,
-                        ),
-                        tooltip: u?.isPaid == true
-                            ? 'Mark as Pending'
-                            : 'Mark as Paid',
-                        onPressed: () => controller.togglePaymentStatus(doc),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.visibility_outlined, size: 20),
-                        tooltip: 'Preview Bill',
-                        onPressed: () => controller.previewDocument(doc),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.download_outlined, size: 20),
-                        tooltip: 'Download File',
-                        onPressed: () => controller.downloadDocument(doc),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            size: 20, color: AppColors.error),
-                        tooltip: 'Move to Trash',
-                        onPressed: () => controller.moveToTrash(doc),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+              },
+            ),
           ),
-        ));
+        );
       },
     );
   }

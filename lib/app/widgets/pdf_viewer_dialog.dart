@@ -1,9 +1,14 @@
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/widgets/pdf_preview.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:http/http.dart' as http;
 
-class PdfViewerDialog extends StatelessWidget {
+class PdfViewerDialog extends StatefulWidget {
   final String title;
   final String signedPdfUrl;
   final VoidCallback? onDownload;
@@ -26,109 +31,140 @@ class PdfViewerDialog extends StatelessWidget {
         signedPdfUrl: signedPdfUrl,
         onDownload: onDownload,
       ),
+      barrierDismissible: false,
     );
   }
 
   @override
+  State<PdfViewerDialog> createState() => _PdfViewerDialogState();
+}
+
+class _PdfViewerDialogState extends State<PdfViewerDialog> {
+  late final Future<Uint8List> _pdfBytes;
+
+  void _debug(String message) {
+    debugPrint('[PDF_VIEWER] $message');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _debug('Opening preview: title="${widget.title}", host=${Uri.parse(widget.signedPdfUrl).host}');
+    _pdfBytes = _loadPdfBytes();
+  }
+
+  Future<Uint8List> _loadPdfBytes() async {
+    final previewUri = Uri.parse(widget.signedPdfUrl);
+    _debug('Request started.');
+    try {
+      final response = await http
+          .get(previewUri)
+          .timeout(const Duration(seconds: 30));
+      _debug(
+        'Response received: HTTP ${response.statusCode}, contentType=${response.headers['content-type']}, bytes=${response.bodyBytes.length}.',
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Unable to load PDF preview (HTTP ${response.statusCode}).',
+        );
+      }
+      if (response.bodyBytes.isEmpty) {
+        throw Exception('The PDF preview returned an empty file.');
+      }
+
+      try {
+        final document = PdfDocument(inputBytes: response.bodyBytes);
+        document.dispose();
+        _debug('PDF validation succeeded. Rendering original bytes without rewriting.');
+        return response.bodyBytes;
+      } catch (error) {
+        _debug('PDF validation failed: $error');
+        throw Exception(
+          'This PDF is invalid or was damaged during an earlier upload. Please upload the original PDF again.',
+        );
+      }
+    } catch (error) {
+      _debug('Preview load failed: $error');
+      rethrow;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.75,
-        height: MediaQuery.of(context).size.height * 0.8,
-        padding: const EdgeInsets.all(24),
+      insetPadding: const EdgeInsets.all(24),
+      child: SizedBox(
+        width: size.width * 0.9,
+        height: size.height * 0.88,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.picture_as_pdf, color: AppColors.error, size: 28),
-                    const SizedBox(width: 12),
-                    Text(
-                      title,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf, color: AppColors.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.open_in_new, size: 16),
-                      label: const Text('Open in Browser Viewer'),
-                      onPressed: () async {
-                        final uri = Uri.parse(signedPdfUrl);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    if (onDownload != null)
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.download, size: 16),
-                        label: const Text('Download'),
-                        onPressed: onDownload,
-                      ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Get.back(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const Divider(height: 32),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.picture_as_pdf, size: 64, color: AppColors.primary),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'PDF Document Ready for Preview & Download',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Click below to open high-resolution vector PDF in an interactive browser tab.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.open_in_browser),
-                        label: const Text('Open PDF Interactive Viewer'),
-                        onPressed: () async {
-                          final uri = Uri.parse(signedPdfUrl);
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                      ),
-                    ],
                   ),
-                ),
+                  if (widget.onDownload != null)
+                    IconButton(
+                      icon: const Icon(Icons.download_outlined),
+                      tooltip: 'Download',
+                      onPressed: widget.onDownload,
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close preview',
+                    onPressed: Get.back,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: FutureBuilder<Uint8List>(
+                future: _pdfBytes,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    _debug('Rendering ${snapshot.data!.length} PDF bytes.');
+                    _debug('Rendering with the platform PDF previewer.');
+                    return PdfPreview(
+                      bytes: snapshot.data!,
+                      sourceUrl: widget.signedPdfUrl,
+                      onDocumentLoaded: () {
+                        _debug('Renderer loaded document successfully.');
+                      },
+                      onDocumentLoadFailed: (error) {
+                        _debug('Renderer failed: $error');
+                      },
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    _debug('Rendering error state: ${snapshot.error}');
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          snapshot.error.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.error),
+                        ),
+                      ),
+                    );
+                  }
+                  return const Center(child: CircularProgressIndicator());
+                },
               ),
             ),
           ],

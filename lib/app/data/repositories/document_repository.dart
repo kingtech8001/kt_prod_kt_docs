@@ -100,32 +100,69 @@ class DocumentRepository {
       }
 
       if (city != null && city.isNotEmpty && city != 'All Cities') {
-        list = list.where((d) => d.address?.city.toLowerCase() == city.toLowerCase()).toList();
+        list = list
+            .where((d) => d.address?.city.toLowerCase() == city.toLowerCase())
+            .toList();
       }
 
       if (brand != null && brand.isNotEmpty && brand != 'All Brands') {
-        list = list.where((d) => d.applianceWarranty?.brand.toLowerCase() == brand.toLowerCase()).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.applianceWarranty?.brand.toLowerCase() ==
+                  brand.toLowerCase(),
+            )
+            .toList();
       }
 
-      if (personName != null && personName.isNotEmpty && personName != 'All Persons') {
-        list = list.where((d) => d.personalMetadata?.personName.toLowerCase() == personName.toLowerCase()).toList();
+      if (personName != null &&
+          personName.isNotEmpty &&
+          personName != 'All Persons') {
+        list = list
+            .where(
+              (d) =>
+                  d.personalMetadata?.personName.toLowerCase() ==
+                  personName.toLowerCase(),
+            )
+            .toList();
       }
 
-      if (personalDocType != null && personalDocType.isNotEmpty && personalDocType != 'All Document Types') {
-        list = list.where((d) => d.personalMetadata?.docTypeName.toLowerCase() == personalDocType.toLowerCase()).toList();
+      if (personalDocType != null &&
+          personalDocType.isNotEmpty &&
+          personalDocType != 'All Document Types') {
+        list = list
+            .where(
+              (d) =>
+                  d.personalMetadata?.docTypeName.toLowerCase() ==
+                  personalDocType.toLowerCase(),
+            )
+            .toList();
       }
 
       if (isFavoriteOnly && user != null) {
         list = list.where((d) => d.isFavorite).toList();
       }
 
-      AppLogger.info('DOC_REPO', 'getDocuments returned ${list.length} documents.');
+      AppLogger.info(
+        'DOC_REPO',
+        'getDocuments returned ${list.length} documents.',
+      );
       return list;
     } on PostgrestException catch (pe, st) {
-      AppLogger.error('DOC_REPO', 'PostgrestException in getDocuments: ${pe.message}', error: pe, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'PostgrestException in getDocuments: ${pe.message}',
+        error: pe,
+        stackTrace: st,
+      );
       rethrow;
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Generic Exception in getDocuments: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Generic Exception in getDocuments: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -155,7 +192,12 @@ class DocumentRepository {
       }
       return DocumentModel.fromJson(response);
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error in getDocumentById: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error in getDocumentById: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -177,8 +219,14 @@ class DocumentRepository {
   }) async {
     final user = _provider.currentUser;
     final docId = const Uuid().v4();
-    final sanitizedFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-    AppLogger.info('DOC_REPO', 'Creating document: "$title" ($fileName) via provider: ${AppConstants.storageProvider}');
+    final sanitizedFileName = fileName.replaceAll(
+      RegExp(r'[^a-zA-Z0-9._-]'),
+      '_',
+    );
+    AppLogger.info(
+      'DOC_REPO',
+      'Creating document: "$title" ($fileName) via provider: ${AppConstants.storageProvider}',
+    );
 
     try {
       String storagePath;
@@ -196,8 +244,10 @@ class DocumentRepository {
         extraAttributes = {
           'storage_provider': 'gdrive',
           'gdrive_file_id': fileId,
-          if (gdriveRes['webViewLink'] != null) 'web_view_link': gdriveRes['webViewLink'],
-          if (gdriveRes['webContentLink'] != null) 'web_content_link': gdriveRes['webContentLink'],
+          if (gdriveRes['webViewLink'] != null)
+            'web_view_link': gdriveRes['webViewLink'],
+          if (gdriveRes['webContentLink'] != null)
+            'web_content_link': gdriveRes['webContentLink'],
         };
       } else {
         storagePath = 'vault/${user?.id ?? "shared"}/$docId/$sanitizedFileName';
@@ -206,12 +256,12 @@ class DocumentRepository {
           fileBytes: fileBytes,
           mimeType: mimeType,
         );
-        extraAttributes = {
-          'storage_provider': 'supabase',
-        };
+        extraAttributes = {'storage_provider': 'supabase'};
       }
 
-      final fileType = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'pdf';
+      final fileType = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : 'pdf';
 
       final docData = {
         'id': docId,
@@ -231,7 +281,11 @@ class DocumentRepository {
         'extra_attributes': extraAttributes,
       };
 
-      final insertedDoc = await _provider.client.from('documents').insert(docData).select().single();
+      final insertedDoc = await _provider.client
+          .from('documents')
+          .insert(docData)
+          .select()
+          .single();
       AppLogger.info('DOC_REPO', 'Inserted main document record: $docId');
 
       if (address != null) {
@@ -251,31 +305,52 @@ class DocumentRepository {
       if (applianceWarranty != null) {
         final warrantyMap = applianceWarranty.toJson();
         warrantyMap['document_id'] = docId;
-        await _provider.client.from('appliance_warranty_metadata').insert(warrantyMap);
+        await _provider.client
+            .from('appliance_warranty_metadata')
+            .insert(warrantyMap);
         AppLogger.info('DOC_REPO', 'Inserted warranty metadata for $docId');
       }
 
       if (personalMetadata != null) {
         final personalMap = personalMetadata.toJson();
         personalMap['document_id'] = docId;
-        await _provider.client.from('personal_document_metadata').insert(personalMap);
-        AppLogger.info('DOC_REPO', 'Inserted personal document metadata for $docId');
+        await _provider.client
+            .from('personal_document_metadata')
+            .insert(personalMap);
+        AppLogger.info(
+          'DOC_REPO',
+          'Inserted personal document metadata for $docId',
+        );
       }
 
       await _provider.client.from('document_activity_logs').insert({
         'document_id': docId,
         'user_id': user?.id,
         'action': 'uploaded',
-        'details': {'title': title, 'file_name': fileName, 'category': subCategory},
+        'details': {
+          'title': title,
+          'file_name': fileName,
+          'category': subCategory,
+        },
       });
 
       final fullDoc = await getDocumentById(docId);
       return fullDoc ?? DocumentModel.fromJson(insertedDoc);
     } on PostgrestException catch (pe, st) {
-      AppLogger.error('DOC_REPO', 'PostgrestException during createDocument: ${pe.message}', error: pe, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'PostgrestException during createDocument: ${pe.message}',
+        error: pe,
+        stackTrace: st,
+      );
       rethrow;
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error during createDocument: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error during createDocument: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -284,10 +359,13 @@ class DocumentRepository {
     final user = _provider.currentUser;
     AppLogger.debug('DOC_REPO', 'softDeleteDocument for ID: $documentId');
     try {
-      await _provider.client.from('documents').update({
-        'deleted_at': DateTime.now().toIso8601String(),
-        'deleted_by': user?.id,
-      }).eq('id', documentId);
+      await _provider.client
+          .from('documents')
+          .update({
+            'deleted_at': DateTime.now().toIso8601String(),
+            'deleted_by': user?.id,
+          })
+          .eq('id', documentId);
 
       await _provider.client.from('document_activity_logs').insert({
         'document_id': documentId,
@@ -295,9 +373,56 @@ class DocumentRepository {
         'action': 'trashed',
         'details': {'reason': 'Moved to trash'},
       });
-      AppLogger.info('DOC_REPO', 'Document $documentId soft-deleted successfully.');
+      AppLogger.info(
+        'DOC_REPO',
+        'Document $documentId soft-deleted successfully.',
+      );
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error during softDeleteDocument: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error during softDeleteDocument: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> updateDocumentDetails({
+    required String documentId,
+    required String title,
+    String? description,
+    String? documentNumber,
+  }) async {
+    final user = _provider.currentUser;
+    AppLogger.debug(
+      'DOC_REPO',
+      'Updating document details for ID: $documentId',
+    );
+    try {
+      await _provider.client
+          .from('documents')
+          .update({
+            'title': title,
+            'description': description,
+            'document_number': documentNumber,
+          })
+          .eq('id', documentId);
+
+      await _provider.client.from('document_activity_logs').insert({
+        'document_id': documentId,
+        'user_id': user?.id,
+        'action': 'updated',
+        'details': {'title': title},
+      });
+      AppLogger.info('DOC_REPO', 'Document $documentId updated successfully.');
+    } catch (e, st) {
+      AppLogger.error(
+        'DOC_REPO',
+        'Error updating document details: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -306,10 +431,10 @@ class DocumentRepository {
     final user = _provider.currentUser;
     AppLogger.debug('DOC_REPO', 'restoreDocument for ID: $documentId');
     try {
-      await _provider.client.from('documents').update({
-        'deleted_at': null,
-        'deleted_by': null,
-      }).eq('id', documentId);
+      await _provider.client
+          .from('documents')
+          .update({'deleted_at': null, 'deleted_by': null})
+          .eq('id', documentId);
 
       await _provider.client.from('document_activity_logs').insert({
         'document_id': documentId,
@@ -319,23 +444,39 @@ class DocumentRepository {
       });
       AppLogger.info('DOC_REPO', 'Document $documentId restored successfully.');
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error during restoreDocument: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error during restoreDocument: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
 
-  Future<void> permanentDeleteDocument(String documentId, String filePath) async {
+  Future<void> permanentDeleteDocument(
+    String documentId,
+    String filePath,
+  ) async {
     final user = _provider.currentUser;
-    AppLogger.debug('DOC_REPO', 'permanentDeleteDocument for ID: $documentId, path: $filePath');
+    AppLogger.debug(
+      'DOC_REPO',
+      'permanentDeleteDocument for ID: $documentId, path: $filePath',
+    );
     try {
       if (filePath.startsWith('gdrive://')) {
         final fileId = filePath.replaceFirst('gdrive://', '');
         await _provider.deleteFromGoogleDrive(fileId);
       } else {
         try {
-          await _provider.client.storage.from(AppConstants.storageBucket).remove([filePath]);
+          await _provider.client.storage
+              .from(AppConstants.storageBucket)
+              .remove([filePath]);
         } catch (storageErr) {
-          AppLogger.warning('DOC_REPO', 'Storage file remove non-fatal warning: $storageErr');
+          AppLogger.warning(
+            'DOC_REPO',
+            'Storage file remove non-fatal warning: $storageErr',
+          );
         }
       }
 
@@ -349,7 +490,12 @@ class DocumentRepository {
       });
       AppLogger.info('DOC_REPO', 'Document $documentId permanently purged.');
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error during permanentDeleteDocument: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error during permanentDeleteDocument: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -357,14 +503,17 @@ class DocumentRepository {
   Future<bool> toggleFavorite(String documentId, bool currentlyFavorite) async {
     final user = _provider.currentUser;
     if (user == null) return false;
-    AppLogger.debug('DOC_REPO', 'toggleFavorite for doc: $documentId, currentlyFav: $currentlyFavorite');
+    AppLogger.debug(
+      'DOC_REPO',
+      'toggleFavorite for doc: $documentId, currentlyFav: $currentlyFavorite',
+    );
 
     try {
       if (currentlyFavorite) {
-        await _provider.client
-            .from('document_favorites')
-            .delete()
-            .match({'document_id': documentId, 'user_id': user.id});
+        await _provider.client.from('document_favorites').delete().match({
+          'document_id': documentId,
+          'user_id': user.id,
+        });
         return false;
       } else {
         await _provider.client.from('document_favorites').insert({
@@ -374,7 +523,12 @@ class DocumentRepository {
         return true;
       }
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error in toggleFavorite: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error in toggleFavorite: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -384,19 +538,32 @@ class DocumentRepository {
       final fileId = storagePath.replaceFirst('gdrive://', '');
       return _provider.getGoogleDrivePreviewUrl(fileId);
     }
-    return await _provider.createSignedUrl(storagePath: storagePath, expiresInSeconds: 600);
+    return await _provider.createSignedUrl(
+      storagePath: storagePath,
+      expiresInSeconds: 600,
+    );
   }
 
   Future<DashboardMetricsModel> getDashboardMetrics() async {
-    AppLogger.debug('DOC_REPO', 'Fetching dashboard metrics via RPC get_dashboard_metrics...');
+    AppLogger.debug(
+      'DOC_REPO',
+      'Fetching dashboard metrics via RPC get_dashboard_metrics...',
+    );
     try {
       final response = await _provider.client.rpc('get_dashboard_metrics');
       if (response != null && response is Map<String, dynamic>) {
-        AppLogger.info('DOC_REPO', 'get_dashboard_metrics RPC success:', response);
+        AppLogger.info(
+          'DOC_REPO',
+          'get_dashboard_metrics RPC success:',
+          response,
+        );
         return DashboardMetricsModel.fromJson(response);
       }
     } catch (rpcErr) {
-      AppLogger.warning('DOC_REPO', 'RPC get_dashboard_metrics fallback due to: $rpcErr');
+      AppLogger.warning(
+        'DOC_REPO',
+        'RPC get_dashboard_metrics fallback due to: $rpcErr',
+      );
     }
 
     try {
@@ -415,7 +582,12 @@ class DocumentRepository {
         totalStorageBytes: totalSize,
       );
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error in dashboard fallback count: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error in dashboard fallback count: $e',
+        error: e,
+        stackTrace: st,
+      );
       return DashboardMetricsModel();
     }
   }
@@ -424,7 +596,10 @@ class DocumentRepository {
     final user = _provider.currentUser;
     final token = const Uuid().v4().replaceAll('-', '').substring(0, 16);
     final expiresAt = DateTime.now().add(Duration(days: daysValid));
-    AppLogger.debug('DOC_REPO', 'createShareLink for doc: $documentId (expires in $daysValid days)');
+    AppLogger.debug(
+      'DOC_REPO',
+      'createShareLink for doc: $documentId (expires in $daysValid days)',
+    );
 
     try {
       await _provider.client.from('document_shares').insert({
@@ -443,7 +618,12 @@ class DocumentRepository {
 
       return token;
     } catch (e, st) {
-      AppLogger.error('DOC_REPO', 'Error in createShareLink: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOC_REPO',
+        'Error in createShareLink: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }

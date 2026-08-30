@@ -5,6 +5,7 @@ import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -31,7 +32,8 @@ class UtilityBillsController extends GetxController {
   // Filters
   final selectedCity = 'All Cities'.obs;
   final selectedUtilityType = 'All Utilities'.obs;
-  final selectedPaymentStatus = 'all'.obs; // 'all', 'paid', 'pending', 'overdue'
+  final selectedPaymentStatus =
+      'all'.obs; // 'all', 'paid', 'pending', 'overdue'
 
   // Summary Metrics
   final totalBillsAmount = 0.0.obs;
@@ -51,16 +53,26 @@ class UtilityBillsController extends GetxController {
       final cities = await _masterDataRepository.getCities(activeOnly: true);
       dynamicCities.assignAll(cities.map((c) => c.name));
 
-      final providers = await _masterDataRepository.getUtilityProviders(activeOnly: true);
+      final providers = await _masterDataRepository.getUtilityProviders(
+        activeOnly: true,
+      );
       final types = providers.map((p) => p.utilityType).toSet().toList();
       dynamicUtilityTypes.assignAll(types);
     } catch (e, st) {
-      AppLogger.error('UTILITY_CTRL', 'Error loading master data: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error loading master data: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
   Future<void> loadUtilityBills() async {
-    AppLogger.debug('UTILITY_CTRL', 'Loading utility bills for city: ${selectedCity.value}, type: ${selectedUtilityType.value}');
+    AppLogger.debug(
+      'UTILITY_CTRL',
+      'Loading utility bills for city: ${selectedCity.value}, type: ${selectedUtilityType.value}',
+    );
     isLoading.value = true;
     try {
       final docs = await _documentRepository.getDocuments(
@@ -84,7 +96,12 @@ class UtilityBillsController extends GetxController {
       utilityBills.assignAll(filtered);
       _computeSummaryMetrics(filtered);
     } catch (e, st) {
-      AppLogger.error('UTILITY_CTRL', 'Error loading utility bills: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error loading utility bills: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error Loading Utility Bills',
         e.toString(),
@@ -141,13 +158,21 @@ class UtilityBillsController extends GetxController {
     if (meta == null || meta.id == null) return;
 
     final newStatus = !meta.isPaid;
-    AppLogger.debug('UTILITY_CTRL', 'Toggling payment status for doc ${doc.id} -> $newStatus');
+    AppLogger.debug(
+      'UTILITY_CTRL',
+      'Toggling payment status for doc ${doc.id} -> $newStatus',
+    );
 
     try {
-      await _supabaseProvider.client.from('utility_metadata').update({
-        'is_paid': newStatus,
-        'paid_at': newStatus ? DateTime.now().toIso8601String() : null,
-      }).eq('id', meta.id!);
+      await _supabaseProvider.client
+          .from('utility_metadata')
+          .update({
+            'payment_status': newStatus ? 'paid' : 'pending',
+            'payment_date': newStatus
+                ? DateTime.now().toIso8601String().split('T').first
+                : null,
+          })
+          .eq('id', meta.id!);
 
       Get.snackbar(
         'Payment Updated',
@@ -158,7 +183,12 @@ class UtilityBillsController extends GetxController {
 
       loadUtilityBills();
     } catch (e, st) {
-      AppLogger.error('UTILITY_CTRL', 'Error updating payment status: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error updating payment status: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error',
         e.toString(),
@@ -168,9 +198,43 @@ class UtilityBillsController extends GetxController {
     }
   }
 
+  void confirmPaymentStatus(DocumentModel doc) {
+    final metadata = doc.utilityMetadata;
+    if (metadata == null) return;
+
+    final isUndoingPayment = metadata.isPaid;
+
+    Get.dialog(
+      AlertDialog(
+        title: Text(
+          isUndoingPayment ? 'Mark Bill as Pending?' : 'Mark Bill as Paid?',
+        ),
+        content: Text(
+          isUndoingPayment
+              ? 'Confirm that ${doc.title} should be marked as pending payment again.'
+              : 'Confirm payment of ${doc.title}. This will mark the bill as paid.',
+        ),
+        actions: [
+          TextButton(onPressed: Get.back, child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              await togglePaymentStatus(doc);
+              if (Get.isDialogOpen ?? false) Get.back();
+            },
+            child: Text(
+              isUndoingPayment ? 'Mark as Pending' : 'Confirm Payment',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       if (doc.isPdf) {
         PdfViewerDialog.show(title: doc.title, signedPdfUrl: signedUrl);
       } else if (doc.isImage) {
@@ -182,21 +246,43 @@ class UtilityBillsController extends GetxController {
         }
       }
     } catch (e, st) {
-      AppLogger.error('UTILITY_CTRL', 'Error opening preview: $e', error: e, stackTrace: st);
-      Get.snackbar('Preview Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error opening preview: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Preview Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
   void downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       final uri = Uri.parse(signedUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
     } catch (e, st) {
-      AppLogger.error('UTILITY_CTRL', 'Error downloading document: $e', error: e, stackTrace: st);
-      Get.snackbar('Download Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error downloading document: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Download Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -210,8 +296,18 @@ class UtilityBillsController extends GetxController {
       final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
     } catch (e, st) {
-      AppLogger.error('UTILITY_CTRL', 'Error creating share link: $e', error: e, stackTrace: st);
-      Get.snackbar('Share Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error creating share link: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Share Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -226,7 +322,12 @@ class UtilityBillsController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e, st) {
-      AppLogger.error('UTILITY_CTRL', 'Error moving to trash: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error moving to trash: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error',
         e.toString(),
@@ -234,5 +335,49 @@ class UtilityBillsController extends GetxController {
         colorText: Colors.white,
       );
     }
+  }
+
+  void confirmMoveToTrash(DocumentModel doc) {
+    DocumentDeleteDialog.show(
+      documentTitle: doc.title,
+      onConfirm: () => moveToTrash(doc),
+    );
+  }
+
+  void openEditDocumentDialog(DocumentModel doc) {
+    DocumentEditDialog.show(
+      document: doc,
+      onSave: ({required title, description, documentNumber}) async {
+        try {
+          await _documentRepository.updateDocumentDetails(
+            documentId: doc.id,
+            title: title,
+            description: description,
+            documentNumber: documentNumber,
+          );
+          await loadUtilityBills();
+          Get.snackbar(
+            'Document Updated',
+            'Bill details were saved.',
+            backgroundColor: AppColors.success,
+            colorText: Colors.white,
+          );
+        } catch (e, st) {
+          AppLogger.error(
+            'UTILITY_CTRL',
+            'Error editing bill: $e',
+            error: e,
+            stackTrace: st,
+          );
+          Get.snackbar(
+            'Update Error',
+            e.toString(),
+            backgroundColor: AppColors.error,
+            colorText: Colors.white,
+          );
+          rethrow;
+        }
+      },
+    );
   }
 }

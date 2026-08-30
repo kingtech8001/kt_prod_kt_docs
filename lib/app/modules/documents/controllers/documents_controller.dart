@@ -7,6 +7,7 @@ import 'package:kt_prod_kt_docs/app/data/repositories/category_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -57,7 +58,12 @@ class DocumentsController extends GetxController {
       final cities = await _masterDataRepository.getCities(activeOnly: true);
       dynamicCities.assignAll(cities.map((c) => c.name));
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error loading dynamic cities: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error loading dynamic cities: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
@@ -70,7 +76,12 @@ class DocumentsController extends GetxController {
 
       await fetchFilteredDocuments();
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error in loadCategoriesAndDocuments: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error in loadCategoriesAndDocuments: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error',
         e.toString(),
@@ -83,18 +94,28 @@ class DocumentsController extends GetxController {
   }
 
   Future<void> fetchFilteredDocuments() async {
-    AppLogger.debug('DOCS_CTRL', 'Filtering documents: city=${selectedCity.value}, cat=${selectedCategoryId.value}, search=${searchQuery.value}');
+    AppLogger.debug(
+      'DOCS_CTRL',
+      'Filtering documents: city=${selectedCity.value}, cat=${selectedCategoryId.value}, search=${searchQuery.value}',
+    );
     isLoading.value = true;
     try {
       final docs = await _documentRepository.getDocuments(
-        categoryId: selectedCategoryId.value.isNotEmpty ? selectedCategoryId.value : null,
+        categoryId: selectedCategoryId.value.isNotEmpty
+            ? selectedCategoryId.value
+            : null,
         city: selectedCity.value != 'All Cities' ? selectedCity.value : null,
         status: selectedStatus.value != 'all' ? selectedStatus.value : null,
         searchQuery: searchQuery.value.isNotEmpty ? searchQuery.value : null,
       );
       documents.assignAll(docs);
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error fetching filtered documents: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error fetching filtered documents: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -137,7 +158,9 @@ class DocumentsController extends GetxController {
 
   void previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       if (doc.isPdf) {
         PdfViewerDialog.show(title: doc.title, signedPdfUrl: signedUrl);
       } else if (doc.isImage) {
@@ -149,21 +172,43 @@ class DocumentsController extends GetxController {
         }
       }
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error opening preview: $e', error: e, stackTrace: st);
-      Get.snackbar('Preview Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error opening preview: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Preview Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
   void downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       final uri = Uri.parse(signedUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error downloading: $e', error: e, stackTrace: st);
-      Get.snackbar('Download Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error downloading: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Download Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -177,8 +222,18 @@ class DocumentsController extends GetxController {
       final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error creating share link: $e', error: e, stackTrace: st);
-      Get.snackbar('Share Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error creating share link: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Share Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -193,7 +248,12 @@ class DocumentsController extends GetxController {
         documents[index] = doc.copyWith(isFavorite: updated);
       }
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error toggling favorite: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error toggling favorite: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
@@ -208,7 +268,12 @@ class DocumentsController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e, st) {
-      AppLogger.error('DOCS_CTRL', 'Error moving to trash: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'DOCS_CTRL',
+        'Error moving to trash: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Error',
         e.toString(),
@@ -216,5 +281,49 @@ class DocumentsController extends GetxController {
         colorText: Colors.white,
       );
     }
+  }
+
+  void confirmMoveToTrash(DocumentModel doc) {
+    DocumentDeleteDialog.show(
+      documentTitle: doc.title,
+      onConfirm: () => moveToTrash(doc),
+    );
+  }
+
+  void openEditDocumentDialog(DocumentModel doc) {
+    DocumentEditDialog.show(
+      document: doc,
+      onSave: ({required title, description, documentNumber}) async {
+        try {
+          await _documentRepository.updateDocumentDetails(
+            documentId: doc.id,
+            title: title,
+            description: description,
+            documentNumber: documentNumber,
+          );
+          await fetchFilteredDocuments();
+          Get.snackbar(
+            'Document Updated',
+            'Document details were saved.',
+            backgroundColor: AppColors.success,
+            colorText: Colors.white,
+          );
+        } catch (e, st) {
+          AppLogger.error(
+            'DOCS_CTRL',
+            'Error editing document: $e',
+            error: e,
+            stackTrace: st,
+          );
+          Get.snackbar(
+            'Update Error',
+            e.toString(),
+            backgroundColor: AppColors.error,
+            colorText: Colors.white,
+          );
+          rethrow;
+        }
+      },
+    );
   }
 }

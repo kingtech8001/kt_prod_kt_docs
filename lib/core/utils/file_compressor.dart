@@ -49,6 +49,7 @@ class CompressionResult {
   String get originalSizeFormatted => formatFileSize(originalSize);
   String get compressedSizeFormatted => formatFileSize(compressedSize);
   String get savingsFormatted => '-${savingsPercent.toStringAsFixed(0)}%';
+  bool get hasSizeReduction => compressedSize < originalSize;
 
   static String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
@@ -62,7 +63,17 @@ class FileCompressor {
 
   static bool isImage(String fileName) {
     final ext = fileName.toLowerCase().split('.').last;
-    return ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'tiff', 'heic', 'jfif'].contains(ext);
+    return [
+      'jpg',
+      'jpeg',
+      'png',
+      'webp',
+      'bmp',
+      'gif',
+      'tiff',
+      'heic',
+      'jfif',
+    ].contains(ext);
   }
 
   static bool isPdf(String fileName) {
@@ -112,10 +123,16 @@ class FileCompressor {
       onProgress?.call(0.15, 'Reading image data...');
       await Future.delayed(const Duration(milliseconds: 30));
 
-      AppLogger.info('COMPRESSOR', 'Starting image compression: $fileName (Quality: $quality%, MaxDim: $maxDimension px)');
+      AppLogger.info(
+        'COMPRESSOR',
+        'Starting image compression: $fileName (Quality: $quality%, MaxDim: $maxDimension px)',
+      );
       final decodedImage = img.decodeImage(bytes);
       if (decodedImage == null) {
-        AppLogger.warning('COMPRESSOR', 'Failed to decode image bytes for $fileName');
+        AppLogger.warning(
+          'COMPRESSOR',
+          'Failed to decode image bytes for $fileName',
+        );
         return null;
       }
 
@@ -141,7 +158,9 @@ class FileCompressor {
         img.encodeJpg(processedImage, quality: quality),
       );
 
-      final baseName = fileName.contains('.') ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
+      final baseName = fileName.contains('.')
+          ? fileName.substring(0, fileName.lastIndexOf('.'))
+          : fileName;
       final compName = '$baseName.jpg';
 
       onProgress?.call(1.0, 'Compression complete!');
@@ -150,7 +169,7 @@ class FileCompressor {
       AppLogger.info(
         'COMPRESSOR',
         'Compressed image $fileName: ${bytes.length} B -> ${compressedBytes.length} B '
-        '(-${(((bytes.length - compressedBytes.length) / bytes.length) * 100).toStringAsFixed(1)}% savings)',
+            '(-${(((bytes.length - compressedBytes.length) / bytes.length) * 100).toStringAsFixed(1)}% savings)',
       );
 
       return CompressionResult(
@@ -170,7 +189,12 @@ class FileCompressor {
         compressedHeight: processedImage.height,
       );
     } catch (e, st) {
-      AppLogger.error('COMPRESSOR', 'Exception during image compression: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'COMPRESSOR',
+        'Exception during image compression: $e',
+        error: e,
+        stackTrace: st,
+      );
       return null;
     }
   }
@@ -184,13 +208,17 @@ class FileCompressor {
     ProgressCallback? onProgress,
   }) async {
     try {
-      AppLogger.info('COMPRESSOR', 'Starting PDF compression on $fileName (${bytes.length} bytes, Quality: $quality%)');
+      AppLogger.info(
+        'COMPRESSOR',
+        'Starting PDF compression on $fileName (${bytes.length} bytes, Quality: $quality%)',
+      );
 
       onProgress?.call(0.20, 'Analyzing PDF structure & fonts...');
       await Future.delayed(const Duration(milliseconds: 30));
 
-      // 1. First Pass: Syncfusion PDF structural optimization
-      Uint8List workingPdfBytes = bytes;
+      // Re-save with the PDF library only. Do not rewrite PDF objects manually:
+      // a low-level stream/xref rewrite can corrupt otherwise valid documents.
+      Uint8List finalPdfBytes = bytes;
       try {
         final pdfDoc = PdfDocument(inputBytes: bytes);
         pdfDoc.compressionLevel = PdfCompressionLevel.best;
@@ -198,31 +226,20 @@ class FileCompressor {
         final resavedBytes = Uint8List.fromList(pdfDoc.saveSync());
         pdfDoc.dispose();
 
-        if (resavedBytes.isNotEmpty && resavedBytes.length < bytes.length) {
-          workingPdfBytes = resavedBytes;
+        if (resavedBytes.isNotEmpty &&
+            resavedBytes.length < bytes.length &&
+            _isReadablePdf(resavedBytes)) {
+          finalPdfBytes = resavedBytes;
         }
       } catch (e) {
-        AppLogger.warning('COMPRESSOR', 'Syncfusion PDF initial pass note: $e');
+        AppLogger.warning(
+          'COMPRESSOR',
+          'PDF compression fallback to original file: $e',
+        );
       }
 
-      onProgress?.call(0.50, 'Scanning embedded streams & images ($quality% quality)...');
+      onProgress?.call(0.90, 'Validating optimized PDF...');
       await Future.delayed(const Duration(milliseconds: 30));
-
-      // 2. Second Pass: Xref-safe embedded JPEG stream optimization
-      final optResult = await _optimizePdfStreamsWithXref(
-        workingPdfBytes,
-        quality: quality,
-        maxDimension: maxDimension,
-        onProgress: onProgress,
-      );
-
-      onProgress?.call(0.90, 'Finalizing xref tables & calculating size...');
-      await Future.delayed(const Duration(milliseconds: 30));
-
-      Uint8List finalPdfBytes = optResult.bytes;
-      if (finalPdfBytes.length > bytes.length && workingPdfBytes.length <= bytes.length) {
-        finalPdfBytes = workingPdfBytes;
-      }
 
       final savings = bytes.isNotEmpty
           ? ((bytes.length - finalPdfBytes.length) / bytes.length) * 100
@@ -234,7 +251,7 @@ class FileCompressor {
       AppLogger.info(
         'COMPRESSOR',
         'PDF Optimization complete for $fileName: ${bytes.length} B -> ${finalPdfBytes.length} B '
-        '(-${savings.toStringAsFixed(1)}% savings, hasEmbeddedImages: ${optResult.hasEmbeddedImages})',
+            '(-${savings.toStringAsFixed(1)}% savings)',
       );
 
       return CompressionResult(
@@ -247,11 +264,27 @@ class FileCompressor {
         mimeType: 'application/pdf',
         quality: quality,
         isPdf: true,
-        hasEmbeddedImages: optResult.hasEmbeddedImages,
+        hasEmbeddedImages: false,
       );
     } catch (e, st) {
-      AppLogger.error('COMPRESSOR', 'Exception during PDF compression: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'COMPRESSOR',
+        'Exception during PDF compression: $e',
+        error: e,
+        stackTrace: st,
+      );
       return null;
+    }
+  }
+
+  static bool _isReadablePdf(Uint8List bytes) {
+    try {
+      final document = PdfDocument(inputBytes: bytes);
+      document.dispose();
+      return true;
+    } catch (e) {
+      AppLogger.warning('COMPRESSOR', 'Compressed PDF validation failed: $e');
+      return false;
     }
   }
 
@@ -284,11 +317,15 @@ class FileCompressor {
         if (nextObjPos == -1) break;
 
         int lineStart = nextObjPos;
-        while (lineStart > currentIndex && pdfData[lineStart - 1] != 10 && pdfData[lineStart - 1] != 13) {
+        while (lineStart > currentIndex &&
+            pdfData[lineStart - 1] != 10 &&
+            pdfData[lineStart - 1] != 13) {
           lineStart--;
         }
 
-        final objDeclStr = latin1.decode(pdfData.sublist(lineStart, nextObjPos + 3));
+        final objDeclStr = latin1.decode(
+          pdfData.sublist(lineStart, nextObjPos + 3),
+        );
         final match = objRegex.firstMatch(objDeclStr);
         if (match == null) {
           currentIndex = nextObjPos + 3;
@@ -298,7 +335,11 @@ class FileCompressor {
         final objNum = int.parse(match.group(1)!);
         if (objNum > maxObjNum) maxObjNum = objNum;
 
-        final nextEndObjPos = _findPattern(pdfData, endObjMarker, nextObjPos + 3);
+        final nextEndObjPos = _findPattern(
+          pdfData,
+          endObjMarker,
+          nextObjPos + 3,
+        );
         if (nextEndObjPos == -1) break;
 
         final objFullEnd = nextEndObjPos + endObjMarker.length;
@@ -308,28 +349,47 @@ class FileCompressor {
         final streamPosInObj = _findPattern(objBytes, streamMarker, 0);
         if (streamPosInObj != -1) {
           int streamDataStart = streamPosInObj + streamMarker.length;
-          if (streamDataStart < objBytes.length && objBytes[streamDataStart] == 13) streamDataStart++;
-          if (streamDataStart < objBytes.length && objBytes[streamDataStart] == 10) streamDataStart++;
+          if (streamDataStart < objBytes.length &&
+              objBytes[streamDataStart] == 13)
+            streamDataStart++;
+          if (streamDataStart < objBytes.length &&
+              objBytes[streamDataStart] == 10)
+            streamDataStart++;
 
-          final endStreamPosInObj = _findPattern(objBytes, endStreamMarker, streamDataStart);
+          final endStreamPosInObj = _findPattern(
+            objBytes,
+            endStreamMarker,
+            streamDataStart,
+          );
           if (endStreamPosInObj != -1) {
             int streamDataEnd = endStreamPosInObj;
-            if (streamDataEnd > streamDataStart && objBytes[streamDataEnd - 1] == 10) streamDataEnd--;
-            if (streamDataEnd > streamDataStart && objBytes[streamDataEnd - 1] == 13) streamDataEnd--;
+            if (streamDataEnd > streamDataStart &&
+                objBytes[streamDataEnd - 1] == 10)
+              streamDataEnd--;
+            if (streamDataEnd > streamDataStart &&
+                objBytes[streamDataEnd - 1] == 13)
+              streamDataEnd--;
 
             final streamData = objBytes.sublist(streamDataStart, streamDataEnd);
 
             // Detect JPEG (magic bytes 0xFF, 0xD8, 0xFF)
-            if (streamData.length > 4 && streamData[0] == 0xFF && streamData[1] == 0xD8 && streamData[2] == 0xFF) {
+            if (streamData.length > 4 &&
+                streamData[0] == 0xFF &&
+                streamData[1] == 0xD8 &&
+                streamData[2] == 0xFF) {
               foundAnyImages = true;
-              onProgress?.call(0.70, 'Re-encoding embedded image stream #$objNum ($quality% quality)...');
+              onProgress?.call(
+                0.70,
+                'Re-encoding embedded image stream #$objNum ($quality% quality)...',
+              );
               await Future.delayed(const Duration(milliseconds: 10));
 
               try {
                 final decoded = img.decodeJpg(streamData);
                 if (decoded != null) {
                   img.Image processed = decoded;
-                  if (decoded.width > maxDimension || decoded.height > maxDimension) {
+                  if (decoded.width > maxDimension ||
+                      decoded.height > maxDimension) {
                     if (decoded.width >= decoded.height) {
                       processed = img.copyResize(decoded, width: maxDimension);
                     } else {
@@ -337,12 +397,19 @@ class FileCompressor {
                     }
                   }
 
-                  final compressed = Uint8List.fromList(img.encodeJpg(processed, quality: quality));
+                  final compressed = Uint8List.fromList(
+                    img.encodeJpg(processed, quality: quality),
+                  );
                   if (compressed.length < streamData.length) {
-                    var dictStr = latin1.decode(objBytes.sublist(0, streamDataStart));
+                    var dictStr = latin1.decode(
+                      objBytes.sublist(0, streamDataStart),
+                    );
                     final lengthRegex = RegExp(r'/Length\s+(\d+)');
                     if (lengthRegex.hasMatch(dictStr)) {
-                      dictStr = dictStr.replaceFirst(lengthRegex, '/Length ${compressed.length}');
+                      dictStr = dictStr.replaceFirst(
+                        lengthRegex,
+                        '/Length ${compressed.length}',
+                      );
                     }
 
                     final newObjOffset = output.length;
@@ -379,10 +446,15 @@ class FileCompressor {
         final startXrefMarker = ascii.encode('startxref');
         final startXrefPos = _findPattern(pdfData, startXrefMarker, trailerPos);
         if (startXrefPos != -1) {
-          trailerStr = latin1.decode(pdfData.sublist(trailerPos, startXrefPos)).trim();
+          trailerStr = latin1
+              .decode(pdfData.sublist(trailerPos, startXrefPos))
+              .trim();
           final sizeRegex = RegExp(r'/Size\s+(\d+)');
           if (sizeRegex.hasMatch(trailerStr)) {
-            trailerStr = trailerStr.replaceFirst(sizeRegex, '/Size ${maxObjNum + 1}');
+            trailerStr = trailerStr.replaceFirst(
+              sizeRegex,
+              '/Size ${maxObjNum + 1}',
+            );
           }
         }
       }

@@ -94,7 +94,9 @@ class DocumentUploadController extends GetxController {
   final purchaseAmountController = TextEditingController();
   final purchaseDate = Rx<DateTime>(DateTime.now());
   final warrantyMonths = 12.obs;
-  final warrantyValidUpto = Rx<DateTime>(DateTime.now().add(const Duration(days: 365)));
+  final warrantyValidUpto = Rx<DateTime>(
+    DateTime.now().add(const Duration(days: 365)),
+  );
   final customerCareNumberController = TextEditingController();
 
   // Personal / Identity Specific Fields
@@ -129,7 +131,9 @@ class DocumentUploadController extends GetxController {
   }
 
   bool get selectedDocTypeHasExpiry {
-    final type = dynamicPersonalDocTypes.firstWhereOrNull((t) => t.name == selectedPersonalDocTypeName.value);
+    final type = dynamicPersonalDocTypes.firstWhereOrNull(
+      (t) => t.name == selectedPersonalDocTypeName.value,
+    );
     return type?.hasExpiry ?? false;
   }
 
@@ -154,36 +158,54 @@ class DocumentUploadController extends GetxController {
         selectedBrand.value = bList.first.name;
       }
 
-      final sList = await _masterDataRepository.getApplianceSubcategories(activeOnly: true);
+      final sList = await _masterDataRepository.getApplianceSubcategories(
+        activeOnly: true,
+      );
       if (sList.isNotEmpty) {
         dynamicApplianceSubcategories.assignAll(sList.map((s) => s.name));
       }
 
-      final pList = await _masterDataRepository.getUtilityProviders(activeOnly: true);
+      final pList = await _masterDataRepository.getUtilityProviders(
+        activeOnly: true,
+      );
       if (pList.isNotEmpty) {
-        dynamicUtilityTypes.assignAll(pList.map((p) => p.utilityType).toSet().toList());
+        dynamicUtilityTypes.assignAll(
+          pList.map((p) => p.utilityType).toSet().toList(),
+        );
       }
 
-      final personList = await _masterDataRepository.getPersons(activeOnly: true);
+      final personList = await _masterDataRepository.getPersons(
+        activeOnly: true,
+      );
       if (personList.isNotEmpty) {
         dynamicPersons.assignAll(personList);
         selectedPersonId.value = personList.first.id;
         selectedPersonName.value = personList.first.fullName;
       }
 
-      final docTypeList = await _masterDataRepository.getPersonalDocTypes(activeOnly: true);
+      final docTypeList = await _masterDataRepository.getPersonalDocTypes(
+        activeOnly: true,
+      );
       if (docTypeList.isNotEmpty) {
         dynamicPersonalDocTypes.assignAll(docTypeList);
         selectedPersonalDocTypeId.value = docTypeList.first.id;
         selectedPersonalDocTypeName.value = docTypeList.first.name;
       }
     } catch (e, st) {
-      AppLogger.error('UPLOAD_CTRL', 'Error loading master data: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UPLOAD_CTRL',
+        'Error loading master data: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
   Future<void> loadCategoriesAndFolders() async {
-    AppLogger.debug('UPLOAD_CTRL', 'Loading categories and folders for upload form...');
+    AppLogger.debug(
+      'UPLOAD_CTRL',
+      'Loading categories and folders for upload form...',
+    );
     try {
       final cats = await _categoryRepository.getAllCategories();
       categories.assignAll(cats);
@@ -194,11 +216,23 @@ class DocumentUploadController extends GetxController {
 
       final flds = await _folderRepository.getFolders();
       folders.assignAll(flds);
-      AppLogger.info('UPLOAD_CTRL', 'Categories (${cats.length}) & Folders (${flds.length}) loaded.');
+      AppLogger.info(
+        'UPLOAD_CTRL',
+        'Categories (${cats.length}) & Folders (${flds.length}) loaded.',
+      );
     } catch (e, st) {
-      AppLogger.error('UPLOAD_CTRL', 'Error in loadCategoriesAndFolders: $e', error: e, stackTrace: st);
-      Get.snackbar('Error Loading Setup', e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'UPLOAD_CTRL',
+        'Error in loadCategoriesAndFolders: $e',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Error Loading Setup',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -214,7 +248,9 @@ class DocumentUploadController extends GetxController {
   void onPersonChanged(String? personName) {
     if (personName == null) return;
     selectedPersonName.value = personName;
-    final person = dynamicPersons.firstWhereOrNull((p) => p.fullName == personName);
+    final person = dynamicPersons.firstWhereOrNull(
+      (p) => p.fullName == personName,
+    );
     selectedPersonId.value = person?.id;
     _updateTitleForPersonalDoc();
   }
@@ -222,7 +258,9 @@ class DocumentUploadController extends GetxController {
   void onPersonalDocTypeChanged(String? docTypeName) {
     if (docTypeName == null) return;
     selectedPersonalDocTypeName.value = docTypeName;
-    final type = dynamicPersonalDocTypes.firstWhereOrNull((t) => t.name == docTypeName);
+    final type = dynamicPersonalDocTypes.firstWhereOrNull(
+      (t) => t.name == docTypeName,
+    );
     selectedPersonalDocTypeId.value = type?.id;
     selectedSubcategory.value = docTypeName;
     _updateTitleForPersonalDoc();
@@ -230,21 +268,28 @@ class DocumentUploadController extends GetxController {
 
   void _updateTitleForPersonalDoc() {
     if (isPersonalDoc) {
-      titleController.text = '${selectedPersonalDocTypeName.value} - ${selectedPersonName.value}';
+      titleController.text =
+          '${selectedPersonalDocTypeName.value} - ${selectedPersonName.value}';
     }
   }
 
   void updateSubcategoriesForCategory(String catCode) {
     if (catCode == 'utility_bills') {
-      final list = dynamicUtilityTypes.isNotEmpty ? dynamicUtilityTypes : AppConstants.utilitySubcategories;
+      final list = dynamicUtilityTypes.isNotEmpty
+          ? dynamicUtilityTypes
+          : AppConstants.utilitySubcategories;
       selectedSubcategory.value = list.first;
-      if (titleController.text.isEmpty || titleController.text.contains(' - ')) {
+      if (titleController.text.isEmpty ||
+          titleController.text.contains(' - ')) {
         titleController.text = 'Electricity / Light Bill';
       }
     } else if (catCode == 'appliance_warranty') {
-      final list = dynamicApplianceSubcategories.isNotEmpty ? dynamicApplianceSubcategories : AppConstants.applianceSubcategories;
+      final list = dynamicApplianceSubcategories.isNotEmpty
+          ? dynamicApplianceSubcategories
+          : AppConstants.applianceSubcategories;
       selectedSubcategory.value = list.first;
-      if (titleController.text.isEmpty || titleController.text.contains(' - ')) {
+      if (titleController.text.isEmpty ||
+          titleController.text.contains(' - ')) {
         titleController.text = 'Appliance Warranty Invoice';
       }
     } else if (catCode == 'identity_docs') {
@@ -278,7 +323,10 @@ class DocumentUploadController extends GetxController {
     Timer? ticker;
     ticker = Timer.periodic(const Duration(milliseconds: 70), (t) {
       if (compressionProgress.value < 0.90) {
-        compressionProgress.value = (compressionProgress.value + 0.05).clamp(0.12, 0.90);
+        compressionProgress.value = (compressionProgress.value + 0.05).clamp(
+          0.12,
+          0.90,
+        );
       }
     });
 
@@ -300,14 +348,21 @@ class DocumentUploadController extends GetxController {
 
       ticker.cancel();
       compressionProgress.value = 1.0;
-      compressionProgressText.value = 'Optimization complete!';
+      compressionProgressText.value = result?.hasSizeReduction == true
+          ? 'Optimization complete!'
+          : 'Original PDF retained because compression was not safe or smaller.';
       await Future.delayed(const Duration(milliseconds: 60));
 
       compressionResult.value = result;
-      useCompressed.value = true; // Always default to compressed as requested
+      useCompressed.value = result?.hasSizeReduction == true;
     } catch (e, st) {
       ticker.cancel();
-      AppLogger.error('UPLOAD_CTRL', 'Error compressing file: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UPLOAD_CTRL',
+        'Error compressing file: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       ticker.cancel();
       isCompressing.value = false;
@@ -321,7 +376,10 @@ class DocumentUploadController extends GetxController {
   }
 
   void onFileSelected(PlatformFile file) {
-    AppLogger.info('UPLOAD_CTRL', 'File selected: ${file.name}, Size: ${file.size} bytes');
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      'File selected: ${file.name}, Size: ${file.size} bytes',
+    );
     selectedFile.value = file;
     if (titleController.text.isEmpty) {
       if (isPersonalDoc) {
@@ -340,7 +398,9 @@ class DocumentUploadController extends GetxController {
 
   void updateWarrantyMonths(int months) {
     warrantyMonths.value = months;
-    warrantyValidUpto.value = purchaseDate.value.add(Duration(days: months * 30));
+    warrantyValidUpto.value = purchaseDate.value.add(
+      Duration(days: months * 30),
+    );
   }
 
   Future<void> submitUpload() async {
@@ -386,14 +446,19 @@ class DocumentUploadController extends GetxController {
     }
 
     isLoading.value = true;
-    AppLogger.info('UPLOAD_CTRL', 'Starting secure document upload for: $title (${file.name})');
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      'Starting secure document upload for: $title (${file.name})',
+    );
 
     try {
       final mimeType = lookupMimeType(file.name) ?? 'application/octet-stream';
 
       // 1. Prepare Address Metadata (Only if city filter is enabled for this category)
       AddressModel? address;
-      if (showCityFilter && (selectedCity.value.isNotEmpty || areaLocalityController.text.isNotEmpty)) {
+      if (showCityFilter &&
+          (selectedCity.value.isNotEmpty ||
+              areaLocalityController.text.isNotEmpty)) {
         address = AddressModel(
           premiseName: premiseNameController.text.trim().isNotEmpty
               ? premiseNameController.text.trim()
@@ -408,7 +473,9 @@ class DocumentUploadController extends GetxController {
               ? areaLocalityController.text.trim()
               : 'General',
           city: selectedCity.value,
-          state: stateController.text.trim().isNotEmpty ? stateController.text.trim() : 'Gujarat',
+          state: stateController.text.trim().isNotEmpty
+              ? stateController.text.trim()
+              : 'Gujarat',
           postalCode: postalCodeController.text.trim().isNotEmpty
               ? postalCodeController.text.trim()
               : null,
@@ -434,14 +501,19 @@ class DocumentUploadController extends GetxController {
           billDate: billDate.value,
           dueDate: dueDate.value,
           paymentStatus: utilityPaymentStatus.value,
-          paymentDate: utilityPaymentStatus.value == 'paid' ? DateTime.now() : null,
+          paymentDate: utilityPaymentStatus.value == 'paid'
+              ? DateTime.now()
+              : null,
         );
       }
 
       ApplianceWarrantyModel? applianceMeta;
       if (isApplianceWarranty) {
-        final amount = double.tryParse(purchaseAmountController.text.trim()) ?? 0.0;
-        final brand = selectedBrand.value == 'Other' && customBrandController.text.isNotEmpty
+        final amount =
+            double.tryParse(purchaseAmountController.text.trim()) ?? 0.0;
+        final brand =
+            selectedBrand.value == 'Other' &&
+                customBrandController.text.isNotEmpty
             ? customBrandController.text.trim()
             : selectedBrand.value;
 
@@ -470,7 +542,8 @@ class DocumentUploadController extends GetxController {
           purchaseAmount: amount,
           warrantyPeriodMonths: warrantyMonths.value,
           warrantyValidUpto: warrantyValidUpto.value,
-          customerCareNumber: customerCareNumberController.text.trim().isNotEmpty
+          customerCareNumber:
+              customerCareNumberController.text.trim().isNotEmpty
               ? customerCareNumberController.text.trim()
               : null,
         );
@@ -488,7 +561,8 @@ class DocumentUploadController extends GetxController {
               : null,
           issueDate: personalIssueDate.value,
           expiryDate: personalExpiryDate.value,
-          issuingAuthority: personalIssuingAuthorityController.text.trim().isNotEmpty
+          issuingAuthority:
+              personalIssuingAuthorityController.text.trim().isNotEmpty
               ? personalIssuingAuthorityController.text.trim()
               : null,
           notes: personalNotesController.text.trim().isNotEmpty
@@ -538,7 +612,10 @@ class DocumentUploadController extends GetxController {
         personalMetadata: personalMeta,
       );
 
-      AppLogger.info('UPLOAD_CTRL', 'Document successfully created in Vault! ID: ${createdDoc.id}');
+      AppLogger.info(
+        'UPLOAD_CTRL',
+        'Document successfully created in Vault! ID: ${createdDoc.id}',
+      );
 
       Get.snackbar(
         'Upload Successful',
@@ -558,7 +635,12 @@ class DocumentUploadController extends GetxController {
         Get.offNamed(AppRoutes.DOCUMENTS);
       }
     } catch (e, st) {
-      AppLogger.error('UPLOAD_CTRL', 'Fatal error during document upload: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UPLOAD_CTRL',
+        'Fatal error during document upload: $e',
+        error: e,
+        stackTrace: st,
+      );
       Get.snackbar(
         'Upload Failed',
         'Error uploading file: $e',

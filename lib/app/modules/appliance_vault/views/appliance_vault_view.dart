@@ -54,32 +54,52 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                               height: 36,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
-                                itemCount: ['All Brands', ...AppConstants.popularBrands].length,
-                                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                                itemCount: [
+                                  'All Brands',
+                                  ...AppConstants.popularBrands,
+                                ].length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 8),
                                 itemBuilder: (context, index) {
-                                  final brand = ['All Brands', ...AppConstants.popularBrands][index];
-                                  final isSelected = controller.selectedBrand.value.toLowerCase() ==
+                                  final brand = [
+                                    'All Brands',
+                                    ...AppConstants.popularBrands,
+                                  ][index];
+                                  final isSelected =
+                                      controller.selectedBrand.value
+                                          .toLowerCase() ==
                                       brand.toLowerCase();
 
                                   return InkWell(
-                                    onTap: () => controller.onBrandSelected(brand),
+                                    onTap: () =>
+                                        controller.onBrandSelected(brand),
                                     borderRadius: BorderRadius.circular(20),
                                     child: Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 6,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: isSelected ? AppColors.warrantyEmerald : AppColors.background,
+                                        color: isSelected
+                                            ? AppColors.warrantyEmerald
+                                            : AppColors.background,
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
-                                          color: isSelected ? AppColors.warrantyEmerald : AppColors.border,
+                                          color: isSelected
+                                              ? AppColors.warrantyEmerald
+                                              : AppColors.border,
                                         ),
                                       ),
                                       child: Center(
                                         child: Text(
                                           brand,
                                           style: TextStyle(
-                                            color: isSelected ? Colors.white : AppColors.textPrimary,
-                                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : AppColors.textPrimary,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
                                             fontSize: 12,
                                           ),
                                         ),
@@ -108,47 +128,72 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                           Expanded(
                             child: SizedBox(
                               height: 36,
-                              child: Builder(builder: (context) {
-                                final brandList = controller.dynamicBrands.isNotEmpty
-                                    ? ['All Brands', ...controller.dynamicBrands]
-                                    : ['All Brands', ...AppConstants.popularBrands];
-                                return ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: brandList.length,
-                                  separatorBuilder: (context, index) => const SizedBox(width: 8),
-                                  itemBuilder: (context, index) {
-                                    final brand = brandList[index];
-                                    final isSelected = controller.selectedBrand.value.toLowerCase() ==
-                                        brand.toLowerCase();
+                              child: Builder(
+                                builder: (context) {
+                                  final brandList =
+                                      controller.dynamicBrands.isNotEmpty
+                                      ? [
+                                          'All Brands',
+                                          ...controller.dynamicBrands,
+                                        ]
+                                      : [
+                                          'All Brands',
+                                          ...AppConstants.popularBrands,
+                                        ];
+                                  return ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: brandList.length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(width: 8),
+                                    itemBuilder: (context, index) {
+                                      final brand = brandList[index];
+                                      final isSelected =
+                                          controller.selectedBrand.value
+                                              .toLowerCase() ==
+                                          brand.toLowerCase();
 
-                                    return InkWell(
-                                      onTap: () => controller.onBrandSelected(brand),
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: isSelected ? AppColors.warrantyEmerald : AppColors.background,
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color: isSelected ? AppColors.warrantyEmerald : AppColors.border,
+                                      return InkWell(
+                                        onTap: () =>
+                                            controller.onBrandSelected(brand),
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 6,
                                           ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            brand,
-                                            style: TextStyle(
-                                              color: isSelected ? Colors.white : AppColors.textPrimary,
-                                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                              fontSize: 12,
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? AppColors.warrantyEmerald
+                                                : AppColors.background,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? AppColors.warrantyEmerald
+                                                  : AppColors.border,
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              brand,
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : AppColors.textPrimary,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w500,
+                                                fontSize: 12,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              }),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ],
@@ -159,79 +204,81 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                   const SizedBox(height: 16),
 
                   // Metrics Row (Responsive 1/2/4 Columns)
-                  LayoutBuilder(builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-                    final card1 = MetricCard(
-                      title: 'TOTAL APPLIANCES',
-                      value: '${controller.totalAppliancesCount.value}',
-                      icon: Icons.devices_other_outlined,
-                      accentColor: AppColors.warrantyEmerald,
-                    );
-                    final card2 = MetricCard(
-                      title: 'ACTIVE WARRANTIES',
-                      value: '${controller.activeWarrantiesCount.value}',
-                      icon: Icons.verified_user_outlined,
-                      accentColor: AppColors.success,
-                    );
-                    final card3 = MetricCard(
-                      title: 'EXPIRING IN 30 DAYS',
-                      value: '${controller.expiringSoonCount.value}',
-                      icon: Icons.warning_amber_rounded,
-                      accentColor: AppColors.warning,
-                    );
-                    final card4 = MetricCard(
-                      title: 'EXPIRED WARRANTIES',
-                      value: '${controller.expiredCount.value}',
-                      icon: Icons.gpp_bad_outlined,
-                      accentColor: AppColors.textMuted,
-                    );
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      final card1 = MetricCard(
+                        title: 'TOTAL APPLIANCES',
+                        value: '${controller.totalAppliancesCount.value}',
+                        icon: Icons.devices_other_outlined,
+                        accentColor: AppColors.warrantyEmerald,
+                      );
+                      final card2 = MetricCard(
+                        title: 'ACTIVE WARRANTIES',
+                        value: '${controller.activeWarrantiesCount.value}',
+                        icon: Icons.verified_user_outlined,
+                        accentColor: AppColors.success,
+                      );
+                      final card3 = MetricCard(
+                        title: 'EXPIRING IN 30 DAYS',
+                        value: '${controller.expiringSoonCount.value}',
+                        icon: Icons.warning_amber_rounded,
+                        accentColor: AppColors.warning,
+                      );
+                      final card4 = MetricCard(
+                        title: 'EXPIRED WARRANTIES',
+                        value: '${controller.expiredCount.value}',
+                        icon: Icons.gpp_bad_outlined,
+                        accentColor: AppColors.textMuted,
+                      );
 
-                    if (width < 600) {
-                      return Column(
-                        children: [
-                          card1,
-                          const SizedBox(height: 10),
-                          card2,
-                          const SizedBox(height: 10),
-                          card3,
-                          const SizedBox(height: 10),
-                          card4,
-                        ],
-                      );
-                    } else if (width < 950) {
-                      return Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(child: card1),
-                              const SizedBox(width: 14),
-                              Expanded(child: card2),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(child: card3),
-                              const SizedBox(width: 14),
-                              Expanded(child: card4),
-                            ],
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Row(
-                        children: [
-                          Expanded(child: card1),
-                          const SizedBox(width: 14),
-                          Expanded(child: card2),
-                          const SizedBox(width: 14),
-                          Expanded(child: card3),
-                          const SizedBox(width: 14),
-                          Expanded(child: card4),
-                        ],
-                      );
-                    }
-                  }),
+                      if (width < 600) {
+                        return Column(
+                          children: [
+                            card1,
+                            const SizedBox(height: 10),
+                            card2,
+                            const SizedBox(height: 10),
+                            card3,
+                            const SizedBox(height: 10),
+                            card4,
+                          ],
+                        );
+                      } else if (width < 950) {
+                        return Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: card1),
+                                const SizedBox(width: 14),
+                                Expanded(child: card2),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(child: card3),
+                                const SizedBox(width: 14),
+                                Expanded(child: card4),
+                              ],
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Row(
+                          children: [
+                            Expanded(child: card1),
+                            const SizedBox(width: 14),
+                            Expanded(child: card2),
+                            const SizedBox(width: 14),
+                            Expanded(child: card3),
+                            const SizedBox(width: 14),
+                            Expanded(child: card4),
+                          ],
+                        );
+                      }
+                    },
+                  ),
                 ],
               ),
             ),
@@ -259,20 +306,28 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                         items: [
                           const DropdownMenuItem(
                             value: 'All Appliances',
-                            child: Text('All Appliances',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'All Appliances',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           ...(controller.dynamicSubcategories.isNotEmpty
                                   ? controller.dynamicSubcategories
                                   : AppConstants.applianceSubcategories)
-                              .map((sub) => DropdownMenuItem(
-                                    value: sub,
-                                    child: Text(sub,
-                                        style: const TextStyle(fontSize: 13)),
-                                  )),
+                              .map(
+                                (sub) => DropdownMenuItem(
+                                  value: sub,
+                                  child: Text(
+                                    sub,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
                         ],
                         onChanged: (val) {
-                          if (val != null) controller.onSubcategorySelected(val);
+                          if (val != null) {
+                            controller.onSubcategorySelected(val);
+                          }
                         },
                       ),
                     ),
@@ -292,23 +347,31 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                         items: const [
                           DropdownMenuItem(
                             value: 'all',
-                            child: Text('All Warranty Statuses',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'All Warranty Statuses',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'active',
-                            child: Text('Active Warranty',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'Active Warranty',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'expiring_soon',
-                            child: Text('Expiring in 30 Days',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'Expiring in 30 Days',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'expired',
-                            child: Text('Expired',
-                                style: TextStyle(fontSize: 13)),
+                            child: Text(
+                              'Expired',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                         ],
                         onChanged: (val) {
@@ -323,9 +386,10 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                   Text(
                     '${controller.applianceDocuments.length} appliances',
                     style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -335,11 +399,13 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
             Expanded(
               child: controller.isLoading.value
                   ? const Center(
-                      child:
-                          CircularProgressIndicator(color: AppColors.primary))
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
                   : controller.applianceDocuments.isEmpty
-                      ? _buildEmptyState()
-                      : _buildApplianceList(),
+                  ? _buildEmptyState()
+                  : _buildApplianceList(),
             ),
           ],
         );
@@ -352,8 +418,11 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.shield_outlined,
-              size: 48, color: AppColors.textMuted),
+          const Icon(
+            Icons.shield_outlined,
+            size: 48,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(height: 12),
           const Text(
             'No appliances or warranty invoices found',
@@ -391,247 +460,290 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
 
         return RepaintBoundary(
           child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: w?.isExpiringSoon == true
-                  ? AppColors.warning.withValues(alpha: 0.5)
-                  : (w?.isExpired == true
-                      ? AppColors.border
-                      : AppColors.warrantyEmerald.withValues(alpha: 0.3)),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: w?.isExpiringSoon == true
+                    ? AppColors.warning.withValues(alpha: 0.5)
+                    : (w?.isExpired == true
+                          ? AppColors.border
+                          : AppColors.warrantyEmerald.withValues(alpha: 0.3)),
               ),
-            ],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 700;
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 700;
 
-              if (isNarrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _buildApplianceIcon(doc.subCategory),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _buildApplianceIcon(doc.subCategory),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  doc.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  'Brand: ${w?.brand ?? "N/A"} • Serial: ${w?.serialNumber ?? "N/A"}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          StatusBadge(
+                            label: w?.warrantyStatusDisplay ?? 'ACTIVE',
+                            type: w?.isExpired == true
+                                ? StatusBadgeType.inactive
+                                : (w?.isExpiringSoon == true
+                                      ? StatusBadgeType.warning
+                                      : StatusBadgeType.success),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                doc.title,
+                                'City: ${addr?.city ?? "N/A"} • Valid To: ${AppFormatters.formatDate(w?.warrantyValidUpto)}',
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: AppColors.textPrimary,
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
-                              Text(
-                                'Brand: ${w?.brand ?? "N/A"} • Serial: ${w?.serialNumber ?? "N/A"}',
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.textSecondary),
+                              if (w?.customerCareNumber != null &&
+                                  w!.customerCareNumber!.isNotEmpty)
+                                Text(
+                                  'Care: ${w.customerCareNumber}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility_outlined,
+                                  size: 18,
+                                ),
+                                onPressed: () =>
+                                    controller.previewDocument(doc),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.download_outlined,
+                                  size: 18,
+                                ),
+                                onPressed: () =>
+                                    controller.downloadDocument(doc),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.share_outlined,
+                                  size: 18,
+                                ),
+                                onPressed: () => controller.shareDocument(doc),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                tooltip: 'Edit invoice details',
+                                onPressed: () =>
+                                    controller.openEditDocumentDialog(doc),
                               ),
                             ],
                           ),
-                        ),
-                        StatusBadge(
-                          label: w?.warrantyStatusDisplay ?? 'ACTIVE',
-                          type: w?.isExpired == true
-                              ? StatusBadgeType.inactive
-                              : (w?.isExpiringSoon == true
-                                  ? StatusBadgeType.warning
-                                  : StatusBadgeType.success),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    _buildApplianceIcon(doc.subCategory),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            doc.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Brand: ${w?.brand ?? "N/A"} • Serial: ${w?.serialNumber ?? "N/A"}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          if (w?.storeVendorName != null)
                             Text(
-                              'City: ${addr?.city ?? "N/A"} • Valid To: ${AppFormatters.formatDate(w?.warrantyValidUpto)}',
+                              'Store: ${w!.storeVendorName} • Invoice: ${w.invoiceNumber}',
                               style: const TextStyle(
-                                  fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                            if (w?.customerCareNumber != null && w!.customerCareNumber!.isNotEmpty)
-                              Text(
-                                'Care: ${w.customerCareNumber}',
-                                style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                                fontSize: 11,
+                                color: AppColors.textMuted,
                               ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            addr?.city ?? 'All Premises',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            'Purchased: ${AppFormatters.formatDate(w?.purchaseDate)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Valid: ${AppFormatters.formatDate(w?.warrantyValidUpto)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            w?.isExpired == true
+                                ? 'Expired'
+                                : '${w?.daysUntilExpiry ?? 0} days remaining',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: w?.isExpiringSoon == true
+                                  ? AppColors.warning
+                                  : (w?.isExpired == true
+                                        ? AppColors.error
+                                        : AppColors.success),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          StatusBadge(
+                            label: w?.warrantyStatusDisplay ?? 'ACTIVE',
+                            type: w?.isExpired == true
+                                ? StatusBadgeType.inactive
+                                : (w?.isExpiringSoon == true
+                                      ? StatusBadgeType.warning
+                                      : StatusBadgeType.success),
+                          ),
+                          if (w?.customerCareNumber != null &&
+                              w!.customerCareNumber!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Care: ${w.customerCareNumber}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility_outlined, size: 20),
+                          tooltip: 'Preview Invoice',
+                          onPressed: () => controller.previewDocument(doc),
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.visibility_outlined, size: 18),
-                              onPressed: () => controller.previewDocument(doc),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.download_outlined, size: 18),
-                              onPressed: () => controller.downloadDocument(doc),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.share_outlined, size: 18),
-                              onPressed: () => controller.shareDocument(doc),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.download_outlined, size: 20),
+                          tooltip: 'Download Invoice',
+                          onPressed: () => controller.downloadDocument(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.share_outlined, size: 20),
+                          tooltip: 'Share Document',
+                          onPressed: () => controller.shareDocument(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          tooltip: 'Edit Invoice Details',
+                          onPressed: () =>
+                              controller.openEditDocumentDialog(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                            color: AppColors.error,
+                          ),
+                          tooltip: 'Move to Trash',
+                          onPressed: () => controller.confirmMoveToTrash(doc),
                         ),
                       ],
                     ),
                   ],
                 );
-              }
-
-              return Row(
-                children: [
-                  _buildApplianceIcon(doc.subCategory),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          doc.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Brand: ${w?.brand ?? "N/A"} • Serial: ${w?.serialNumber ?? "N/A"}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                        if (w?.storeVendorName != null)
-                          Text(
-                            'Store: ${w!.storeVendorName} • Invoice: ${w.invoiceNumber}',
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.textMuted),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          addr?.city ?? 'All Premises',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
-                        Text(
-                          'Purchased: ${AppFormatters.formatDate(w?.purchaseDate)}',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Valid: ${AppFormatters.formatDate(w?.warrantyValidUpto)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          w?.isExpired == true
-                              ? 'Expired'
-                              : '${w?.daysUntilExpiry ?? 0} days remaining',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: w?.isExpiringSoon == true
-                                ? AppColors.warning
-                                : (w?.isExpired == true
-                                    ? AppColors.error
-                                    : AppColors.success),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        StatusBadge(
-                          label: w?.warrantyStatusDisplay ?? 'ACTIVE',
-                          type: w?.isExpired == true
-                              ? StatusBadgeType.inactive
-                              : (w?.isExpiringSoon == true
-                                  ? StatusBadgeType.warning
-                                  : StatusBadgeType.success),
-                        ),
-                        if (w?.customerCareNumber != null &&
-                            w!.customerCareNumber!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Care: ${w.customerCareNumber}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.visibility_outlined, size: 20),
-                        tooltip: 'Preview Invoice',
-                        onPressed: () => controller.previewDocument(doc),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.download_outlined, size: 20),
-                        tooltip: 'Download Invoice',
-                        onPressed: () => controller.downloadDocument(doc),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.share_outlined, size: 20),
-                        tooltip: 'Share Document',
-                        onPressed: () => controller.shareDocument(doc),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            size: 20, color: AppColors.error),
-                        tooltip: 'Move to Trash',
-                        onPressed: () => controller.moveToTrash(doc),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+              },
+            ),
           ),
-        ));
+        );
       },
     );
   }

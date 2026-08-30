@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
@@ -28,8 +29,12 @@ class FavoritesController extends GetxController {
       final docs = await _documentRepository.getDocuments(isFavoriteOnly: true);
       favoriteDocuments.assignAll(docs);
     } catch (e) {
-      Get.snackbar('Error Loading Favorites', e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        'Error Loading Favorites',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -39,17 +44,27 @@ class FavoritesController extends GetxController {
     try {
       await _documentRepository.toggleFavorite(doc.id, true);
       favoriteDocuments.removeWhere((d) => d.id == doc.id);
-      Get.snackbar('Removed', 'Document removed from favorites',
-          backgroundColor: AppColors.primary, colorText: Colors.white);
+      Get.snackbar(
+        'Removed',
+        'Document removed from favorites',
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+      );
     } catch (e) {
-      Get.snackbar('Error', e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       if (doc.isPdf) {
         PdfViewerDialog.show(
           title: doc.title,
@@ -69,34 +84,47 @@ class FavoritesController extends GetxController {
         }
       }
     } catch (e) {
-      Get.snackbar('Preview Failed', e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        'Preview Failed',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
+      );
       final uri = Uri.parse(signedUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      Get.snackbar('Download Failed', e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        'Download Failed',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
   Future<void> shareDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
-      ShareDocumentDialog.show(
-        documentTitle: doc.title,
-        shareUrl: signedUrl,
+      final signedUrl = await _documentRepository.getSignedPreviewUrl(
+        doc.filePath,
       );
+      ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: signedUrl);
     } catch (e) {
-      Get.snackbar('Share Failed', e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        'Share Failed',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -104,11 +132,57 @@ class FavoritesController extends GetxController {
     try {
       await _documentRepository.softDeleteDocument(doc.id);
       favoriteDocuments.removeWhere((d) => d.id == doc.id);
-      Get.snackbar('Moved to Trash', '${doc.title} moved to trash bin',
-          backgroundColor: AppColors.warning, colorText: Colors.white);
+      Get.snackbar(
+        'Moved to Trash',
+        '${doc.title} moved to trash bin',
+        backgroundColor: AppColors.warning,
+        colorText: Colors.white,
+      );
     } catch (e) {
-      Get.snackbar('Error', e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     }
+  }
+
+  void confirmMoveToTrash(DocumentModel doc) {
+    DocumentDeleteDialog.show(
+      documentTitle: doc.title,
+      onConfirm: () => moveToTrash(doc),
+    );
+  }
+
+  void openEditDocumentDialog(DocumentModel doc) {
+    DocumentEditDialog.show(
+      document: doc,
+      onSave: ({required title, description, documentNumber}) async {
+        try {
+          await _documentRepository.updateDocumentDetails(
+            documentId: doc.id,
+            title: title,
+            description: description,
+            documentNumber: documentNumber,
+          );
+          await loadFavorites();
+          Get.snackbar(
+            'Document Updated',
+            'Document details were saved.',
+            backgroundColor: AppColors.success,
+            colorText: Colors.white,
+          );
+        } catch (e) {
+          Get.snackbar(
+            'Update Error',
+            e.toString(),
+            backgroundColor: AppColors.error,
+            colorText: Colors.white,
+          );
+          rethrow;
+        }
+      },
+    );
   }
 }

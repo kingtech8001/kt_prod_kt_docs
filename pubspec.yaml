@@ -54,7 +54,9 @@ dependencies:
   url_launcher: ^6.3.1
   google_fonts: ^6.2.1
   cupertino_icons: ^1.0.8
-  syncfusion_flutter_pdf: ^34.2.4
+  syncfusion_flutter_pdf: ^33.2.12
+  syncfusion_flutter_pdfviewer: 33.2.12
+  http: 1.6.0
 
 dev_dependencies:
   flutter_test:

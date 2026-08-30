@@ -16,7 +16,8 @@ class DocumentsView extends GetView<DocumentsController> {
   Widget build(BuildContext context) {
     return WebScaffold(
       title: 'Document Explorer',
-      subtitle: 'Browse, filter by city or category, preview, and download documents',
+      subtitle:
+          'Browse, filter by city or category, preview, and download documents',
       currentRoute: AppRoutes.DOCUMENTS,
       onSearch: controller.onSearchChanged,
       searchHint: 'Search title, invoice, serial no, or file name...',
@@ -109,16 +110,27 @@ class DocumentsView extends GetView<DocumentsController> {
                             value: controller.selectedCategoryId.value.isEmpty
                                 ? null
                                 : controller.selectedCategoryId.value,
-                            hint: const Text('All Categories', style: TextStyle(fontSize: 13)),
+                            hint: const Text(
+                              'All Categories',
+                              style: TextStyle(fontSize: 13),
+                            ),
                             items: [
                               const DropdownMenuItem(
                                 value: null,
-                                child: Text('All Categories', style: TextStyle(fontSize: 13)),
+                                child: Text(
+                                  'All Categories',
+                                  style: TextStyle(fontSize: 13),
+                                ),
                               ),
-                              ...controller.categories.map((cat) => DropdownMenuItem(
-                                    value: cat.id,
-                                    child: Text(cat.name, style: const TextStyle(fontSize: 13)),
-                                  )),
+                              ...controller.categories.map(
+                                (cat) => DropdownMenuItem(
+                                  value: cat.id,
+                                  child: Text(
+                                    cat.name,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
                             ],
                             onChanged: controller.onCategorySelected,
                           ),
@@ -137,9 +149,27 @@ class DocumentsView extends GetView<DocumentsController> {
                           child: DropdownButton<String>(
                             value: controller.selectedStatus.value,
                             items: const [
-                              DropdownMenuItem(value: 'all', child: Text('All Statuses', style: TextStyle(fontSize: 13))),
-                              DropdownMenuItem(value: 'active', child: Text('Active Only', style: TextStyle(fontSize: 13))),
-                              DropdownMenuItem(value: 'archived', child: Text('Archived', style: TextStyle(fontSize: 13))),
+                              DropdownMenuItem(
+                                value: 'all',
+                                child: Text(
+                                  'All Statuses',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 'active',
+                                child: Text(
+                                  'Active Only',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 'archived',
+                                child: Text(
+                                  'Archived',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
                             ],
                             onChanged: (val) {
                               if (val != null) {
@@ -180,7 +210,9 @@ class DocumentsView extends GetView<DocumentsController> {
                                     : AppColors.textMuted,
                               ),
                               onPressed: () {
-                                if (!controller.isGridView.value) controller.toggleViewMode();
+                                if (!controller.isGridView.value) {
+                                  controller.toggleViewMode();
+                                }
                               },
                               tooltip: 'Grid View',
                             ),
@@ -193,7 +225,9 @@ class DocumentsView extends GetView<DocumentsController> {
                                     : AppColors.textMuted,
                               ),
                               onPressed: () {
-                                if (controller.isGridView.value) controller.toggleViewMode();
+                                if (controller.isGridView.value) {
+                                  controller.toggleViewMode();
+                                }
                               },
                               tooltip: 'List View',
                             ),
@@ -209,12 +243,16 @@ class DocumentsView extends GetView<DocumentsController> {
             // Content Area
             Expanded(
               child: controller.isLoading.value
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
                   : controller.documents.isEmpty
-                      ? _buildEmptyState()
-                      : controller.isGridView.value
-                          ? _buildGridView()
-                          : _buildListView(),
+                  ? _buildEmptyState()
+                  : controller.isGridView.value
+                  ? _buildGridView()
+                  : _buildListView(),
             ),
           ],
         );
@@ -227,7 +265,11 @@ class DocumentsView extends GetView<DocumentsController> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.search_off_outlined, size: 48, color: AppColors.textMuted),
+          const Icon(
+            Icons.search_off_outlined,
+            size: 48,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(height: 12),
           const Text(
             'No documents match your filters',
@@ -289,7 +331,8 @@ class DocumentsView extends GetView<DocumentsController> {
               onDownload: () => controller.downloadDocument(doc),
               onShare: () => controller.shareDocument(doc),
               onToggleFavorite: () => controller.toggleFavorite(doc),
-              onDelete: () => controller.moveToTrash(doc),
+              onEdit: () => controller.openEditDocumentDialog(doc),
+              onDelete: () => controller.confirmMoveToTrash(doc),
             );
           },
         );
@@ -336,12 +379,18 @@ class DocumentsView extends GetView<DocumentsController> {
                     children: [
                       Text(
                         doc.title,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${doc.subCategory} • ${doc.city} • ${AppFormatters.formatFileSize(doc.fileSize)} • ${AppFormatters.formatDate(doc.createdAt)}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -354,7 +403,9 @@ class DocumentsView extends GetView<DocumentsController> {
                 IconButton(
                   icon: Icon(
                     doc.isFavorite ? Icons.star : Icons.star_border,
-                    color: doc.isFavorite ? AppColors.starFilled : AppColors.textMuted,
+                    color: doc.isFavorite
+                        ? AppColors.starFilled
+                        : AppColors.textMuted,
                     size: 20,
                   ),
                   onPressed: () => controller.toggleFavorite(doc),
@@ -372,8 +423,17 @@ class DocumentsView extends GetView<DocumentsController> {
                   onPressed: () => controller.shareDocument(doc),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
-                  onPressed: () => controller.moveToTrash(doc),
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'Edit details',
+                  onPressed: () => controller.openEditDocumentDialog(doc),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: AppColors.error,
+                  ),
+                  onPressed: () => controller.confirmMoveToTrash(doc),
                 ),
               ],
             ),
