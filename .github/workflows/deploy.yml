@@ -51,7 +51,7 @@ jobs:
           # Dynamically extract repository name from GITHUB_REPOSITORY (e.g. USERNAME/REPO_NAME -> /REPO_NAME/)
           REPO_NAME=$(echo "${{ github.repository }}" | awk -F '/' '{print $2}')
           echo "Building for repository: $REPO_NAME"
-          flutter build web --release --base-href "/$REPO_NAME/"
+          flutter build web --release --web-renderer auto --base-href "/$REPO_NAME/"
 
       - name: Configure SPA Routing (Copy index.html to 404.html)
         run: |

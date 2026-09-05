@@ -18,7 +18,8 @@ class WebSidebar extends StatelessWidget {
     required this.onSignOut,
   });
 
-  Widget _buildNavItem({
+  Widget _buildNavItem(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String route,
@@ -33,6 +34,9 @@ class WebSidebar extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
+            if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
+              Navigator.of(context).pop();
+            }
             if (currentRoute != route) {
               Get.toNamed(route);
             }
@@ -158,16 +162,19 @@ class WebSidebar extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 children: [
                   _buildNavItem(
+                    context,
                     icon: Icons.dashboard_outlined,
                     title: 'Dashboard',
                     route: AppRoutes.DASHBOARD,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.description_outlined,
                     title: 'All Documents',
                     route: AppRoutes.DOCUMENTS,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.bolt_outlined,
                     title: 'Utility Bills',
                     route: AppRoutes.UTILITY_BILLS,
@@ -175,6 +182,7 @@ class WebSidebar extends StatelessWidget {
                     badgeColor: AppColors.utilityAmber,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.shield_outlined,
                     title: 'Appliance Vault',
                     route: AppRoutes.APPLIANCES,
@@ -182,6 +190,7 @@ class WebSidebar extends StatelessWidget {
                     badgeColor: AppColors.warrantyEmerald,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.badge_outlined,
                     title: 'Personal Vault',
                     route: AppRoutes.PERSONAL_DOCS,
@@ -189,27 +198,32 @@ class WebSidebar extends StatelessWidget {
                     badgeColor: const Color(0xFF8B5CF6),
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.folder_outlined,
                     title: 'Folders',
                     route: AppRoutes.FOLDERS,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.star_border_outlined,
                     title: 'Favorites',
                     route: AppRoutes.FAVORITES,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.delete_outline,
                     title: 'Trash Bin',
                     route: AppRoutes.TRASH,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.history_outlined,
                     title: 'Activity Logs',
                     route: AppRoutes.ACTIVITY_LOGS,
                   ),
                   if (isAdmin)
                     _buildNavItem(
+                      context,
                       icon: Icons.admin_panel_settings_outlined,
                       title: 'Staff & Roles',
                       route: AppRoutes.USERS,
@@ -217,11 +231,13 @@ class WebSidebar extends StatelessWidget {
                       badgeColor: AppColors.primaryLight,
                     ),
                   _buildNavItem(
+                    context,
                     icon: Icons.person_outline,
                     title: 'My Profile',
                     route: AppRoutes.PROFILE,
                   ),
                   _buildNavItem(
+                    context,
                     icon: Icons.settings_outlined,
                     title: 'Settings',
                     route: AppRoutes.SETTINGS,
@@ -240,6 +256,9 @@ class WebSidebar extends StatelessWidget {
                   Expanded(
                     child: InkWell(
                       onTap: () {
+                        if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
+                          Navigator.of(context).pop();
+                        }
                         if (currentRoute != AppRoutes.PROFILE) {
                           Get.toNamed(AppRoutes.PROFILE);
                         }
