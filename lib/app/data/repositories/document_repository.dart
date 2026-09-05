@@ -263,6 +263,11 @@ class DocumentRepository {
           ? fileName.split('.').last.toLowerCase()
           : 'pdf';
 
+      if (applianceWarranty != null) {
+        extraAttributes['appliance_items'] =
+            applianceWarranty.items.map((i) => i.toJson()).toList();
+      }
+
       final docData = {
         'id': docId,
         'title': title,
@@ -305,9 +310,21 @@ class DocumentRepository {
       if (applianceWarranty != null) {
         final warrantyMap = applianceWarranty.toJson();
         warrantyMap['document_id'] = docId;
-        await _provider.client
-            .from('appliance_warranty_metadata')
-            .insert(warrantyMap);
+        try {
+          await _provider.client
+              .from('appliance_warranty_metadata')
+              .insert(warrantyMap);
+        } catch (tableErr) {
+          AppLogger.warning(
+            'DOC_REPO',
+            'Non-fatal fallback inserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
+          );
+          // If the items column is not on the table yet, retry with standard columns
+          final legacyMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
+          await _provider.client
+              .from('appliance_warranty_metadata')
+              .insert(legacyMap);
+        }
         AppLogger.info('DOC_REPO', 'Inserted warranty metadata for $docId');
       }
 
@@ -393,6 +410,7 @@ class DocumentRepository {
     required String title,
     String? description,
     String? documentNumber,
+    ApplianceWarrantyModel? applianceWarranty,
   }) async {
     final user = _provider.currentUser;
     AppLogger.debug(
@@ -400,14 +418,42 @@ class DocumentRepository {
       'Updating document details for ID: $documentId',
     );
     try {
+      final docUpdatePayload = <String, dynamic>{
+        'title': title,
+        'description': description,
+        'document_number': documentNumber,
+      };
+
+      if (applianceWarranty != null) {
+        docUpdatePayload['extra_attributes'] = {
+          'appliance_items':
+              applianceWarranty.items.map((i) => i.toJson()).toList(),
+        };
+      }
+
       await _provider.client
           .from('documents')
-          .update({
-            'title': title,
-            'description': description,
-            'document_number': documentNumber,
-          })
+          .update(docUpdatePayload)
           .eq('id', documentId);
+
+      if (applianceWarranty != null) {
+        final warrantyMap = applianceWarranty.toJson();
+        warrantyMap['document_id'] = documentId;
+        try {
+          await _provider.client
+              .from('appliance_warranty_metadata')
+              .upsert(warrantyMap, onConflict: 'document_id');
+        } catch (wErr) {
+          AppLogger.warning(
+            'DOC_REPO',
+            'Warranty upsert fallback: $wErr. Retrying without raw items column if needed.',
+          );
+          final fallbackMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
+          await _provider.client
+              .from('appliance_warranty_metadata')
+              .upsert(fallbackMap, onConflict: 'document_id');
+        }
+      }
 
       await _provider.client.from('document_activity_logs').insert({
         'document_id': documentId,
@@ -533,15 +579,20 @@ class DocumentRepository {
     }
   }
 
-  Future<String> getSignedPreviewUrl(String storagePath) async {
+  Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
     if (storagePath.startsWith('gdrive://')) {
       final fileId = storagePath.replaceFirst('gdrive://', '');
-      return _provider.getGoogleDrivePreviewUrl(fileId);
+      return _provider.getGoogleDrivePreviewUrl(fileId, download: download);
     }
     return await _provider.createSignedUrl(
       storagePath: storagePath,
       expiresInSeconds: 600,
+      download: download,
     );
+  }
+
+  Future<Uint8List> downloadFileBytes(String storagePath) async {
+    return await _provider.downloadFileBytes(storagePath);
   }
 
   Future<DashboardMetricsModel> getDashboardMetrics() async {

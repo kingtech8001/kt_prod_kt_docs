@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/utility_bills_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
-import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
-import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UtilityBillsController extends GetxController {
-  final DocumentRepository _documentRepository;
-  final SupabaseProvider _supabaseProvider;
-  final MasterDataRepository _masterDataRepository;
+  final UtilityBillsDataset _dataset;
 
-  UtilityBillsController(
-    this._documentRepository,
-    this._supabaseProvider,
-    this._masterDataRepository,
-  );
+  UtilityBillsController(this._dataset);
 
   final isLoading = true.obs;
+  final isLoadingMore = false.obs;
+  final hasMore = true.obs;
+  final currentPage = 1.obs;
+  final pageSize = 20;
+  final totalCount = 0.obs;
+
   final utilityBills = <DocumentModel>[].obs;
   final dynamicCities = <String>[].obs;
   final dynamicUtilityTypes = <String>[].obs;
@@ -32,8 +32,10 @@ class UtilityBillsController extends GetxController {
   // Filters
   final selectedCity = 'All Cities'.obs;
   final selectedUtilityType = 'All Utilities'.obs;
-  final selectedPaymentStatus =
-      'all'.obs; // 'all', 'paid', 'pending', 'overdue'
+  final selectedPaymentStatus = 'all'.obs; // 'all', 'paid', 'pending', 'overdue'
+  final searchQuery = ''.obs;
+  final searchController = TextEditingController();
+  final scrollController = ScrollController();
 
   // Summary Metrics
   final totalBillsAmount = 0.0.obs;
@@ -44,18 +46,34 @@ class UtilityBillsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    scrollController.addListener(_onScroll);
     loadMasterData();
     loadUtilityBills();
   }
 
+  void _onScroll() {
+    if (!scrollController.hasClients) return;
+    final maxScroll = scrollController.position.maxScrollExtent;
+    final currentScroll = scrollController.position.pixels;
+    if (maxScroll - currentScroll <= 200) {
+      loadNextPage();
+    }
+  }
+
+  @override
+  void onClose() {
+    scrollController.removeListener(_onScroll);
+    scrollController.dispose();
+    searchController.dispose();
+    super.onClose();
+  }
+
   Future<void> loadMasterData() async {
     try {
-      final cities = await _masterDataRepository.getCities(activeOnly: true);
+      final cities = await _dataset.getMasterCities(activeOnly: true);
       dynamicCities.assignAll(cities.map((c) => c.name));
 
-      final providers = await _masterDataRepository.getUtilityProviders(
-        activeOnly: true,
-      );
+      final providers = await _dataset.getUtilityProviders(activeOnly: true);
       final types = providers.map((p) => p.utilityType).toSet().toList();
       dynamicUtilityTypes.assignAll(types);
     } catch (e, st) {
@@ -68,33 +86,39 @@ class UtilityBillsController extends GetxController {
     }
   }
 
-  Future<void> loadUtilityBills() async {
+  Future<void> loadUtilityBills({bool isReset = false}) async {
+    if (isReset) {
+      currentPage.value = 1;
+      hasMore.value = true;
+    }
+
     AppLogger.debug(
       'UTILITY_CTRL',
-      'Loading utility bills for city: ${selectedCity.value}, type: ${selectedUtilityType.value}',
+      'Loading utility bills (page: 1, city: ${selectedCity.value}, type: ${selectedUtilityType.value}, status: ${selectedPaymentStatus.value}, search: ${searchQuery.value})',
     );
     isLoading.value = true;
+
     try {
-      final docs = await _documentRepository.getDocuments(
-        categoryCode: 'utility_bills',
+      final res = await _dataset.getUtilityBills(
+        page: 1,
+        pageSize: pageSize,
         city: selectedCity.value != 'All Cities' ? selectedCity.value : null,
         subCategory: selectedUtilityType.value != 'All Utilities'
             ? selectedUtilityType.value
             : null,
+        paymentStatus: selectedPaymentStatus.value,
+        searchQuery: searchQuery.value,
       );
 
-      var filtered = docs.where((d) => d.utilityMetadata != null).toList();
+      utilityBills.assignAll(res.documents);
+      totalCount.value = res.totalCount;
+      totalBillsAmount.value = res.totalAmount;
+      pendingBillsAmount.value = res.pendingAmount;
+      paidCount.value = res.paidCount;
+      pendingCount.value = res.pendingCount;
 
-      if (selectedPaymentStatus.value == 'paid') {
-        filtered = filtered.where((d) => d.utilityMetadata!.isPaid).toList();
-      } else if (selectedPaymentStatus.value == 'pending') {
-        filtered = filtered.where((d) => !d.utilityMetadata!.isPaid).toList();
-      } else if (selectedPaymentStatus.value == 'overdue') {
-        filtered = filtered.where((d) => d.utilityMetadata!.isOverdue).toList();
-      }
-
-      utilityBills.assignAll(filtered);
-      _computeSummaryMetrics(filtered);
+      hasMore.value = res.documents.length == pageSize &&
+          utilityBills.length < res.totalCount;
     } catch (e, st) {
       AppLogger.error(
         'UTILITY_CTRL',
@@ -102,55 +126,76 @@ class UtilityBillsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error Loading Utility Bills',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error Loading Utility Bills', e.toString());
     } finally {
       isLoading.value = false;
     }
   }
 
-  void _computeSummaryMetrics(List<DocumentModel> docs) {
-    double total = 0;
-    double pending = 0;
-    int paid = 0;
-    int pend = 0;
+  Future<void> loadNextPage() async {
+    if (isLoading.value || isLoadingMore.value || !hasMore.value) return;
 
-    for (var doc in docs) {
-      final u = doc.utilityMetadata;
-      if (u != null) {
-        total += u.billAmount;
-        if (u.isPaid) {
-          paid++;
-        } else {
-          pending += u.billAmount;
-          pend++;
+    isLoadingMore.value = true;
+    try {
+      final nextPage = currentPage.value + 1;
+      final res = await _dataset.getUtilityBills(
+        page: nextPage,
+        pageSize: pageSize,
+        city: selectedCity.value != 'All Cities' ? selectedCity.value : null,
+        subCategory: selectedUtilityType.value != 'All Utilities'
+            ? selectedUtilityType.value
+            : null,
+        paymentStatus: selectedPaymentStatus.value,
+        searchQuery: searchQuery.value,
+      );
+
+      if (res.documents.isEmpty) {
+        hasMore.value = false;
+      } else {
+        currentPage.value = nextPage;
+        utilityBills.addAll(res.documents);
+        totalCount.value = res.totalCount;
+        if (res.documents.length < pageSize ||
+            utilityBills.length >= totalCount.value) {
+          hasMore.value = false;
         }
       }
+    } catch (e, st) {
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Error loading next page: $e',
+        error: e,
+        stackTrace: st,
+      );
+      AppSnackbar.showError('Failed to load more', e.toString());
+    } finally {
+      isLoadingMore.value = false;
     }
-
-    totalBillsAmount.value = total;
-    pendingBillsAmount.value = pending;
-    paidCount.value = paid;
-    pendingCount.value = pend;
   }
 
   void onCitySelected(String city) {
     selectedCity.value = city;
-    loadUtilityBills();
+    loadUtilityBills(isReset: true);
   }
 
   void onUtilityTypeSelected(String type) {
     selectedUtilityType.value = type;
-    loadUtilityBills();
+    loadUtilityBills(isReset: true);
   }
 
   void onPaymentStatusSelected(String status) {
     selectedPaymentStatus.value = status;
-    loadUtilityBills();
+    loadUtilityBills(isReset: true);
+  }
+
+  void onSearchChanged(String query) {
+    searchQuery.value = query;
+    loadUtilityBills(isReset: true);
+  }
+
+  void clearSearch() {
+    searchController.clear();
+    onSearchChanged('');
   }
 
   Future<void> togglePaymentStatus(DocumentModel doc) async {
@@ -164,21 +209,19 @@ class UtilityBillsController extends GetxController {
     );
 
     try {
-      await _supabaseProvider.client
-          .from('utility_metadata')
-          .update({
-            'payment_status': newStatus ? 'paid' : 'pending',
-            'payment_date': newStatus
-                ? DateTime.now().toIso8601String().split('T').first
-                : null,
-          })
-          .eq('id', meta.id!);
+      final paymentDate = newStatus
+          ? DateTime.now().toIso8601String().split('T').first
+          : null;
 
-      Get.snackbar(
+      await _dataset.updatePaymentStatus(
+        metadataId: meta.id!,
+        isPaid: newStatus,
+        paymentDate: paymentDate,
+      );
+
+      AppSnackbar.showSuccess(
         'Payment Updated',
         newStatus ? 'Bill marked as Paid' : 'Bill marked as Pending Payment',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
       );
 
       loadUtilityBills();
@@ -189,12 +232,7 @@ class UtilityBillsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', e.toString());
     }
   }
 
@@ -205,40 +243,121 @@ class UtilityBillsController extends GetxController {
     final isUndoingPayment = metadata.isPaid;
 
     Get.dialog(
-      AlertDialog(
-        title: Text(
-          isUndoingPayment ? 'Mark Bill as Pending?' : 'Mark Bill as Paid?',
+      Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+          side: const BorderSide(color: AppColors.border),
         ),
-        content: Text(
-          isUndoingPayment
-              ? 'Confirm that ${doc.title} should be marked as pending payment again.'
-              : 'Confirm payment of ${doc.title}. This will mark the bill as paid.',
-        ),
-        actions: [
-          TextButton(onPressed: Get.back, child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              await togglePaymentStatus(doc);
-              if (Get.isDialogOpen ?? false) Get.back();
-            },
-            child: Text(
-              isUndoingPayment ? 'Mark as Pending' : 'Confirm Payment',
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingLarge),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isUndoingPayment ? AppColors.warningLight : AppColors.successLight,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                      ),
+                      child: Icon(
+                        isUndoingPayment ? Icons.history_rounded : Icons.check_circle_outline_rounded,
+                        color: isUndoingPayment ? AppColors.warning : AppColors.success,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        isUndoingPayment ? 'Mark Bill as Pending?' : 'Mark Bill as Paid?',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  isUndoingPayment
+                      ? 'Confirm that "${doc.title}" should be reverted to pending payment.'
+                      : 'Confirm payment for "${doc.title}". This will mark the bill as paid.',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: AppConstants.paddingLarge),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Get.back(),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppConstants.paddingSmall),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isUndoingPayment ? AppColors.warning : AppColors.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppConstants.paddingLarge,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Get.back();
+                        await togglePaymentStatus(doc);
+                      },
+                      child: Text(
+                        isUndoingPayment ? 'Mark as Pending' : 'Confirm Payment',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   void previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
-      );
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
-        PdfViewerDialog.show(title: doc.title, signedPdfUrl: signedUrl);
+        PdfViewerDialog.show(
+          title: doc.title,
+          signedPdfUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else if (doc.isImage) {
-        ImageLightboxDialog.show(title: doc.title, imageUrl: signedUrl);
+        ImageLightboxDialog.show(
+          title: doc.title,
+          imageUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else {
         final uri = Uri.parse(signedUrl);
         if (await canLaunchUrl(uri)) {
@@ -252,24 +371,19 @@ class UtilityBillsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Preview Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Preview Error', e.toString());
     }
   }
 
   void downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      await FileApiHelper.downloadFileFromUrl(
+        url: signedUrl,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
       );
-      final uri = Uri.parse(signedUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
+      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
     } catch (e, st) {
       AppLogger.error(
         'UTILITY_CTRL',
@@ -277,22 +391,21 @@ class UtilityBillsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Download Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      try {
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final uri = Uri.parse(fallbackUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      } catch (_) {
+        AppSnackbar.showError('Download Error', e.toString());
+      }
     }
-  }
-
-  void openDocument(DocumentModel doc) {
-    previewDocument(doc);
   }
 
   void openShareDialog(DocumentModel doc) async {
     try {
-      final token = await _documentRepository.createShareLink(doc.id);
+      final token = await _dataset.createShareLink(doc.id);
       final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
     } catch (e, st) {
@@ -302,24 +415,18 @@ class UtilityBillsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Share Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Share Error', e.toString());
     }
   }
 
   Future<void> moveToTrash(DocumentModel doc) async {
     try {
-      await _documentRepository.softDeleteDocument(doc.id);
+      await _dataset.softDeleteDocument(doc.id);
       utilityBills.removeWhere((d) => d.id == doc.id);
-      Get.snackbar(
+      totalCount.value = (totalCount.value - 1).clamp(0, 999999);
+      AppSnackbar.showWarning(
         'Moved to Trash',
         '${doc.title} moved to trash bin.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
     } catch (e, st) {
       AppLogger.error(
@@ -328,12 +435,7 @@ class UtilityBillsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', e.toString());
     }
   }
 
@@ -347,20 +449,23 @@ class UtilityBillsController extends GetxController {
   void openEditDocumentDialog(DocumentModel doc) {
     DocumentEditDialog.show(
       document: doc,
-      onSave: ({required title, description, documentNumber}) async {
+      onSave: ({
+        required title,
+        description,
+        documentNumber,
+        applianceWarranty,
+      }) async {
         try {
-          await _documentRepository.updateDocumentDetails(
+          await _dataset.updateDocumentDetails(
             documentId: doc.id,
             title: title,
             description: description,
             documentNumber: documentNumber,
           );
           await loadUtilityBills();
-          Get.snackbar(
+          AppSnackbar.showSuccess(
             'Document Updated',
             'Bill details were saved.',
-            backgroundColor: AppColors.success,
-            colorText: Colors.white,
           );
         } catch (e, st) {
           AppLogger.error(
@@ -369,15 +474,11 @@ class UtilityBillsController extends GetxController {
             error: e,
             stackTrace: st,
           );
-          Get.snackbar(
-            'Update Error',
-            e.toString(),
-            backgroundColor: AppColors.error,
-            colorText: Colors.white,
-          );
+          AppSnackbar.showError('Update Error', e.toString());
           rethrow;
         }
       },
     );
   }
 }
+

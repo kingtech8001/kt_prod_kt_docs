@@ -2,7 +2,7 @@ class AppConstants {
   AppConstants._();
 
   // App Metadata
-  static const String appName = 'Kt DocHolder';
+  static const String appName = 'DocHolder';
   static const String appTagline = 'King Technology Document Holder & Vault';
   static const String appVersion = '1.0.0';
 
@@ -20,6 +20,11 @@ class AppConstants {
   static const String edgeFunctionGdriveUpload = 'gdrive-upload';
   static const String edgeFunctionGdriveProxy = 'gdrive-proxy';
   static const String edgeFunctionGdriveDelete = 'gdrive-delete';
+
+  // King Technology Media Engine API Configuration
+  static const String apiEngineBaseUrl = 'https://apiengine.kingtechnology.in';
+  static const String apiEngineImageCompressEndpoint = '/api/image/compress';
+  static const String apiEnginePdfCompressEndpoint = '/api/pdf/compress';
 
   // Supported Major Cities for Filtering
   static const List<String> supportedCities = [
@@ -96,9 +101,24 @@ class AppConstants {
   static const String catFinancial = 'financial';
   static const String catIdentityDocs = 'identity_docs';
 
-  // Responsive Breakpoints
-  static const double desktopBreakpoint = 1100.0;
+  // Responsive Breakpoints (AI Master Context: Desktop > 1024px, Tablet 768-1024px, Mobile < 768px)
+  static const double desktopBreakpoint = 1024.0;
   static const double tabletBreakpoint = 768.0;
+
+  // Snackbar Sizing & Tokens
+  static const double compactSnackbarMaxWidth = 400.0;
+  static const double mobileSnackbarMargin = 16.0;
+
+  // Layout Spacing & Geometry Tokens
+  static const double paddingSmall = 8.0;
+  static const double paddingMedium = 16.0;
+  static const double paddingLarge = 20.0;
+  static const double paddingExtraLarge = 24.0;
+  static const double paddingHero = 32.0;
+
+  static const double radiusSmall = 8.0;
+  static const double radiusMedium = 12.0;
+  static const double radiusLarge = 16.0;
 
   // Max Upload File Size: 50 MB
   static const int maxFileSize = 50 * 1024 * 1024;

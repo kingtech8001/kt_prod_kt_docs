@@ -1,11 +1,11 @@
 {
-    "name": "Kt DocHolder",
+    "name": "DocHolder",
     "short_name": "DocHolder",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#1E3A8A",
     "theme_color": "#1E3A8A",
-    "description": "Kt DocHolder - Document Vault & Management Platform",
+    "description": "DocHolder - Document Vault & Management Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

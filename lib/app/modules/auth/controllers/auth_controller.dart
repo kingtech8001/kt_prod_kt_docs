@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthController extends GetxController {
@@ -26,70 +27,98 @@ class AuthController extends GetxController {
 
   void _showDetailedErrorDialog(String title, String errorMessage, [dynamic fullError]) {
     lastErrorMessage.value = errorMessage;
+    final isCopied = false.obs;
+
     Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Row(
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 24),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'An error occurred during authentication. Details are provided below:',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: SelectableText(
-                errorMessage,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  color: AppColors.error,
-                  fontWeight: FontWeight.w600,
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        backgroundColor: AppColors.surface,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingLarge),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorLight,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                      ),
+                      child: const Icon(Icons.error_outline, color: AppColors.error, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
+                      onPressed: () => Get.back(),
+                      splashRadius: 18,
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 14),
+                const Text(
+                  'An error occurred during authentication. Details are provided below:',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: SelectableText(
+                    errorMessage,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppConstants.paddingLarge),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Obx(() => OutlinedButton.icon(
+                          icon: Icon(
+                            isCopied.value ? Icons.check : Icons.copy,
+                            size: 16,
+                            color: isCopied.value ? AppColors.success : null,
+                          ),
+                          label: Text(isCopied.value ? 'Copied!' : 'Copy Error Details'),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: '$title: $errorMessage\nFull: $fullError'));
+                            isCopied.value = true;
+                            Future.delayed(const Duration(seconds: 2), () {
+                              isCopied.value = false;
+                            });
+                          },
+                        )),
+                    const SizedBox(width: AppConstants.paddingSmall),
+                    ElevatedButton(
+                      onPressed: () => Get.back(),
+                      child: const Text('Dismiss'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        actions: [
-          OutlinedButton.icon(
-            icon: const Icon(Icons.copy, size: 16),
-            label: const Text('Copy Error Message'),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: '$title: $errorMessage\nFull: $fullError'));
-              Get.snackbar(
-                'Copied',
-                'Error details copied to clipboard',
-                backgroundColor: AppColors.success,
-                colorText: Colors.white,
-                duration: const Duration(seconds: 2),
-              );
-            },
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(),
-            child: const Text('Dismiss'),
-          ),
-        ],
       ),
     );
   }
@@ -133,7 +162,7 @@ class AuthController extends GetxController {
 
       Get.snackbar(
         'Welcome',
-        'Successfully signed in to Kt DocHolder',
+        'Successfully signed in to ${AppConstants.appName}',
         backgroundColor: AppColors.success,
         colorText: Colors.white,
       );

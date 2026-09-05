@@ -115,6 +115,26 @@ class DocumentModel {
     final warranty = _extractMap(json['appliance_warranty_metadata']);
     final personal = _extractMap(json['personal_document_metadata']);
     final favs = _extractList(json['document_favorites']);
+    final extra = (json['extra_attributes'] is Map)
+        ? Map<String, dynamic>.from(json['extra_attributes'] as Map)
+        : <String, dynamic>{};
+
+    Map<String, dynamic>? warrantyMap = warranty;
+    if (warrantyMap != null) {
+      if (warrantyMap['items'] == null && extra['appliance_items'] != null) {
+        warrantyMap = Map<String, dynamic>.from(warrantyMap);
+        warrantyMap['items'] = extra['appliance_items'];
+      }
+    } else if (extra['appliance_items'] != null) {
+      warrantyMap = {
+        'items': extra['appliance_items'],
+        'billing_name': '',
+        'store_vendor_name': '',
+        'invoice_number': json['document_number'] ?? '',
+        'purchase_date': json['created_at'],
+        'purchase_amount': 0.0,
+      };
+    }
 
     return DocumentModel(
       id: json['id'] as String,
@@ -136,9 +156,7 @@ class DocumentModel {
       status: json['status'] as String? ?? 'active',
       uploadedBy: json['uploaded_by'] as String?,
       uploaderName: prof != null ? prof['full_name'] as String? : null,
-      extraAttributes: (json['extra_attributes'] is Map)
-          ? Map<String, dynamic>.from(json['extra_attributes'] as Map)
-          : {},
+      extraAttributes: extra,
       deletedAt: json['deleted_at'] != null
           ? DateTime.tryParse(json['deleted_at'] as String)
           : null,
@@ -152,7 +170,7 @@ class DocumentModel {
       address: addr != null ? AddressModel.fromJson(addr) : null,
       utilityMetadata: util != null ? UtilityMetadataModel.fromJson(util) : null,
       applianceWarranty:
-          warranty != null ? ApplianceWarrantyModel.fromJson(warranty) : null,
+          warrantyMap != null ? ApplianceWarrantyModel.fromJson(warrantyMap) : null,
       personalMetadata: personal != null ? PersonalDocumentMetadataModel.fromJson(personal) : null,
       isFavorite: favs != null && favs.isNotEmpty,
     );

@@ -1,20 +1,20 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/dashboard_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/dashboard_metrics_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
-import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
-import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardController extends GetxController {
-  final DocumentRepository _documentRepository;
+  final DashboardDataset _dataset;
 
-  DashboardController(this._documentRepository);
+  DashboardController(this._dataset);
 
   final isLoading = true.obs;
   final metrics = DashboardMetricsModel().obs;
@@ -29,36 +29,22 @@ class DashboardController extends GetxController {
   }
 
   Future<void> loadDashboardData() async {
-    AppLogger.debug('DASHBOARD_CTRL', 'Loading dashboard data...');
+    AppLogger.debug('DASHBOARD_CTRL', 'Loading dashboard data via DashboardDataset...');
     isLoading.value = true;
     try {
-      final metricsData = await _documentRepository.getDashboardMetrics();
+      final metricsData = await _dataset.getDashboardMetrics();
       metrics.value = metricsData;
 
       // Fetch Recent Documents
-      final docs = await _documentRepository.getDocuments(limit: 8);
+      final docs = await _dataset.getRecentDocuments(limit: 8);
       recentDocuments.assignAll(docs);
 
-      // Filter Expiring Warranties (<= 30 days remaining & not expired)
-      final allWarranties = await _documentRepository.getDocuments(
-        categoryCode: 'appliance_warranty',
-        limit: 50,
-      );
-      final expiring = allWarranties.where((doc) {
-        final w = doc.applianceWarranty;
-        return w != null && w.isExpiringSoon;
-      }).toList();
+      // Fetch Expiring Warranties (due in <= 30 days)
+      final expiring = await _dataset.getExpiringWarranties(limit: 50);
       expiringWarranties.assignAll(expiring);
 
-      // Filter Pending Utility Bills
-      final allUtilities = await _documentRepository.getDocuments(
-        categoryCode: 'utility_bills',
-        limit: 50,
-      );
-      final pending = allUtilities.where((doc) {
-        final u = doc.utilityMetadata;
-        return u != null && !u.isPaid;
-      }).toList();
+      // Fetch Pending Utility Bills
+      final pending = await _dataset.getPendingUtilityBills(limit: 50);
       pendingUtilityBills.assignAll(pending);
 
       AppLogger.info('DASHBOARD_CTRL', 'Dashboard data loaded successfully.');
@@ -69,12 +55,7 @@ class DashboardController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error Loading Dashboard',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error Loading Dashboard', e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -83,19 +64,19 @@ class DashboardController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Previewing document: ${doc.title}');
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
-      );
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
         PdfViewerDialog.show(
           title: doc.title,
           signedPdfUrl: signedUrl,
+          fileName: doc.fileName,
           onDownload: () => downloadDocument(doc),
         );
       } else if (doc.isImage) {
         ImageLightboxDialog.show(
           title: doc.title,
           imageUrl: signedUrl,
+          fileName: doc.fileName,
           onDownload: () => downloadDocument(doc),
         );
       } else {
@@ -111,25 +92,20 @@ class DashboardController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Preview Failed',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Preview Failed', e.toString());
     }
   }
 
   Future<void> downloadDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Downloading document: ${doc.title}');
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      await FileApiHelper.downloadFileFromUrl(
+        url: signedUrl,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
       );
-      final uri = Uri.parse(signedUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
     } catch (e, st) {
       AppLogger.error(
         'DASHBOARD_CTRL',
@@ -137,21 +113,22 @@ class DashboardController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Download Failed',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      try {
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final uri = Uri.parse(fallbackUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } catch (_) {
+        AppSnackbar.showError('Download Failed', e.toString());
+      }
     }
   }
 
   Future<void> shareDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Sharing document: ${doc.title}');
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
-      );
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: signedUrl);
     } catch (e, st) {
       AppLogger.error(
@@ -160,22 +137,14 @@ class DashboardController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Share Failed',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Share Failed', e.toString());
     }
   }
 
   Future<void> toggleFavorite(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Toggling favorite for: ${doc.title}');
     try {
-      final isFav = await _documentRepository.toggleFavorite(
-        doc.id,
-        doc.isFavorite,
-      );
+      final isFav = await _dataset.toggleFavorite(doc.id, doc.isFavorite);
       final index = recentDocuments.indexWhere((d) => d.id == doc.id);
       if (index != -1) {
         recentDocuments[index] = recentDocuments[index].copyWith(
@@ -189,27 +158,21 @@ class DashboardController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', e.toString());
     }
   }
 
   Future<void> moveToTrash(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Moving to trash: ${doc.title}');
     try {
-      await _documentRepository.softDeleteDocument(doc.id);
+      await _dataset.softDeleteDocument(doc.id);
       recentDocuments.removeWhere((d) => d.id == doc.id);
       expiringWarranties.removeWhere((d) => d.id == doc.id);
       pendingUtilityBills.removeWhere((d) => d.id == doc.id);
-      Get.snackbar(
+
+      AppSnackbar.showWarning(
         'Moved to Trash',
         '${doc.title} moved to trash bin',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
       loadDashboardData();
     } catch (e, st) {
@@ -219,12 +182,7 @@ class DashboardController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', e.toString());
     }
   }
 
@@ -238,20 +196,24 @@ class DashboardController extends GetxController {
   void openEditDocumentDialog(DocumentModel doc) {
     DocumentEditDialog.show(
       document: doc,
-      onSave: ({required title, description, documentNumber}) async {
+      onSave: ({
+        required title,
+        description,
+        documentNumber,
+        applianceWarranty,
+      }) async {
         try {
-          await _documentRepository.updateDocumentDetails(
+          await _dataset.updateDocumentDetails(
             documentId: doc.id,
             title: title,
             description: description,
             documentNumber: documentNumber,
+            applianceWarranty: applianceWarranty,
           );
           await loadDashboardData();
-          Get.snackbar(
+          AppSnackbar.showSuccess(
             'Document Updated',
             'Document details were saved.',
-            backgroundColor: AppColors.success,
-            colorText: Colors.white,
           );
         } catch (e, st) {
           AppLogger.error(
@@ -260,12 +222,7 @@ class DashboardController extends GetxController {
             error: e,
             stackTrace: st,
           );
-          Get.snackbar(
-            'Update Error',
-            e.toString(),
-            backgroundColor: AppColors.error,
-            colorText: Colors.white,
-          );
+          // Inline error is displayed inside DocumentEditDialog; rethrow so dialog can handle it
           rethrow;
         }
       },

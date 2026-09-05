@@ -1,60 +1,100 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/appliance_vault_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
-import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
+import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
-import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ApplianceVaultController extends GetxController {
-  final DocumentRepository _documentRepository;
-  final MasterDataRepository _masterDataRepository;
+  final ApplianceVaultDataset _dataset;
 
-  ApplianceVaultController(
-    this._documentRepository,
-    this._masterDataRepository,
-  );
+  ApplianceVaultController(this._dataset);
 
+  // Loading & Pagination State
   final isLoading = true.obs;
+  final isLoadingMore = false.obs;
+  final hasMore = true.obs;
+  final currentPage = 1.obs;
+  final pageSize = 20;
+  final totalCount = 0.obs;
+
+  final scrollController = ScrollController();
+  final searchController = TextEditingController();
+
+  // Data Collections
   final applianceDocuments = <DocumentModel>[].obs;
   final dynamicBrands = <String>[].obs;
   final dynamicSubcategories = <String>[].obs;
 
-  // Filters
+  // Reactive Filters
   final selectedBrand = 'All Brands'.obs;
   final selectedSubcategory = 'All Appliances'.obs;
   final selectedWarrantyStatus =
-      'all'.obs; // 'all', 'active', 'expiring_soon', 'expired'
+      'all'.obs; // 'all', 'active', 'expiring_soon', 'expired', 'no_warranty'
+  final searchQuery = ''.obs;
 
-  // Summary Metrics
+  // Aggregated Summary Metrics
   final totalAppliancesCount = 0.obs;
   final activeWarrantiesCount = 0.obs;
   final expiringSoonCount = 0.obs;
   final expiredCount = 0.obs;
 
+  // Role Permissions
+  bool get canDelete {
+    try {
+      return AuthService.to.isAdmin;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool get canEdit {
+    try {
+      final role = AuthService.to.currentProfile.value?.role.toLowerCase();
+      return role == 'admin' || role == 'super_admin' || role == 'editor';
+    } catch (_) {
+      return true;
+    }
+  }
+
   @override
   void onInit() {
     super.onInit();
+    scrollController.addListener(_onScroll);
     loadMasterData();
-    loadApplianceVault();
+    loadApplianceVault(resetPage: true);
+  }
+
+  @override
+  void onClose() {
+    scrollController.removeListener(_onScroll);
+    scrollController.dispose();
+    searchController.dispose();
+    super.onClose();
+  }
+
+  void _onScroll() {
+    if (scrollController.hasClients &&
+        scrollController.position.pixels >=
+            scrollController.position.maxScrollExtent - 200) {
+      loadNextPage();
+    }
   }
 
   Future<void> loadMasterData() async {
     try {
-      final brandsList = await _masterDataRepository.getBrands(
-        activeOnly: true,
-      );
+      final brandsList = await _dataset.getMasterBrands(activeOnly: true);
       dynamicBrands.assignAll(brandsList.map((b) => b.name));
 
-      final subsList = await _masterDataRepository.getApplianceSubcategories(
-        activeOnly: true,
-      );
+      final subsList = await _dataset.getApplianceSubcategories(activeOnly: true);
       dynamicSubcategories.assignAll(subsList.map((s) => s.name));
     } catch (e, st) {
       AppLogger.error(
@@ -66,39 +106,40 @@ class ApplianceVaultController extends GetxController {
     }
   }
 
-  Future<void> loadApplianceVault() async {
+  Future<void> loadApplianceVault({bool resetPage = false}) async {
+    if (resetPage) {
+      currentPage.value = 1;
+      hasMore.value = true;
+      isLoading.value = true;
+    }
+
     AppLogger.debug(
       'APPLIANCE_CTRL',
-      'Loading appliance vault for brand: ${selectedBrand.value}, sub: ${selectedSubcategory.value}',
+      'Loading appliance vault (page: ${currentPage.value}, brand: ${selectedBrand.value}, sub: ${selectedSubcategory.value}, status: ${selectedWarrantyStatus.value})',
     );
-    isLoading.value = true;
+
     try {
-      final docs = await _documentRepository.getDocuments(
-        categoryCode: 'appliance_warranty',
+      final response = await _dataset.getApplianceVault(
+        page: currentPage.value,
+        pageSize: pageSize,
         brand: selectedBrand.value != 'All Brands' ? selectedBrand.value : null,
         subCategory: selectedSubcategory.value != 'All Appliances'
             ? selectedSubcategory.value
             : null,
+        warrantyStatus: selectedWarrantyStatus.value != 'all'
+            ? selectedWarrantyStatus.value
+            : null,
+        searchQuery: searchQuery.value.isNotEmpty ? searchQuery.value : null,
       );
 
-      var filtered = docs.where((d) => d.applianceWarranty != null).toList();
+      applianceDocuments.assignAll(response.documents);
+      totalCount.value = response.totalCount;
+      totalAppliancesCount.value = response.totalAppliancesCount;
+      activeWarrantiesCount.value = response.activeWarrantiesCount;
+      expiringSoonCount.value = response.expiringSoonCount;
+      expiredCount.value = response.expiredCount;
 
-      if (selectedWarrantyStatus.value == 'active') {
-        filtered = filtered
-            .where((d) => !d.applianceWarranty!.isExpired)
-            .toList();
-      } else if (selectedWarrantyStatus.value == 'expiring_soon') {
-        filtered = filtered
-            .where((d) => d.applianceWarranty!.isExpiringSoon)
-            .toList();
-      } else if (selectedWarrantyStatus.value == 'expired') {
-        filtered = filtered
-            .where((d) => d.applianceWarranty!.isExpired)
-            .toList();
-      }
-
-      applianceDocuments.assignAll(filtered);
-      _computeSummaryMetrics(filtered);
+      hasMore.value = applianceDocuments.length < totalCount.value;
     } catch (e, st) {
       AppLogger.error(
         'APPLIANCE_CTRL',
@@ -106,67 +147,100 @@ class ApplianceVaultController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error Loading Appliance Vault',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error Loading Appliance Vault', e.toString());
     } finally {
       isLoading.value = false;
     }
   }
 
-  void _computeSummaryMetrics(List<DocumentModel> docs) {
-    int total = docs.length;
-    int active = 0;
-    int expiring = 0;
-    int expired = 0;
+  Future<void> loadNextPage() async {
+    if (isLoadingMore.value || !hasMore.value || isLoading.value) return;
 
-    for (var doc in docs) {
-      final w = doc.applianceWarranty;
-      if (w != null) {
-        if (w.isExpired) {
-          expired++;
-        } else if (w.isExpiringSoon) {
-          expiring++;
-          active++;
-        } else {
-          active++;
-        }
+    isLoadingMore.value = true;
+    final nextPage = currentPage.value + 1;
+
+    AppLogger.debug('APPLIANCE_CTRL', 'Loading next page: $nextPage...');
+
+    try {
+      final response = await _dataset.getApplianceVault(
+        page: nextPage,
+        pageSize: pageSize,
+        brand: selectedBrand.value != 'All Brands' ? selectedBrand.value : null,
+        subCategory: selectedSubcategory.value != 'All Appliances'
+            ? selectedSubcategory.value
+            : null,
+        warrantyStatus: selectedWarrantyStatus.value != 'all'
+            ? selectedWarrantyStatus.value
+            : null,
+        searchQuery: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+      );
+
+      if (response.documents.isEmpty) {
+        hasMore.value = false;
+      } else {
+        applianceDocuments.addAll(response.documents);
+        currentPage.value = nextPage;
+        hasMore.value = applianceDocuments.length < totalCount.value;
       }
+    } catch (e, st) {
+      AppLogger.error(
+        'APPLIANCE_CTRL',
+        'Error loading more appliances: $e',
+        error: e,
+        stackTrace: st,
+      );
+      AppSnackbar.showError('Failed to load more', e.toString());
+    } finally {
+      isLoadingMore.value = false;
     }
-
-    totalAppliancesCount.value = total;
-    activeWarrantiesCount.value = active;
-    expiringSoonCount.value = expiring;
-    expiredCount.value = expired;
   }
 
   void onBrandSelected(String brand) {
+    if (selectedBrand.value == brand) return;
     selectedBrand.value = brand;
-    loadApplianceVault();
+    loadApplianceVault(resetPage: true);
   }
 
   void onSubcategorySelected(String subcategory) {
+    if (selectedSubcategory.value == subcategory) return;
     selectedSubcategory.value = subcategory;
-    loadApplianceVault();
+    loadApplianceVault(resetPage: true);
   }
 
   void onWarrantyStatusSelected(String status) {
+    if (selectedWarrantyStatus.value == status) return;
     selectedWarrantyStatus.value = status;
-    loadApplianceVault();
+    loadApplianceVault(resetPage: true);
   }
 
-  void previewDocument(DocumentModel doc) async {
+  void onSearchChanged(String val) {
+    searchQuery.value = val;
+    loadApplianceVault(resetPage: true);
+  }
+
+  void clearSearch() {
+    searchController.clear();
+    searchQuery.value = '';
+    loadApplianceVault(resetPage: true);
+  }
+
+  Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
-      );
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
-        PdfViewerDialog.show(title: doc.title, signedPdfUrl: signedUrl);
+        PdfViewerDialog.show(
+          title: doc.title,
+          signedPdfUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else if (doc.isImage) {
-        ImageLightboxDialog.show(title: doc.title, imageUrl: signedUrl);
+        ImageLightboxDialog.show(
+          title: doc.title,
+          imageUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else {
         final uri = Uri.parse(signedUrl);
         if (await canLaunchUrl(uri)) {
@@ -180,24 +254,19 @@ class ApplianceVaultController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Preview Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Preview Error', e.toString());
     }
   }
 
-  void downloadDocument(DocumentModel doc) async {
+  Future<void> downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      await FileApiHelper.downloadFileFromUrl(
+        url: signedUrl,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
       );
-      final uri = Uri.parse(signedUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
+      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
     } catch (e, st) {
       AppLogger.error(
         'APPLIANCE_CTRL',
@@ -205,12 +274,15 @@ class ApplianceVaultController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Download Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      try {
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final uri = Uri.parse(fallbackUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      } catch (_) {
+        AppSnackbar.showError('Download Error', e.toString());
+      }
     }
   }
 
@@ -222,9 +294,9 @@ class ApplianceVaultController extends GetxController {
     openShareDialog(doc);
   }
 
-  void openShareDialog(DocumentModel doc) async {
+  Future<void> openShareDialog(DocumentModel doc) async {
     try {
-      final token = await _documentRepository.createShareLink(doc.id);
+      final token = await _dataset.createShareLink(doc.id);
       final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
     } catch (e, st) {
@@ -234,24 +306,26 @@ class ApplianceVaultController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Share Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Share Error', e.toString());
     }
   }
 
   Future<void> moveToTrash(DocumentModel doc) async {
+    if (!canDelete) {
+      AppSnackbar.showWarning(
+        'Permission Denied',
+        'Your role does not have permission to delete documents.',
+      );
+      return;
+    }
+
     try {
-      await _documentRepository.softDeleteDocument(doc.id);
+      await _dataset.softDeleteDocument(doc.id);
       applianceDocuments.removeWhere((d) => d.id == doc.id);
-      Get.snackbar(
+      totalCount.value = (totalCount.value - 1).clamp(0, 999999);
+      AppSnackbar.showWarning(
         'Moved to Trash',
         '${doc.title} moved to trash bin.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
     } catch (e, st) {
       AppLogger.error(
@@ -260,16 +334,18 @@ class ApplianceVaultController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', e.toString());
     }
   }
 
   void confirmMoveToTrash(DocumentModel doc) {
+    if (!canDelete) {
+      AppSnackbar.showWarning(
+        'Permission Denied',
+        'Your role does not have permission to delete documents.',
+      );
+      return;
+    }
     DocumentDeleteDialog.show(
       documentTitle: doc.title,
       onConfirm: () => moveToTrash(doc),
@@ -277,22 +353,34 @@ class ApplianceVaultController extends GetxController {
   }
 
   void openEditDocumentDialog(DocumentModel doc) {
+    if (!canEdit) {
+      AppSnackbar.showWarning(
+        'Permission Denied',
+        'Your role does not have permission to edit documents.',
+      );
+      return;
+    }
+
     DocumentEditDialog.show(
       document: doc,
-      onSave: ({required title, description, documentNumber}) async {
+      onSave: ({
+        required title,
+        description,
+        documentNumber,
+        applianceWarranty,
+      }) async {
         try {
-          await _documentRepository.updateDocumentDetails(
+          await _dataset.updateDocumentDetails(
             documentId: doc.id,
             title: title,
             description: description,
             documentNumber: documentNumber,
+            applianceWarranty: applianceWarranty,
           );
-          await loadApplianceVault();
-          Get.snackbar(
+          await loadApplianceVault(resetPage: true);
+          AppSnackbar.showSuccess(
             'Document Updated',
-            'Invoice details were saved.',
-            backgroundColor: AppColors.success,
-            colorText: Colors.white,
+            'Invoice and product details were saved.',
           );
         } catch (e, st) {
           AppLogger.error(
@@ -301,12 +389,7 @@ class ApplianceVaultController extends GetxController {
             error: e,
             stackTrace: st,
           );
-          Get.snackbar(
-            'Update Error',
-            e.toString(),
-            backgroundColor: AppColors.error,
-            colorText: Colors.white,
-          );
+          AppSnackbar.showError('Update Error', e.toString());
           rethrow;
         }
       },

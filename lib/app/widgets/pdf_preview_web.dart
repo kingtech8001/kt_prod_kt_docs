@@ -20,14 +20,16 @@ class PdfPreview extends StatelessWidget {
 
   static final Set<String> _registeredViewTypes = <String>{};
 
-  String get _viewType => 'kt-docs-browser-pdf-${sourceUrl.hashCode}';
+  String get _viewType => 'kt-docs-browser-pdf-${bytes.lengthInBytes}-${bytes.hashCode}';
 
   void _registerView() {
     if (_registeredViewTypes.contains(_viewType)) return;
 
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
+      final blob = html.Blob([bytes], 'application/pdf');
+      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
       final iframe = html.IFrameElement()
-        ..src = sourceUrl
+        ..src = blobUrl
         ..style.border = '0'
         ..style.width = '100%'
         ..style.height = '100%'

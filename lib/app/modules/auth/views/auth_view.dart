@@ -35,16 +35,13 @@ class AuthView extends GetView<AuthController> {
               children: [
                 // Logo & Header
                 Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.security,
-                      color: Colors.white,
-                      size: 32,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 68,
+                      height: 68,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
@@ -62,7 +59,7 @@ class AuthView extends GetView<AuthController> {
                 const SizedBox(height: 4),
                 const Center(
                   child: Text(
-                    'King Technology Document Holder & Vault',
+                    AppConstants.appTagline,
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,

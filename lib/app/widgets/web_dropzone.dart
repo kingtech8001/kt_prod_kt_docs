@@ -1,6 +1,7 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 
 import 'package:get/get.dart';
@@ -105,7 +106,7 @@ class WebDropzone extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${(currentFile!.size / 1024).toStringAsFixed(1)} KB • Ready to upload',
+                        '${CompressionResult.formatFileSize(currentFile!.size)} • Ready to upload',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.success,

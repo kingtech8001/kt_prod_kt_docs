@@ -7,6 +7,7 @@ class DashboardMetricsModel {
   final int pendingBillsCount;
   final double pendingBillsAmount;
   final int trashCount;
+  final int trashSizeBytes;
 
   DashboardMetricsModel({
     this.totalDocuments = 0,
@@ -17,6 +18,7 @@ class DashboardMetricsModel {
     this.pendingBillsCount = 0,
     this.pendingBillsAmount = 0.0,
     this.trashCount = 0,
+    this.trashSizeBytes = 0,
   });
 
   factory DashboardMetricsModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class DashboardMetricsModel {
       pendingBillsAmount:
           (json['pending_bills_amount'] as num?)?.toDouble() ?? 0.0,
       trashCount: (json['trash_count'] as num?)?.toInt() ?? 0,
+      trashSizeBytes: (json['trash_size_bytes'] as num?)?.toInt() ?? 0,
     );
   }
 }

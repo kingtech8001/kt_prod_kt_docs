@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/modules/document_upload/controllers/document_upload_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
+import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
+import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_dropzone.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
@@ -19,64 +22,71 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
       subtitle:
           'Add utility bills, appliance warranty invoices, or corporate records with structured metadata',
       currentRoute: AppRoutes.UPLOAD,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isDesktop = constraints.maxWidth > 850;
+      body: Obx(() {
+        if (controller.isInitialLoading.value) {
+          return const DocumentUploadSkeletonView();
+        }
 
-                if (isDesktop) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left Column: File Dropzone, Compression Card & Overview
-                      Expanded(
-                        flex: 4,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Obx(
-                              () => WebDropzone(
-                                onFileSelected: controller.onFileSelected,
-                                currentFile: controller.selectedFile.value,
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.paddingExtraLarge),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktop =
+                      constraints.maxWidth >= AppConstants.desktopBreakpoint;
+
+                  if (isDesktop) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Column: File Dropzone, Compression Card & Overview
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Obx(
+                                () => WebDropzone(
+                                  onFileSelected: controller.onFileSelected,
+                                  currentFile: controller.selectedFile.value,
+                                ),
                               ),
-                            ),
-                            _buildCompressionCard(context),
-                            const SizedBox(height: 20),
-                            _buildSecurityBadge(),
-                          ],
+                              _buildCompressionCard(context),
+                              const SizedBox(height: 20),
+                              _buildSecurityBadge(),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 24),
+                        const SizedBox(width: AppConstants.paddingExtraLarge),
 
-                      // Right Column: Dynamic Category & Metadata Form
-                      Expanded(flex: 6, child: _buildFormCard(context)),
-                    ],
-                  );
-                } else {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Obx(
-                        () => WebDropzone(
-                          onFileSelected: controller.onFileSelected,
-                          currentFile: controller.selectedFile.value,
+                        // Right Column: Dynamic Category & Metadata Form
+                        Expanded(flex: 6, child: _buildFormCard(context)),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Obx(
+                          () => WebDropzone(
+                            onFileSelected: controller.onFileSelected,
+                            currentFile: controller.selectedFile.value,
+                          ),
                         ),
-                      ),
-                      _buildCompressionCard(context),
-                      const SizedBox(height: 20),
-                      _buildFormCard(context),
-                    ],
-                  );
-                }
-              },
+                        _buildCompressionCard(context),
+                        const SizedBox(height: 20),
+                        _buildFormCard(context),
+                      ],
+                    );
+                  }
+                },
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -149,6 +159,51 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
           ),
           const Divider(height: 28),
 
+          // Inline Error Banner (Section 3.B: In-Context Form Error Handling)
+          Obx(() {
+            final err = controller.formErrorMessage.value;
+            if (err.isEmpty) return const SizedBox.shrink();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.errorLight,
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                border: Border.all(color: AppColors.error),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      err,
+                      style: const TextStyle(
+                        color: AppColors.error,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppColors.error,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => controller.formErrorMessage.value = '',
+                  ),
+                ],
+              ),
+            );
+          }),
+
           // Category Selector
           const Text(
             'Document Category *',
@@ -209,10 +264,32 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         'e.g. Torrent Power Bill - Feb 2026, Havells Fan Invoice',
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
               ],
             );
           }),
+
+          // Description / Product Notes Field
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Document Description / Product Notes',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: controller.descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText:
+                      'e.g. Invoice covering multiple products (1x Refrigerator, 2x Fans), warranty claim instructions, or store notes',
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
 
           // Dynamic Metadata Forms
           Obx(() {
@@ -245,13 +322,13 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
           Obx(() {
             if (!controller.showCityFilter) return const SizedBox.shrink();
             return Column(
-              children: [_buildAddressSection(), const SizedBox(height: 24)],
+              children: [_buildAddressSection(context), const SizedBox(height: 24)],
             );
           }),
 
-          // Submit Upload Button
+          // Submit Upload Button (Section 5.A: Micro inline spinner during submission)
           Obx(() {
-            final isUploading = controller.isLoading.value;
+            final isUploading = controller.isSubmitting.value;
             final isCompressing = controller.isCompressing.value;
             final isBusy = isUploading || isCompressing;
 
@@ -269,14 +346,14 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 onPressed: isBusy ? null : controller.submitUpload,
                 icon: isBusy
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: AppColors.textOnPrimary,
                           strokeWidth: 2,
                         ),
                       )
-                    : const Icon(Icons.cloud_upload),
+                    : const Icon(Icons.cloud_upload_outlined),
                 label: Text(
                   buttonText,
                   style: const TextStyle(
@@ -343,6 +420,38 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
     );
   }
 
+  /// Helper that renders 2 widgets side-by-side on Desktop/Tablet and stacked vertically on Mobile.
+  Widget _buildResponsiveRow({
+    required BuildContext context,
+    required Widget first,
+    required Widget second,
+    int firstFlex = 1,
+    int secondFlex = 1,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < AppConstants.tabletBreakpoint;
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          first,
+          const SizedBox(height: 12),
+          second,
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: firstFlex, child: first),
+        const SizedBox(width: 12),
+        Expanded(flex: secondFlex, child: second),
+      ],
+    );
+  }
+
   Widget _buildUtilityMetadataSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -371,123 +480,112 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Provider Name',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.utilityProviderController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. Torrent Power, Adani Gas, UGVCL',
-                      ),
-                    ),
-                  ],
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Provider Name',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Consumer Number / ID',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.consumerNumberController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. 10293849',
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.utilityProviderController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Torrent Power, Adani Gas, UGVCL',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Consumer Number / ID',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.consumerNumberController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 10293849',
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Bill Amount (₹)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.billAmountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: '3450'),
-                    ),
-                  ],
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Bill Amount (₹)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Payment Status',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.billAmountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(hintText: '3450'),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Payment Status',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(
+                  () => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
                     ),
-                    const SizedBox(height: 4),
-                    Obx(
-                      () => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: controller.utilityPaymentStatus.value,
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'pending',
-                                child: Text('Pending Payment'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'paid',
-                                child: Text('Paid'),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              if (val != null)
-                                controller.utilityPaymentStatus.value = val;
-                            },
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: controller.utilityPaymentStatus.value,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'pending',
+                            child: Text('Pending Payment'),
                           ),
-                        ),
+                          DropdownMenuItem(
+                            value: 'paid',
+                            child: Text('Paid'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            controller.utilityPaymentStatus.value = val;
+                          }
+                        },
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -498,8 +596,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.warrantyEmeraldLight.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.warrantyEmeraldLight.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: AppColors.warrantyEmerald.withValues(alpha: 0.3),
         ),
@@ -507,16 +605,17 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Section Title
           const Row(
             children: [
               Icon(
-                Icons.shield_outlined,
+                Icons.receipt_long_outlined,
                 color: AppColors.warrantyEmerald,
                 size: 20,
               ),
               SizedBox(width: 8),
               Text(
-                'Appliance & Warranty Invoice Details',
+                'Invoice & Store Details',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -526,230 +625,642 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Brand *',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Obx(
-                      () => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: controller.selectedBrand.value,
-                            items:
-                                (controller.dynamicBrands.isNotEmpty
-                                        ? [...controller.dynamicBrands, 'Other']
-                                        : [
-                                            ...AppConstants.popularBrands,
-                                            'Other',
-                                          ])
-                                    .map(
-                                      (b) => DropdownMenuItem(
-                                        value: b,
-                                        child: Text(b),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (val) {
-                              if (val != null)
-                                controller.selectedBrand.value = val;
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+
+          // Shared Invoice Details Row 1
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Store / Vendor Name',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.storeVendorNameController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Vijay Sales, Croma, Amazon',
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Billing / Customer Name',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.billingNameController,
+                  decoration: const InputDecoration(
+                    hintText: 'King Technology / Mihir Shah',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Shared Invoice Details Row 2
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Invoice / Bill Number',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.invoiceNumberController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. INV-98124',
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Total Invoice Amount (₹)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.purchaseAmountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    hintText: 'Optional total amount',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+
+          // Multi-Product Repeater Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.devices_other_outlined,
+                    color: AppColors.warrantyEmerald,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Products & Warranties on this Bill',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Obx(
+                    () => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.warrantyEmerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${controller.applianceItems.length} ${controller.applianceItems.length == 1 ? "Product" : "Products"}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.warrantyEmerald,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Billing / Customer Name',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.billingNameController,
-                      decoration: const InputDecoration(
-                        hintText: 'King Technology / Mihir Shah',
-                      ),
-                    ),
-                  ],
+              OutlinedButton.icon(
+                onPressed: () => controller.addApplianceItem(),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Another Product'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.warrantyEmerald,
+                  side: const BorderSide(color: AppColors.warrantyEmerald),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
+
+          // List of Product Items
+          Obx(
+            () => Column(
+              children: List.generate(
+                controller.applianceItems.length,
+                (index) => _buildApplianceItemCard(
+                  context,
+                  index,
+                  controller.applianceItems[index],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApplianceItemCard(
+    BuildContext context,
+    int index,
+    ApplianceItemFormState item,
+  ) {
+    final subcategories = controller.dynamicApplianceSubcategories.isNotEmpty
+        ? controller.dynamicApplianceSubcategories
+        : AppConstants.applianceSubcategories;
+
+    final brands = controller.dynamicBrands.isNotEmpty
+        ? [...controller.dynamicBrands, 'Other']
+        : [...AppConstants.popularBrands, 'Other'];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Item Card Header
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Store / Vendor Name',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor:
+                        AppColors.warrantyEmerald.withValues(alpha: 0.15),
+                    child: Text(
+                      '#${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.warrantyEmerald,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.storeVendorNameController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. Vijay Sales, Croma, Amazon',
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Product ${index + 1}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Warranty Period (Months)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Obx(
-                      () => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            isExpanded: true,
-                            value: controller.warrantyMonths.value,
-                            items: const [
-                              DropdownMenuItem(
-                                value: 6,
-                                child: Text('6 Months'),
-                              ),
-                              DropdownMenuItem(
-                                value: 12,
-                                child: Text('1 Year (12 Months)'),
-                              ),
-                              DropdownMenuItem(
-                                value: 24,
-                                child: Text('2 Years (24 Months)'),
-                              ),
-                              DropdownMenuItem(
-                                value: 36,
-                                child: Text('3 Years (36 Months)'),
-                              ),
-                              DropdownMenuItem(
-                                value: 60,
-                                child: Text('5 Years (60 Months)'),
-                              ),
-                              DropdownMenuItem(
-                                value: 120,
-                                child: Text('10 Years (Motor/Compressor)'),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              if (val != null)
-                                controller.updateWarrantyMonths(val);
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              if (controller.applianceItems.length > 1)
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
+                  tooltip: 'Remove product from bill',
+                  onPressed: () => controller.removeApplianceItem(index),
                 ),
-              ),
             ],
           ),
+          const SizedBox(height: 10),
+
+          // Item Category & Brand Row
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Appliance Category *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(
+                  () => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: subcategories.contains(
+                          item.selectedCategory.value,
+                        )
+                            ? item.selectedCategory.value
+                            : (subcategories.isNotEmpty
+                                ? subcategories.first
+                                : null),
+                        items: subcategories
+                            .map(
+                              (sub) => DropdownMenuItem(
+                                value: sub,
+                                child: Text(
+                                  sub,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) item.selectedCategory.value = val;
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Brand *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(
+                  () => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: brands.contains(item.selectedBrand.value)
+                            ? item.selectedBrand.value
+                            : (brands.isNotEmpty ? brands.first : 'Other'),
+                        items: brands
+                            .map(
+                              (b) => DropdownMenuItem(
+                                value: b,
+                                child: Text(
+                                  b,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) item.selectedBrand.value = val;
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Custom Brand textfield if Other
+          Obx(() {
+            if (item.selectedBrand.value != 'Other') {
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: TextField(
+                controller: item.customBrandController,
+                decoration: const InputDecoration(
+                  labelText: 'Enter Custom Brand Name',
+                  hintText: 'e.g. Dyson, Bosch, Morphy Richards',
+                ),
+              ),
+            );
+          }),
+
+          const SizedBox(height: 10),
+
+          // Product Name & Item Price Row
+          _buildResponsiveRow(
+            context: context,
+            firstFlex: 3,
+            secondFlex: 2,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Product Name / Model',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: item.productNameController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 260L Frost Free Refrigerator',
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Price / Amount (₹)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: item.purchaseAmountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 24990',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Serial Number & Care Number Row
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Serial Number',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: item.serialNumberController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. SN-982410',
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Model Number',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: item.modelNumberController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. GL-T292RPZY',
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+
+          // Warranty Duration & Status Box
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Serial / Model No',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.serialNumberController,
-                      decoration: const InputDecoration(hintText: 'SN-9384920'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Warranty Expiry Date',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Obx(
-                      () => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Text(
-                          AppFormatters.formatDate(
-                            controller.warrantyValidUpto.value,
+                      () => Row(
+                        children: [
+                          Icon(
+                            Icons.verified_outlined,
+                            size: 16,
+                            color: item.hasWarrantyCoverage.value
+                                ? AppColors.warrantyEmerald
+                                : AppColors.textMuted,
                           ),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.warrantyEmerald,
+                          const SizedBox(width: 6),
+                          Text(
+                            item.hasWarrantyCoverage.value
+                                ? 'Warranty Coverage Active'
+                                : 'No Warranty (Invoice Only)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: item.hasWarrantyCoverage.value
+                                  ? AppColors.warrantyEmerald
+                                  : AppColors.textSecondary,
+                            ),
                           ),
-                        ),
+                        ],
+                      ),
+                    ),
+                    Obx(
+                      () => Switch(
+                        value: item.hasWarrantyCoverage.value,
+                        activeColor: AppColors.warrantyEmerald,
+                        onChanged: (val) => controller
+                            .toggleItemWarrantyCoverage(index, val),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                _buildResponsiveRow(
+                  context: context,
+                  first: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Warranty Period',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Obx(
+                        () => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              isExpanded: true,
+                              value: item.warrantyMonths.value,
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 0,
+                                  child: Text(
+                                    'No Warranty (Invoice Only)',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 6,
+                                  child: Text(
+                                    '6 Months',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 12,
+                                  child: Text(
+                                    '1 Year (12 Months)',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 24,
+                                  child: Text(
+                                    '2 Years (24 Months)',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 36,
+                                  child: Text(
+                                    '3 Years (36 Months)',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 60,
+                                  child: Text(
+                                    '5 Years (60 Months)',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 120,
+                                  child: Text(
+                                    '10 Years (Motor / Compressor)',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  controller.updateItemWarrantyMonths(
+                                    index,
+                                    val,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  second: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Expiry Date Preview',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Obx(
+                        () => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            item.hasWarrantyCoverage.value &&
+                                    item.warrantyMonths.value > 0
+                                ? AppFormatters.formatDate(
+                                    item.warrantyValidUpto.value,
+                                  )
+                                : 'N/A',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: item.hasWarrantyCoverage.value &&
+                                      item.warrantyMonths.value > 0
+                                  ? AppColors.warrantyEmerald
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -782,320 +1293,289 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              // Person Selection Dropdown
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Person / Family Member *',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Person / Family Member *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(() {
+                  final pNames = controller.dynamicPersons
+                      .map((p) => p.fullName)
+                      .toList();
+                  if (pNames.isEmpty) pNames.add('Mihir Gandhi');
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: pNames.contains(
+                          controller.selectedPersonName.value,
+                        )
+                            ? controller.selectedPersonName.value
+                            : pNames.first,
+                        items: pNames.map((name) {
+                          final person = controller.dynamicPersons
+                              .firstWhereOrNull((p) => p.fullName == name);
+                          final rel = person?.relationship != null
+                              ? ' (${person!.relationship})'
+                              : '';
+                          return DropdownMenuItem(
+                            value: name,
+                            child: Text('$name$rel'),
+                          );
+                        }).toList(),
+                        onChanged: controller.onPersonChanged,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Obx(() {
-                      final pNames = controller.dynamicPersons
-                          .map((p) => p.fullName)
-                          .toList();
-                      if (pNames.isEmpty) pNames.add('Mihir Gandhi');
-
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value:
-                                pNames.contains(
-                                  controller.selectedPersonName.value,
-                                )
-                                ? controller.selectedPersonName.value
-                                : pNames.first,
-                            items: pNames.map((name) {
-                              final person = controller.dynamicPersons
-                                  .firstWhereOrNull((p) => p.fullName == name);
-                              final rel = person?.relationship != null
-                                  ? ' (${person!.relationship})'
-                                  : '';
-                              return DropdownMenuItem(
-                                value: name,
-                                child: Text('$name$rel'),
-                              );
-                            }).toList(),
-                            onChanged: controller.onPersonChanged,
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
+                  );
+                }),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Personal Document Type *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Document Type Dropdown
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Identity Document Type *',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(height: 4),
+                Obx(() {
+                  final types = controller.dynamicPersonalDocTypes
+                      .map((t) => t.name)
+                      .toList();
+                  if (types.isEmpty) {
+                    types.addAll([
+                      'Aadhaar Card',
+                      'PAN Card',
+                      'Passport',
+                      'Driving License',
+                    ]);
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: types.contains(
+                          controller.selectedPersonalDocTypeName.value,
+                        )
+                            ? controller.selectedPersonalDocTypeName.value
+                            : types.first,
+                        items: types
+                            .map(
+                              (type) => DropdownMenuItem(
+                                value: type,
+                                child: Text(type),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: controller.onPersonalDocTypeChanged,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Obx(() {
-                      final types = controller.dynamicPersonalDocTypes
-                          .map((t) => t.name)
-                          .toList();
-                      if (types.isEmpty)
-                        types.addAll([
-                          'Aadhaar Card',
-                          'PAN Card',
-                          'Chutni Card (Voter ID)',
-                          'Passport',
-                          'Driving License',
-                        ]);
-
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value:
-                                types.contains(
-                                  controller.selectedPersonalDocTypeName.value,
-                                )
-                                ? controller.selectedPersonalDocTypeName.value
-                                : types.first,
-                            items: types
-                                .map(
-                                  (type) => DropdownMenuItem(
-                                    value: type,
-                                    child: Text(type),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: controller.onPersonalDocTypeChanged,
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ],
+                  );
+                }),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              // ID Number
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'ID / Document / Card Number',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.personalIdNumberController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. 1234-5678-9012 or ABCDE1234F',
-                      ),
-                    ),
-                  ],
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'ID / Document / Card Number',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Issuing Authority
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Issuing Authority',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.personalIssuingAuthorityController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. UIDAI, Income Tax Dept, ECI',
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.personalIdNumberController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 1234-5678-9012 or ABCDE1234F',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Issuing Authority',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.personalIssuingAuthorityController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. UIDAI, Income Tax Dept, ECI',
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              // Issue Date Picker
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Issue Date',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Obx(
-                      () => InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate:
-                                controller.personalIssueDate.value ??
-                                DateTime.now(),
-                            firstDate: DateTime(1950),
-                            lastDate: DateTime(2050),
-                          );
-                          if (picked != null)
-                            controller.personalIssueDate.value = picked;
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                controller.personalIssueDate.value != null
-                                    ? AppFormatters.formatDate(
-                                        controller.personalIssueDate.value!,
-                                      )
-                                    : 'Select Issue Date',
-                                style: TextStyle(
-                                  color:
-                                      controller.personalIssueDate.value != null
-                                      ? AppColors.textPrimary
-                                      : AppColors.textMuted,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const Icon(
-                                Icons.calendar_today,
-                                size: 16,
-                                color: AppColors.textMuted,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Issue Date',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Expiry Date Picker
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Expiry Date (if applicable)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(height: 4),
+                Obx(
+                  () => InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.personalIssueDate.value ??
+                            DateTime.now(),
+                        firstDate: DateTime(1950),
+                        lastDate: DateTime(2050),
+                      );
+                      if (picked != null)
+                        controller.personalIssueDate.value = picked;
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            controller.personalIssueDate.value != null
+                                ? AppFormatters.formatDate(
+                                    controller.personalIssueDate.value!,
+                                  )
+                                : 'Select Issue Date',
+                            style: TextStyle(
+                              color: controller.personalIssueDate.value != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Obx(
-                      () => InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate:
-                                controller.personalExpiryDate.value ??
-                                DateTime.now().add(const Duration(days: 3650)),
-                            firstDate: DateTime(1950),
-                            lastDate: DateTime(2060),
-                          );
-                          if (picked != null)
-                            controller.personalExpiryDate.value = picked;
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                controller.personalExpiryDate.value != null
-                                    ? AppFormatters.formatDate(
-                                        controller.personalExpiryDate.value!,
-                                      )
-                                    : 'Select Expiry Date',
-                                style: TextStyle(
-                                  color:
-                                      controller.personalExpiryDate.value !=
-                                          null
-                                      ? AppColors.textPrimary
-                                      : AppColors.textMuted,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const Icon(
-                                Icons.event_busy,
-                                size: 16,
-                                color: AppColors.textMuted,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Expiry Date (if applicable)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(
+                  () => InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.personalExpiryDate.value ??
+                            DateTime.now().add(const Duration(days: 3650)),
+                        firstDate: DateTime(1950),
+                        lastDate: DateTime(2060),
+                      );
+                      if (picked != null)
+                        controller.personalExpiryDate.value = picked;
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            controller.personalExpiryDate.value != null
+                                ? AppFormatters.formatDate(
+                                    controller.personalExpiryDate.value!,
+                                  )
+                                : 'Select Expiry Date',
+                            style: TextStyle(
+                              color: controller.personalExpiryDate.value != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.event_busy,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAddressSection() {
+  Widget _buildAddressSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1125,81 +1605,75 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'City *',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Obx(
-                      () => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: controller.selectedCity.value,
-                            items:
-                                (controller.dynamicCities.isNotEmpty
-                                        ? controller.dynamicCities
-                                        : AppConstants.supportedCities
-                                              .where((c) => c != 'All Cities')
-                                              .toList())
-                                    .map(
-                                      (city) => DropdownMenuItem(
-                                        value: city,
-                                        child: Text(city),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (val) {
-                              if (val != null)
-                                controller.selectedCity.value = val;
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+          _buildResponsiveRow(
+            context: context,
+            firstFlex: 2,
+            secondFlex: 3,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'City *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Area / Locality / Premises',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(height: 4),
+                Obx(
+                  () => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: controller.selectedCity.value,
+                        items:
+                            (controller.dynamicCities.isNotEmpty
+                                    ? controller.dynamicCities
+                                    : AppConstants.supportedCities
+                                          .where((c) => c != 'All Cities')
+                                          .toList())
+                                .map(
+                                  (city) => DropdownMenuItem(
+                                    value: city,
+                                    child: Text(city),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (val) {
+                          if (val != null)
+                            controller.selectedCity.value = val;
+                        },
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.areaLocalityController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. SG Highway, Bodakdev, Corporate HQ',
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Area / Locality / Premises',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.areaLocalityController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. SG Highway, Bodakdev, Corporate HQ',
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1215,7 +1689,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
 
       final result = controller.compressionResult.value;
       final isCompressing = controller.isCompressing.value;
+      final errorMsg = controller.compressionError.value;
       final hasSafeCompression = result?.hasSizeReduction == true;
+      final isPdf = FileCompressor.isPdf(file.name);
+      final isCompressedSelected = controller.useCompressed.value;
 
       return Container(
         margin: const EdgeInsets.only(top: 20),
@@ -1223,10 +1700,16 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: isCompressedSelected
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : AppColors.border,
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.05),
+              color: isCompressedSelected
+                  ? AppColors.primary.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1241,16 +1724,18 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
+                    color: isCompressedSelected
+                        ? AppColors.primarySurface
+                        : AppColors.surfaceMuted,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    result?.isPdf == true
+                    isPdf
                         ? Icons.picture_as_pdf_outlined
                         : Icons.compress,
-                    color: result?.isPdf == true
-                        ? AppColors.error
-                        : AppColors.primary,
+                    color: isCompressedSelected
+                        ? (isPdf ? AppColors.error : AppColors.primary)
+                        : AppColors.textSecondary,
                     size: 20,
                   ),
                 ),
@@ -1259,45 +1744,75 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          Text(
-                            result?.isPdf == true
-                                ? 'Smart PDF Compressor'
-                                : 'Smart Image Compressor',
-                            style: const TextStyle(
+                          const Text(
+                            'Upload Version & Compression',
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: result?.isPdf == true
+                              color: isPdf
                                   ? AppColors.error.withValues(alpha: 0.1)
                                   : AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              result?.isPdf == true ? 'PDF' : 'IMAGE',
+                              isPdf ? 'PDF' : 'IMAGE',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: result?.isPdf == true
+                                color: isPdf
                                     ? AppColors.error
                                     : AppColors.primary,
                               ),
                             ),
                           ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.bolt,
+                                  size: 11,
+                                  color: AppColors.secondary,
+                                ),
+                                SizedBox(width: 2),
+                                Text(
+                                  'API Engine',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.secondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
+                      const SizedBox(height: 2),
                       const Text(
-                        'Optimize size for faster vault loading & preview',
+                        'Select whether to optimize size with cloud engine or upload raw file',
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
@@ -1306,20 +1821,21 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     ],
                   ),
                 ),
-                if (result != null)
+                if (isCompressedSelected && result != null && !isCompressing)
                   Container(
+                    margin: const EdgeInsets.only(left: 8),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: result.savingsPercent > 0
+                      color: hasSafeCompression
                           ? AppColors.successLight
                           : AppColors.infoLight,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
-                            (result.savingsPercent > 0
+                            (hasSafeCompression
                                     ? AppColors.success
                                     : AppColors.info)
                                 .withValues(alpha: 0.3),
@@ -1328,7 +1844,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     child: Text(
                       hasSafeCompression
                           ? '🔥 ${result.savingsFormatted} Saved'
-                          : 'Original Kept',
+                          : 'Optimal Size',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1343,220 +1859,291 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
 
             const SizedBox(height: 16),
 
-            // Prominent Progressive Loader banner shown whenever compression is actively calculating
-            if (isCompressing)
-              Container(
-                margin: const EdgeInsets.only(bottom: 14),
-                padding: const EdgeInsets.all(14),
+            // Upload Target Radios (Primary Selection)
+            const Text(
+              'Choose Upload Version:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Option 1 (Default): Upload Original Quality
+            InkWell(
+              onTap: () => controller.setUploadCompressionMode(false),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
+                  color: !isCompressedSelected
+                      ? AppColors.primarySurface
+                      : AppColors.background,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: AppColors.primaryLight.withValues(alpha: 0.3),
+                    color: !isCompressedSelected
+                        ? AppColors.primary
+                        : AppColors.border,
+                    width: !isCompressedSelected ? 1.5 : 1,
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Optimizing with ${controller.compressionQuality.value}% quality',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primaryDark,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${(controller.compressionProgress.value * 100).toInt()}%',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      controller.compressionProgressText.value.isNotEmpty
-                          ? controller.compressionProgressText.value
-                          : 'Analyzing streams & calculating new compressed file size. Please wait...',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                      child: LinearProgressIndicator(
-                        value: controller.compressionProgress.value.clamp(
-                          0.05,
-                          1.0,
-                        ),
-                        minHeight: 6,
-                        backgroundColor: AppColors.surface,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Comparison Banner (Before vs After)
-            if (result != null || isCompressing) ...[
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   children: [
+                    Radio<bool>(
+                      value: false,
+                      groupValue: controller.useCompressed.value,
+                      onChanged: (val) =>
+                          controller.setUploadCompressionMode(val ?? false),
+                      activeColor: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Original (Before)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textMuted,
-                            ),
+                          Row(
+                            children: [
+                              const Text(
+                                'Upload Original Quality',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.textSecondary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Default',
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            result?.originalSizeFormatted ??
-                                (controller.selectedFile.value != null
-                                    ? CompressionResult.formatFileSize(
-                                        controller.selectedFile.value!.size,
-                                      )
-                                    : '--'),
+                            'Full original file (${CompressionResult.formatFileSize(file.size)}) without compression.',
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
                               color: AppColors.textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.arrow_forward_rounded,
-                      color: AppColors.primary,
-                      size: 20,
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Option 2: Upload Compressed File
+            InkWell(
+              onTap: () => controller.setUploadCompressionMode(true),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: isCompressedSelected
+                      ? AppColors.primarySurface
+                      : AppColors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isCompressedSelected
+                        ? AppColors.primary
+                        : AppColors.border,
+                    width: isCompressedSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Radio<bool>(
+                      value: true,
+                      groupValue: controller.useCompressed.value,
+                      onChanged: (val) =>
+                          controller.setUploadCompressionMode(val ?? true),
+                      activeColor: AppColors.primary,
                     ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            hasSafeCompression
-                                ? 'Compressed (After)'
-                                : 'Original (Kept)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.successDark,
-                            ),
+                          Row(
+                            children: [
+                              const Text(
+                                'Upload Compressed File',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondary,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'API Optimized',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
-                          if (isCompressing)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${(controller.compressionProgress.value * 100).toInt()}%...',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Text(
-                              result?.compressedSizeFormatted ?? '--',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.success,
-                              ),
+                          Text(
+                            result != null
+                                ? 'Optimized size (${result.compressedSizeFormatted}). Saves cloud storage & loads faster.'
+                                : 'Compresses via King Technology Media Engine API before saving to vault.',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
                             ),
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
 
-              if (result != null &&
-                  result.isPdf &&
-                  !result.hasEmbeddedImages) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.primaryLight.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: const Row(
+            // ONLY DISPLAY OPTIMIZATION OPTIONS WHEN COMPRESSED IS SELECTED
+            if (isCompressedSelected) ...[
+              const SizedBox(height: 18),
+              const Divider(color: AppColors.border, height: 1),
+              const SizedBox(height: 14),
+
+              // Optimization Section Header with Re-compress Button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
                     children: [
                       Icon(
-                        Icons.info_outline,
+                        Icons.auto_fix_high_rounded,
                         size: 16,
                         color: AppColors.primary,
                       ),
-                      SizedBox(width: 8),
+                      SizedBox(width: 6),
+                      Text(
+                        'Optimization Settings',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: isCompressing
+                        ? null
+                        : () => controller.recompressFile(),
+                    icon: isCompressing
+                        ? const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 14),
+                    label: Text(
+                      isCompressing ? 'Compressing...' : 'Re-compress File',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary, width: 1.2),
+                      backgroundColor: AppColors.primarySurface,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Inline Error Card (Rule: Error messages rendered inline in active modals/forms)
+              if (errorMsg.isNotEmpty) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningLight,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: AppColors.warningDark,
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Vector Text PDF: This document consists of clean scalable text and fonts (no heavy raster scans). It is already at optimal minimum size.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.primaryDark,
+                          'API Notice: $errorMsg',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.warningDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: isCompressing
+                            ? null
+                            : () => controller.compressSelectedFile(),
+                        icon: const Icon(Icons.refresh, size: 14),
+                        label: const Text('Retry API', style: TextStyle(fontSize: 11)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
                         ),
                       ),
@@ -1565,207 +2152,107 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
 
-              const SizedBox(height: 16),
-
-              if (result != null && !hasSafeCompression) ...[
+              // Prominent Progressive Loader banner shown while compression API is executing
+              if (isCompressing)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.infoLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.info.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.verified_outlined,
-                        size: 16,
-                        color: AppColors.info,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'No safe size reduction is available for this PDF. The original will be uploaded unchanged to protect preview quality.',
-                          style: TextStyle(fontSize: 11, color: AppColors.info),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Upload Target Radios
-              const Text(
-                'Choose Upload Version:',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Option 1: Compressed (Always Default Selected)
-              InkWell(
-                onTap: hasSafeCompression
-                    ? () => controller.useCompressed.value = true
-                    : null,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: controller.useCompressed.value
-                        ? AppColors.primarySurface
-                        : AppColors.background,
+                    color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: controller.useCompressed.value
-                          ? AppColors.primary
-                          : AppColors.border,
-                      width: controller.useCompressed.value ? 1.5 : 1,
+                      color: AppColors.primaryLight.withValues(alpha: 0.3),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Radio<bool>(
-                        value: true,
-                        groupValue: controller.useCompressed.value,
-                        onChanged: hasSafeCompression
-                            ? (val) =>
-                                  controller.useCompressed.value = val ?? true
-                            : null,
-                        activeColor: AppColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  'Upload Compressed File',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'Recommended',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Optimized size (${result?.compressedSizeFormatted ?? 'calculated on finish'}). Faster preview & saving storage.',
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              isPdf
+                                  ? 'Optimizing PDF with ${controller.pdfCompressionLevel.value.toUpperCase()} level...'
+                                  : 'Optimizing image with ${controller.compressionQuality.value}% quality...',
                               style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Option 2: Original Quality
-              InkWell(
-                onTap: () => controller.useCompressed.value = false,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: !controller.useCompressed.value
-                        ? AppColors.primarySurface
-                        : AppColors.background,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: !controller.useCompressed.value
-                          ? AppColors.primary
-                          : AppColors.border,
-                      width: !controller.useCompressed.value ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Radio<bool>(
-                        value: false,
-                        groupValue: controller.useCompressed.value,
-                        onChanged: (val) =>
-                            controller.useCompressed.value = val ?? false,
-                        activeColor: AppColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Upload Original Quality',
-                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
+                                color: AppColors.primaryDark,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Full original file (${result?.originalSizeFormatted ?? CompressionResult.formatFileSize(controller.selectedFile.value?.size ?? 0)}) without compression.',
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${(controller.compressionProgress.value * 100).toInt()}%',
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
                               ),
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        controller.compressionProgressText.value.isNotEmpty
+                            ? controller.compressionProgressText.value
+                            : 'Processing binary streams on King Technology Media Engine...',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: const BorderRadius.all(Radius.circular(4)),
+                        child: LinearProgressIndicator(
+                          value: controller.compressionProgress.value.clamp(
+                            0.05,
+                            1.0,
+                          ),
+                          minHeight: 6,
+                          backgroundColor: AppColors.surface,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              if (controller.useCompressed.value && result?.isPdf != true) ...[
-                const SizedBox(height: 16),
-
-                // Compression Quality Controls (Only shown for Compressed option)
+              // Quality Control & Re-generate Panel (Only Quality Required)
+              if (!isCompressing) ...[
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.background,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: controller.isQualityDirty
+                          ? AppColors.secondary.withValues(alpha: 0.5)
+                          : AppColors.border,
+                      width: controller.isQualityDirty ? 1.5 : 1,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1773,61 +2260,470 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Compression Quality Level',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                isPdf
+                                    ? Icons.picture_as_pdf_outlined
+                                    : Icons.photo_size_select_large_outlined,
+                                size: 16,
+                                color: isPdf ? AppColors.error : AppColors.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Compression Quality',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            '${controller.compressionQuality.value}%',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySurface,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              '${controller.compressionQuality.value}%',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      // Preset buttons
-                      Row(
-                        children: [
-                          _buildQualityPresetButton(85, 'High (85%)'),
-                          const SizedBox(width: 8),
-                          _buildQualityPresetButton(70, 'Balanced (70%)'),
-                          const SizedBox(width: 8),
-                          _buildQualityPresetButton(50, 'Max (50%)'),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // Slider
+                      const SizedBox(height: 12),
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
                           trackHeight: 4,
                           thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 7,
+                            enabledThumbRadius: 8,
                           ),
                         ),
                         child: Slider(
                           value: controller.compressionQuality.value.toDouble(),
-                          min: 30,
-                          max: 95,
-                          divisions: 13,
+                          min: 10,
+                          max: 100,
+                          divisions: 18,
                           activeColor: AppColors.primary,
                           inactiveColor: AppColors.border,
                           onChanged: (val) {
-                            controller.compressionQuality.value = val.round();
-                          },
-                          onChangeEnd: (val) {
                             controller.setCompressionQuality(val.round());
                           },
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      // Quick Preset Chips
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildQualityChip(
+                            40,
+                            '40% (Extreme)',
+                            controller.compressionQuality.value == 40,
+                            () => controller.setCompressionQuality(40),
+                          ),
+                          _buildQualityChip(
+                            60,
+                            '60% (High)',
+                            controller.compressionQuality.value == 60,
+                            () => controller.setCompressionQuality(60),
+                          ),
+                          _buildQualityChip(
+                            75,
+                            '75% (Recommended)',
+                            controller.compressionQuality.value == 75,
+                            () => controller.setCompressionQuality(75),
+                          ),
+                          _buildQualityChip(
+                            90,
+                            '90% (Light)',
+                            controller.compressionQuality.value == 90,
+                            () => controller.setCompressionQuality(90),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Divider(color: AppColors.border, height: 1),
+                      const SizedBox(height: 12),
+                      // Prominent Re-generate Button
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: isCompressing
+                                  ? null
+                                  : () => controller.recompressFile(),
+                              icon: isCompressing
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.refresh_rounded, size: 16),
+                              label: Text(
+                                isCompressing
+                                    ? 'Compressing...'
+                                    : '⚡ Re-generate with ${controller.compressionQuality.value}% Quality',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: controller.isQualityDirty
+                                    ? AppColors.secondary
+                                    : AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                  horizontal: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (controller.isQualityDirty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              size: 14,
+                              color: AppColors.secondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Quality adjusted to ${controller.compressionQuality.value}%. Tap "Re-generate" to update file compression.',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.secondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
+              ],
+
+              // Comparison Banner (Before vs After)
+              if (result != null || isCompressing) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Original (Before)',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  result?.originalSizeFormatted ??
+                                      CompressionResult.formatFileSize(file.size),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  hasSafeCompression
+                                      ? 'Compressed (After)'
+                                      : 'Original (Retained)',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: hasSafeCompression
+                                        ? AppColors.successDark
+                                        : AppColors.info,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                if (isCompressing)
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${(controller.compressionProgress.value * 100).toInt()}%...',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  Text(
+                                    result?.compressedSizeFormatted ?? '--',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: hasSafeCompression
+                                          ? AppColors.success
+                                          : AppColors.info,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (result != null && !isCompressing) ...[
+                        const SizedBox(height: 10),
+                        const Divider(height: 1, color: AppColors.border),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            if (result.pageCount != null && result.pageCount! > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.description_outlined,
+                                      size: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${result.pageCount} Pages',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (hasSafeCompression)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.successLight,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '🔥 Saved ${CompressionResult.formatFileSize(result.totalSavedBytes)} (${result.savingsPercent.toStringAsFixed(1)}%)',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.successDark,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        // View Compressed Document Button
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  if (isPdf) {
+                                    PdfViewerDialog.showBytes(
+                                      title: 'Preview Compressed PDF: ${file.name}',
+                                      bytes: result.compressedBytes,
+                                      fileName: result.compressedFileName,
+                                    );
+                                  } else {
+                                    ImageLightboxDialog.show(
+                                      title: 'Preview Compressed Image: ${file.name}',
+                                      imageBytes: result.compressedBytes,
+                                      fileName: result.compressedFileName,
+                                    );
+                                  }
+                                },
+                                icon: Icon(
+                                  isPdf
+                                      ? Icons.picture_as_pdf_outlined
+                                      : Icons.visibility_outlined,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  isPdf
+                                      ? '👁️ View Compressed PDF'
+                                      : '👁️ View Compressed Image',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (file.bytes != null) ...[
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  if (isPdf) {
+                                    PdfViewerDialog.showBytes(
+                                      title: 'Original PDF: ${file.name}',
+                                      bytes: file.bytes!,
+                                      fileName: file.name,
+                                    );
+                                  } else {
+                                    ImageLightboxDialog.show(
+                                      title: 'Original Image: ${file.name}',
+                                      imageBytes: file.bytes!,
+                                      fileName: file.name,
+                                    );
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.compare_arrows_rounded,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'View Original',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.textSecondary,
+                                  side: const BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                if (result != null && !hasSafeCompression && !isCompressing) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoLight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.info.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.verified_outlined,
+                          size: 16,
+                          color: AppColors.info,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'File is already optimized. The original file will be uploaded unchanged.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.info,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ],
           ],
@@ -1836,30 +2732,31 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
     });
   }
 
-  Widget _buildQualityPresetButton(int quality, String label) {
-    final isSelected = controller.compressionQuality.value == quality;
-    return Expanded(
-      child: InkWell(
-        onTap: () => controller.setCompressionQuality(quality),
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.surface,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-            ),
+  Widget _buildQualityChip(
+    int quality,
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 1.5 : 1,
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : AppColors.textPrimary,
-              ),
-            ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.textPrimary,
           ),
         ),
       ),

@@ -30,7 +30,10 @@ class FolderModel {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
-      documentCount: (json['documents'] is List) ? (json['documents'] as List).length : 0,
+      documentCount: (json['doc_count'] as num?)?.toInt() ??
+          ((json['documents'] is List)
+              ? (json['documents'] as List).where((d) => d is Map && d['deleted_at'] == null).length
+              : 0),
     );
   }
 
@@ -43,5 +46,27 @@ class FolderModel {
       'color': color,
       'created_by': createdBy,
     };
+  }
+
+  FolderModel copyWith({
+    String? id,
+    String? name,
+    String? description,
+    String? parentId,
+    String? color,
+    String? createdBy,
+    DateTime? createdAt,
+    int? documentCount,
+  }) {
+    return FolderModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      parentId: parentId ?? this.parentId,
+      color: color ?? this.color,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      documentCount: documentCount ?? this.documentCount,
+    );
   }
 }

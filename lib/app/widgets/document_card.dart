@@ -137,7 +137,31 @@ class DocumentCard extends StatelessWidget {
                         StatusBadge.pending(),
                     ],
                     if (hasWarranty) ...[
-                      if (doc.applianceWarranty!.isExpired)
+                      if (doc.applianceWarranty!.hasMultipleItems)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warrantyEmerald.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppColors.warrantyEmerald.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            '${doc.applianceWarranty!.itemsCount} Products',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.warrantyEmerald,
+                            ),
+                          ),
+                        ),
+                      if (!doc.applianceWarranty!.hasWarranty)
+                        StatusBadge.noWarranty()
+                      else if (doc.applianceWarranty!.isExpired)
                         StatusBadge.warrantyExpired()
                       else if (doc.applianceWarranty!.isExpiringSoon)
                         StatusBadge.warrantyExpiringSoon(
@@ -197,24 +221,47 @@ class DocumentCard extends StatelessWidget {
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Brand: ${doc.applianceWarranty!.brand}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              doc.applianceWarranty!.hasMultipleItems
+                                  ? 'Brands: ${doc.applianceWarranty!.brandsSummary}'
+                                  : 'Brand: ${doc.applianceWarranty!.brand}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              doc.applianceWarranty!.hasWarranty
+                                  ? 'Warranty: ${AppFormatters.formatDate(doc.applianceWarranty!.warrantyValidUpto)}'
+                                  : 'Warranty: None (Invoice Only)',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          'Warranty: ${AppFormatters.formatDate(doc.applianceWarranty!.warrantyValidUpto)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
+                        if (doc.applianceWarranty!.hasMultipleItems) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            doc.applianceWarranty!.items
+                                .map((i) => i.productName)
+                                .join(' • '),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

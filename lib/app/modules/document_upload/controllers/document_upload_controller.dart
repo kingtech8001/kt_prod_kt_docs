@@ -9,41 +9,157 @@ import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/folder_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/category_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/folder_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/folder_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/settings_dataset.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
-import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:mime/mime.dart';
+import 'package:uuid/uuid.dart';
+
+class ApplianceItemFormState {
+  final String id;
+  final productNameController = TextEditingController();
+  final selectedCategory = 'Ceiling / Table Fans'.obs;
+  final selectedBrand = 'Havells'.obs;
+  final customBrandController = TextEditingController();
+  final modelNumberController = TextEditingController();
+  final serialNumberController = TextEditingController();
+  final purchaseAmountController = TextEditingController();
+  final hasWarrantyCoverage = true.obs;
+  final warrantyMonths = 12.obs;
+  final warrantyValidUpto = Rx<DateTime>(
+    DateTime.now().add(const Duration(days: 365)),
+  );
+  final customerCareNumberController = TextEditingController();
+
+  ApplianceItemFormState({
+    String? id,
+    String? initialName,
+    String? initialCategory,
+    String? initialBrand,
+    String? initialModel,
+    String? initialSerial,
+    double? initialAmount,
+    int initialWarrantyMonths = 12,
+    DateTime? initialValidUpto,
+    String? initialCareNumber,
+    bool initialHasWarranty = true,
+  }) : id = id ?? const Uuid().v4() {
+    if (initialName != null) productNameController.text = initialName;
+    if (initialCategory != null) selectedCategory.value = initialCategory;
+    if (initialBrand != null) selectedBrand.value = initialBrand;
+    if (initialModel != null) modelNumberController.text = initialModel;
+    if (initialSerial != null) serialNumberController.text = initialSerial;
+    if (initialAmount != null && initialAmount > 0) {
+      purchaseAmountController.text = initialAmount.toStringAsFixed(0);
+    }
+    hasWarrantyCoverage.value = initialHasWarranty;
+    warrantyMonths.value = initialWarrantyMonths;
+    if (initialValidUpto != null) {
+      warrantyValidUpto.value = initialValidUpto;
+    }
+    if (initialCareNumber != null) {
+      customerCareNumberController.text = initialCareNumber;
+    }
+  }
+
+  void updateWarrantyMonths(int months, DateTime purchaseDate) {
+    warrantyMonths.value = months;
+    if (months == 0) {
+      hasWarrantyCoverage.value = false;
+      warrantyValidUpto.value = purchaseDate;
+    } else {
+      hasWarrantyCoverage.value = true;
+      warrantyValidUpto.value = purchaseDate.add(Duration(days: months * 30));
+    }
+  }
+
+  void toggleWarrantyCoverage(bool hasWarranty, DateTime purchaseDate) {
+    hasWarrantyCoverage.value = hasWarranty;
+    if (!hasWarranty) {
+      warrantyMonths.value = 0;
+      warrantyValidUpto.value = purchaseDate;
+    } else {
+      if (warrantyMonths.value == 0) {
+        warrantyMonths.value = 12;
+      }
+      warrantyValidUpto.value = purchaseDate.add(
+        Duration(days: warrantyMonths.value * 30),
+      );
+    }
+  }
+
+  void onPurchaseDateChanged(DateTime newPurchaseDate) {
+    if (hasWarrantyCoverage.value && warrantyMonths.value > 0) {
+      warrantyValidUpto.value = newPurchaseDate.add(
+        Duration(days: warrantyMonths.value * 30),
+      );
+    } else {
+      warrantyValidUpto.value = newPurchaseDate;
+    }
+  }
+
+  void dispose() {
+    productNameController.dispose();
+    customBrandController.dispose();
+    modelNumberController.dispose();
+    serialNumberController.dispose();
+    purchaseAmountController.dispose();
+    customerCareNumberController.dispose();
+  }
+}
 
 class DocumentUploadController extends GetxController {
-  final DocumentRepository _documentRepository;
-  final CategoryRepository _categoryRepository;
-  final FolderRepository _folderRepository;
-  final MasterDataRepository _masterDataRepository;
+  final DocumentsDataset _documentsDataset;
+  final FolderDataset _folderDataset;
+  final SettingsDataset _settingsDataset;
 
   DocumentUploadController(
-    this._documentRepository,
-    this._categoryRepository,
-    this._folderRepository,
-    this._masterDataRepository,
+    this._documentsDataset,
+    this._folderDataset,
+    this._settingsDataset,
   );
 
-  final isLoading = false.obs;
+  final isInitialLoading = true.obs;
+  final isSubmitting = false.obs;
+  final formErrorMessage = ''.obs;
+
+  // Backward compatibility alias for any views reading isLoading
+  RxBool get isLoading => isSubmitting;
+
   final categories = <CategoryModel>[].obs;
   final folders = <FolderModel>[].obs;
 
-  // Compression State
+  // Compression State (Powered by King Technology Media Engine API)
   final isCompressing = false.obs;
   final compressionResult = Rxn<CompressionResult>();
-  final useCompressed = true.obs;
-  final compressionQuality = 70.obs;
+  final useCompressed = false.obs; // Original Quality is default selected
+  final compressionPreset = 'recommended'.obs; // 'recommended', 'extreme', 'high', 'low', 'lossless', 'custom'
+  final compressionQuality = 75.obs;
+  final lastCompressedQuality = 75.obs;
+
+  bool get isQualityDirty =>
+      compressionResult.value != null &&
+      compressionQuality.value != lastCompressedQuality.value;
+
+  final pdfCompressionLevel = 'recommended'.obs; // Synchronized legacy alias for views
+  final pdfQuality = 72.obs;
+  final pdfDpi = 150.obs; // 96, 120, 150, 200, 300
+  final maxDimension = Rxn<int>();
+  final targetSizeKb = Rxn<int>();
+  final isGrayscale = false.obs;
+  final stripMetadata = true.obs;
+  final showAdvancedSettings = false.obs;
   final compressionProgress = 0.0.obs;
   final compressionProgressText = ''.obs;
+  final compressionError = ''.obs;
+
+  final targetSizeController = TextEditingController();
+  final maxDimensionController = TextEditingController();
 
   // Dynamic Master Data
   final dynamicCities = <String>[].obs;
@@ -82,22 +198,15 @@ class DocumentUploadController extends GetxController {
   final dueDate = Rxn<DateTime>();
   final utilityPaymentStatus = 'pending'.obs;
 
-  // Appliance Warranty Specific Fields
-  final productNameController = TextEditingController();
-  final selectedBrand = 'Havells'.obs;
-  final customBrandController = TextEditingController();
-  final modelNumberController = TextEditingController();
-  final serialNumberController = TextEditingController();
+  // Appliance Warranty Specific Fields (Invoice Level)
   final billingNameController = TextEditingController();
   final storeVendorNameController = TextEditingController();
   final invoiceNumberController = TextEditingController();
   final purchaseAmountController = TextEditingController();
   final purchaseDate = Rx<DateTime>(DateTime.now());
-  final warrantyMonths = 12.obs;
-  final warrantyValidUpto = Rx<DateTime>(
-    DateTime.now().add(const Duration(days: 365)),
-  );
-  final customerCareNumberController = TextEditingController();
+
+  // Dynamic Multi-Product Items Repeater
+  final applianceItems = <ApplianceItemFormState>[].obs;
 
   // Personal / Identity Specific Fields
   final selectedPersonId = RxnString();
@@ -140,32 +249,57 @@ class DocumentUploadController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    loadCategoriesAndFolders();
-    loadMasterData();
+    addApplianceItem();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    isInitialLoading.value = true;
+    formErrorMessage.value = '';
+    try {
+      await Future.wait([
+        loadCategoriesAndFolders(),
+        loadMasterData(),
+      ]);
+    } catch (e, st) {
+      AppLogger.error(
+        'UPLOAD_CTRL',
+        'Error during initial setup initialization: $e',
+        error: e,
+        stackTrace: st,
+      );
+      formErrorMessage.value = 'Error initializing configuration. Please refresh.';
+    } finally {
+      isInitialLoading.value = false;
+    }
   }
 
   Future<void> loadMasterData() async {
     try {
-      final cList = await _masterDataRepository.getCities(activeOnly: true);
+      final cList = await _settingsDataset.getCities(activeOnly: true);
       if (cList.isNotEmpty) {
         dynamicCities.assignAll(cList.map((c) => c.name));
         selectedCity.value = cList.first.name;
       }
 
-      final bList = await _masterDataRepository.getBrands(activeOnly: true);
+      final bList = await _settingsDataset.getBrands(activeOnly: true);
       if (bList.isNotEmpty) {
         dynamicBrands.assignAll(bList.map((b) => b.name));
-        selectedBrand.value = bList.first.name;
+        if (applianceItems.isNotEmpty &&
+            (applianceItems.first.selectedBrand.value.isEmpty ||
+                applianceItems.first.selectedBrand.value == 'Generic')) {
+          applianceItems.first.selectedBrand.value = bList.first.name;
+        }
       }
 
-      final sList = await _masterDataRepository.getApplianceSubcategories(
+      final sList = await _settingsDataset.getApplianceSubcategories(
         activeOnly: true,
       );
       if (sList.isNotEmpty) {
         dynamicApplianceSubcategories.assignAll(sList.map((s) => s.name));
       }
 
-      final pList = await _masterDataRepository.getUtilityProviders(
+      final pList = await _settingsDataset.getUtilityProviders(
         activeOnly: true,
       );
       if (pList.isNotEmpty) {
@@ -174,7 +308,7 @@ class DocumentUploadController extends GetxController {
         );
       }
 
-      final personList = await _masterDataRepository.getPersons(
+      final personList = await _settingsDataset.getPersons(
         activeOnly: true,
       );
       if (personList.isNotEmpty) {
@@ -183,7 +317,7 @@ class DocumentUploadController extends GetxController {
         selectedPersonName.value = personList.first.fullName;
       }
 
-      final docTypeList = await _masterDataRepository.getPersonalDocTypes(
+      final docTypeList = await _settingsDataset.getPersonalDocTypes(
         activeOnly: true,
       );
       if (docTypeList.isNotEmpty) {
@@ -207,15 +341,21 @@ class DocumentUploadController extends GetxController {
       'Loading categories and folders for upload form...',
     );
     try {
-      final cats = await _categoryRepository.getAllCategories();
+      final cats = await _documentsDataset.getAllCategories();
       categories.assignAll(cats);
       if (cats.isNotEmpty) {
         selectedCategoryId.value = cats.first.id;
         updateSubcategoriesForCategory(cats.first.code);
       }
 
-      final flds = await _folderRepository.getFolders();
+      final flds = await _folderDataset.getFolders();
       folders.assignAll(flds);
+
+      final paramFolderId = Get.parameters['folderId'];
+      if (paramFolderId != null && flds.any((f) => f.id == paramFolderId)) {
+        selectedFolderId.value = paramFolderId;
+      }
+
       AppLogger.info(
         'UPLOAD_CTRL',
         'Categories (${cats.length}) & Folders (${flds.length}) loaded.',
@@ -227,12 +367,7 @@ class DocumentUploadController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error Loading Setup',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      formErrorMessage.value = 'Failed to load document categories and folders.';
     }
   }
 
@@ -307,80 +442,290 @@ class DocumentUploadController extends GetxController {
     return FileCompressor.isCompressible(file.name);
   }
 
+  void setUploadCompressionMode(bool compressed) {
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      '🔘 [OPTION CHANGED] User selected upload version: '
+      '${compressed ? "COMPRESSED (OPTIMIZED VIA MEDIA ENGINE)" : "ORIGINAL QUALITY (NO COMPRESSION)"}',
+    );
+    useCompressed.value = compressed;
+    if (compressed &&
+        compressionResult.value == null &&
+        !isCompressing.value &&
+        selectedFile.value != null &&
+        FileCompressor.isCompressible(selectedFile.value!.name)) {
+      AppLogger.info(
+        'UPLOAD_CTRL',
+        '⚡ [TRIGGER COMPRESSION] Initiating API compression for selected file...',
+      );
+      compressSelectedFile();
+    }
+  }
+
   Future<void> compressSelectedFile() async {
     final file = selectedFile.value;
-    if (file == null || file.bytes == null) return;
+    if (file == null || file.bytes == null) {
+      AppLogger.warning('UPLOAD_CTRL', '⚠️ [COMPRESS SKIP] Selected file or bytes are null');
+      return;
+    }
     if (!FileCompressor.isCompressible(file.name)) {
+      AppLogger.info('UPLOAD_CTRL', 'ℹ️ [COMPRESS SKIP] File ${file.name} is not a PDF or image');
       compressionResult.value = null;
+      compressionError.value = '';
       return;
     }
 
     isCompressing.value = true;
-    compressionProgress.value = 0.12;
-    compressionProgressText.value = 'Preparing optimization...';
+    compressionError.value = '';
+    compressionProgress.value = 0.15;
+    compressionProgressText.value =
+        'Connecting to King Technology Media Engine...';
 
-    // Smooth progressive progress ticker to prevent any freezes during single-threaded execution
-    Timer? ticker;
-    ticker = Timer.periodic(const Duration(milliseconds: 70), (t) {
-      if (compressionProgress.value < 0.90) {
-        compressionProgress.value = (compressionProgress.value + 0.05).clamp(
-          0.12,
-          0.90,
-        );
-      }
-    });
-
+    final stopwatch = Stopwatch()..start();
     try {
-      // Yield to event loop to guarantee the UI renders the loader immediately
-      await Future.delayed(const Duration(milliseconds: 50));
+      final isPdf = FileCompressor.isPdf(file.name);
+      AppLogger.info(
+        'UPLOAD_CTRL',
+        '┌──────────────────────────────────────────────────────────────────\n'
+        '│ ⚙️ [UPLOAD_CTRL] Dispatched to Media Engine API\n'
+        '│ 📄 File: ${file.name}\n'
+        '│ 📦 File Size: ${file.bytes!.length} bytes (${CompressionResult.formatFileSize(file.bytes!.length)})\n'
+        '│ 🏷️ Type: ${isPdf ? "PDF Document" : "Image"}\n'
+        '│ 🎛️ Target Quality: ${compressionQuality.value}%\n'
+        '└──────────────────────────────────────────────────────────────────',
+      );
 
       final result = await FileCompressor.compressFile(
         bytes: file.bytes!,
         fileName: file.name,
         quality: compressionQuality.value,
         onProgress: (progress, message) {
-          if (progress > compressionProgress.value) {
-            compressionProgress.value = progress.clamp(0.12, 0.95);
-          }
+          compressionProgress.value = progress;
           compressionProgressText.value = message;
+          AppLogger.debug('UPLOAD_CTRL', '⏳ [PROGRESS ${(progress * 100).toInt()}%] $message');
         },
       );
 
-      ticker.cancel();
+      lastCompressedQuality.value = compressionQuality.value;
       compressionProgress.value = 1.0;
-      compressionProgressText.value = result?.hasSizeReduction == true
-          ? 'Optimization complete!'
-          : 'Original PDF retained because compression was not safe or smaller.';
-      await Future.delayed(const Duration(milliseconds: 60));
+      if (result != null && result.hasSizeReduction) {
+        compressionProgressText.value =
+            'Optimization complete! Saved ${result.savingsPercent.toStringAsFixed(1)}%';
+        useCompressed.value = true;
+        AppLogger.info(
+          'UPLOAD_CTRL',
+          '🎉 [COMPRESSION SUCCESS] Optimized in ${stopwatch.elapsedMilliseconds}ms. '
+          'Original: ${result.originalSizeFormatted} -> Compressed: ${result.compressedSizeFormatted} '
+          '(${result.savingsFormatted})',
+        );
+      } else {
+        compressionProgressText.value =
+            'File is already optimal. Original file retained.';
+        AppLogger.info(
+          'UPLOAD_CTRL',
+          'ℹ️ [COMPRESSION OPTIMAL] File is already at minimal size in ${stopwatch.elapsedMilliseconds}ms. Original file will be used.',
+        );
+      }
 
       compressionResult.value = result;
-      useCompressed.value = result?.hasSizeReduction == true;
     } catch (e, st) {
-      ticker.cancel();
       AppLogger.error(
         'UPLOAD_CTRL',
-        'Error compressing file: $e',
+        '❌ [UPLOAD_CTRL COMPRESS ERROR] Failed after ${stopwatch.elapsedMilliseconds}ms: $e',
         error: e,
         stackTrace: st,
       );
+      final cleanMsg = e.toString().replaceAll('Exception: ', '');
+      compressionError.value = cleanMsg;
+      compressionProgressText.value = 'API Compression issue. Original file will be used.';
     } finally {
-      ticker.cancel();
       isCompressing.value = false;
+    }
+  }
+
+  void setCompressionPreset(String level) {
+    if (compressionPreset.value == level) return;
+    AppLogger.info('UPLOAD_CTRL', '🎚️ [PRESET CHANGED] Compression preset set to "$level"');
+    compressionPreset.value = level;
+    pdfCompressionLevel.value = level;
+
+    final isPdf = selectedFile.value != null && FileCompressor.isPdf(selectedFile.value!.name);
+    if (isPdf) {
+      switch (level) {
+        case 'recommended':
+          pdfQuality.value = 72;
+          pdfDpi.value = 150;
+          break;
+        case 'extreme':
+          pdfQuality.value = 45;
+          pdfDpi.value = 96;
+          break;
+        case 'high':
+          pdfQuality.value = 60;
+          pdfDpi.value = 120;
+          break;
+        case 'low':
+          pdfQuality.value = 85;
+          pdfDpi.value = 200;
+          break;
+        case 'lossless':
+          pdfQuality.value = 100;
+          break;
+      }
+    } else {
+      switch (level) {
+        case 'recommended':
+          compressionQuality.value = 75;
+          maxDimension.value = 2400;
+          maxDimensionController.text = '2400';
+          break;
+        case 'extreme':
+          compressionQuality.value = 40;
+          maxDimension.value = 1200;
+          maxDimensionController.text = '1200';
+          break;
+        case 'high':
+          compressionQuality.value = 55;
+          maxDimension.value = 1800;
+          maxDimensionController.text = '1800';
+          break;
+        case 'low':
+          compressionQuality.value = 85;
+          maxDimension.value = 3200;
+          maxDimensionController.text = '3200';
+          break;
+        case 'lossless':
+          compressionQuality.value = 100;
+          maxDimension.value = null;
+          maxDimensionController.clear();
+          break;
+      }
+    }
+
+    if (useCompressed.value) {
+      compressSelectedFile();
     }
   }
 
   void setCompressionQuality(int quality) {
     if (compressionQuality.value == quality) return;
+    AppLogger.info('UPLOAD_CTRL', '🎚️ [QUALITY CHANGED] Compression quality set to $quality%');
     compressionQuality.value = quality;
+    pdfQuality.value = quality;
+  }
+
+  void setPdfQuality(int quality) {
+    setCompressionQuality(quality);
+  }
+
+  void applyQualityAndRecompress(int quality) {
+    setCompressionQuality(quality);
     compressSelectedFile();
   }
 
-  void onFileSelected(PlatformFile file) {
+  void setPdfDpi(int dpi) {
+    if (pdfDpi.value == dpi) return;
+    AppLogger.info('UPLOAD_CTRL', '🎚️ [PDF DPI CHANGED] PDF DPI set to $dpi');
+    pdfDpi.value = dpi;
+    if (compressionPreset.value != 'custom') {
+      compressionPreset.value = 'custom';
+    }
+    if (useCompressed.value) {
+      compressSelectedFile();
+    }
+  }
+
+  void setPdfCompressionLevel(String level) {
+    setCompressionPreset(level);
+  }
+
+  void toggleGrayscale(bool val) {
+    if (isGrayscale.value == val) return;
+    AppLogger.info('UPLOAD_CTRL', '🎨 [GRAYSCALE CHANGED] Grayscale set to $val');
+    isGrayscale.value = val;
+    if (useCompressed.value) {
+      compressSelectedFile();
+    }
+  }
+
+  void toggleStripMetadata(bool val) {
+    if (stripMetadata.value == val) return;
+    AppLogger.info('UPLOAD_CTRL', '🧹 [STRIP METADATA CHANGED] Strip metadata set to $val');
+    stripMetadata.value = val;
+    if (useCompressed.value) {
+      compressSelectedFile();
+    }
+  }
+
+  void toggleAdvancedSettings() {
+    showAdvancedSettings.value = !showAdvancedSettings.value;
+  }
+
+  void setTargetSizeKb(int? kb) {
+    if (targetSizeKb.value == kb) return;
+    targetSizeKb.value = kb;
+    if (kb != null) {
+      targetSizeController.text = kb.toString();
+    } else {
+      targetSizeController.clear();
+    }
+    if (useCompressed.value) {
+      compressSelectedFile();
+    }
+  }
+
+  void setMaxDimension(int? dim) {
+    if (maxDimension.value == dim) return;
+    maxDimension.value = dim;
+    if (dim != null) {
+      maxDimensionController.text = dim.toString();
+    } else {
+      maxDimensionController.clear();
+    }
+    if (useCompressed.value) {
+      compressSelectedFile();
+    }
+  }
+
+  Future<void> recompressFile() async {
     AppLogger.info(
       'UPLOAD_CTRL',
-      'File selected: ${file.name}, Size: ${file.size} bytes',
+      '🔄 [RE-COMPRESS TRIGGERED] User requested 2nd/repeat compression via Media Engine API...',
+    );
+    useCompressed.value = true;
+    await compressSelectedFile();
+  }
+
+  void onFileSelected(PlatformFile file) {
+    useCompressed.value = false; // Always default to Original Quality on any file selection
+    compressionPreset.value = 'recommended';
+    pdfCompressionLevel.value = 'recommended';
+    compressionQuality.value = 75;
+    lastCompressedQuality.value = 75;
+    pdfQuality.value = 72;
+    pdfDpi.value = 150;
+    maxDimension.value = null;
+    targetSizeKb.value = null;
+    targetSizeController.clear();
+    maxDimensionController.clear();
+    isGrayscale.value = false;
+    stripMetadata.value = true;
+    showAdvancedSettings.value = false;
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      '┌──────────────────────────────────────────────────────────────────\n'
+      '│ 📁 [FILE SELECTED IN DROPZONE]\n'
+      '│ 📄 Name: ${file.name}\n'
+      '│ ⚖️ Size: ${file.size} bytes (${CompressionResult.formatFileSize(file.size)})\n'
+      '│ 🔍 Compressible: ${FileCompressor.isCompressible(file.name)}\n'
+      '│ 🔘 Current Mode: ORIGINAL (Defaulted on file select)\n'
+      '└──────────────────────────────────────────────────────────────────',
     );
     selectedFile.value = file;
+    compressionResult.value = null;
+    compressionError.value = '';
+    formErrorMessage.value = '';
+
     if (titleController.text.isEmpty) {
       if (isPersonalDoc) {
         _updateTitleForPersonalDoc();
@@ -392,36 +737,72 @@ class DocumentUploadController extends GetxController {
       }
     }
 
-    // Trigger local client compression
-    compressSelectedFile();
-  }
-
-  void updateWarrantyMonths(int months) {
-    warrantyMonths.value = months;
-    warrantyValidUpto.value = purchaseDate.value.add(
-      Duration(days: months * 30),
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      'ℹ️ [COMPRESS SKIPPED] Defaulted to Original Quality mode; skipping compression API until user selects Compressed.',
     );
   }
 
+  void addApplianceItem({String? name, String? brand, String? category}) {
+    final defaultCat = category ??
+        (dynamicApplianceSubcategories.isNotEmpty
+            ? dynamicApplianceSubcategories.first
+            : 'Ceiling / Table Fans');
+    final defaultBrand = brand ??
+        (dynamicBrands.isNotEmpty ? dynamicBrands.first : 'Havells');
+
+    final item = ApplianceItemFormState(
+      initialName: name,
+      initialCategory: defaultCat,
+      initialBrand: defaultBrand,
+      initialValidUpto: purchaseDate.value.add(const Duration(days: 365)),
+    );
+    applianceItems.add(item);
+  }
+
+  void removeApplianceItem(int index) {
+    if (applianceItems.length > 1 &&
+        index >= 0 &&
+        index < applianceItems.length) {
+      final removed = applianceItems.removeAt(index);
+      removed.dispose();
+    }
+  }
+
+  void updateItemWarrantyMonths(int index, int months) {
+    if (index >= 0 && index < applianceItems.length) {
+      applianceItems[index].updateWarrantyMonths(months, purchaseDate.value);
+    }
+  }
+
+  void toggleItemWarrantyCoverage(int index, bool hasWarranty) {
+    if (index >= 0 && index < applianceItems.length) {
+      applianceItems[index].toggleWarrantyCoverage(
+        hasWarranty,
+        purchaseDate.value,
+      );
+    }
+  }
+
+  void onPurchaseDateChanged(DateTime newDate) {
+    purchaseDate.value = newDate;
+    for (var item in applianceItems) {
+      item.onPurchaseDateChanged(newDate);
+    }
+  }
+
   Future<void> submitUpload() async {
+    formErrorMessage.value = '';
     final file = selectedFile.value;
     if (file == null) {
-      Get.snackbar(
-        'File Missing',
-        'Please select or drag-and-drop a document file to upload.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
-      );
+      formErrorMessage.value =
+          'Please select or drag-and-drop a document file to upload.';
       return;
     }
 
     if (file.bytes == null) {
-      Get.snackbar(
-        'File Read Error',
-        'Could not read file binary data. Please try selecting the file again.',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      formErrorMessage.value =
+          'Could not read file binary data. Please try selecting the file again.';
       return;
     }
 
@@ -435,17 +816,12 @@ class DocumentUploadController extends GetxController {
             : rawName;
         if (title.isEmpty) title = selectedSubcategory.value;
       } else {
-        Get.snackbar(
-          'Title Required',
-          'Please enter a descriptive document title.',
-          backgroundColor: AppColors.warning,
-          colorText: Colors.white,
-        );
+        formErrorMessage.value = 'Please enter a descriptive document title.';
         return;
       }
     }
 
-    isLoading.value = true;
+    isSubmitting.value = true;
     AppLogger.info(
       'UPLOAD_CTRL',
       'Starting secure document upload for: $title (${file.name})',
@@ -509,26 +885,58 @@ class DocumentUploadController extends GetxController {
 
       ApplianceWarrantyModel? applianceMeta;
       if (isApplianceWarranty) {
-        final amount =
-            double.tryParse(purchaseAmountController.text.trim()) ?? 0.0;
-        final brand =
-            selectedBrand.value == 'Other' &&
-                customBrandController.text.isNotEmpty
-            ? customBrandController.text.trim()
-            : selectedBrand.value;
+        final List<ApplianceItemModel> items = [];
+        double computedTotal = 0.0;
+
+        for (var item in applianceItems) {
+          final iBrand = item.selectedBrand.value == 'Other' &&
+                  item.customBrandController.text.isNotEmpty
+              ? item.customBrandController.text.trim()
+              : item.selectedBrand.value;
+          final iAmount =
+              double.tryParse(item.purchaseAmountController.text.trim()) ?? 0.0;
+          computedTotal += iAmount;
+          final iHasCov =
+              item.hasWarrantyCoverage.value && item.warrantyMonths.value > 0;
+          final iName = item.productNameController.text.trim().isNotEmpty
+              ? item.productNameController.text.trim()
+              : '$iBrand ${item.selectedCategory.value}';
+
+          items.add(
+            ApplianceItemModel(
+              id: item.id,
+              productName: iName,
+              productCategory: item.selectedCategory.value,
+              brand: iBrand,
+              modelNumber: item.modelNumberController.text.trim().isNotEmpty
+                  ? item.modelNumberController.text.trim()
+                  : null,
+              serialNumber: item.serialNumberController.text.trim().isNotEmpty
+                  ? item.serialNumberController.text.trim()
+                  : null,
+              purchaseAmount: iAmount,
+              warrantyPeriodMonths: iHasCov ? item.warrantyMonths.value : 0,
+              warrantyValidUpto: iHasCov
+                  ? item.warrantyValidUpto.value
+                  : purchaseDate.value,
+              customerCareNumber:
+                  item.customerCareNumberController.text.trim().isNotEmpty
+                  ? item.customerCareNumberController.text.trim()
+                  : null,
+              warrantyStatus: iHasCov ? 'active' : 'no_warranty',
+            ),
+          );
+        }
+
+        final explicitTotal =
+            double.tryParse(purchaseAmountController.text.trim());
+        final totalAmount =
+            (explicitTotal != null && explicitTotal > 0)
+                ? explicitTotal
+                : computedTotal;
 
         applianceMeta = ApplianceWarrantyModel(
-          productName: productNameController.text.trim().isNotEmpty
-              ? productNameController.text.trim()
-              : title,
-          productCategory: selectedSubcategory.value,
-          brand: brand,
-          modelNumber: modelNumberController.text.trim().isNotEmpty
-              ? modelNumberController.text.trim()
-              : null,
-          serialNumber: serialNumberController.text.trim().isNotEmpty
-              ? serialNumberController.text.trim()
-              : null,
+          items: items,
           billingName: billingNameController.text.trim().isNotEmpty
               ? billingNameController.text.trim()
               : 'King Technology',
@@ -539,13 +947,7 @@ class DocumentUploadController extends GetxController {
               ? invoiceNumberController.text.trim()
               : 'INV-${DateTime.now().millisecondsSinceEpoch}',
           purchaseDate: purchaseDate.value,
-          purchaseAmount: amount,
-          warrantyPeriodMonths: warrantyMonths.value,
-          warrantyValidUpto: warrantyValidUpto.value,
-          customerCareNumber:
-              customerCareNumberController.text.trim().isNotEmpty
-              ? customerCareNumberController.text.trim()
-              : null,
+          purchaseAmount: totalAmount,
         );
       }
 
@@ -576,23 +978,36 @@ class DocumentUploadController extends GetxController {
       String uploadFileName = file.name;
       String uploadMimeType = mimeType;
 
-      if (useCompressed.value && compressionResult.value != null) {
+      if (useCompressed.value && compressionResult.value != null && compressionResult.value!.hasSizeReduction) {
         uploadBytes = compressionResult.value!.compressedBytes;
         uploadFileName = compressionResult.value!.compressedFileName;
         uploadMimeType = compressionResult.value!.mimeType;
         AppLogger.info(
           'UPLOAD_CTRL',
-          'Uploading COMPRESSED version ($uploadFileName, ${uploadBytes.length} bytes, savings: ${compressionResult.value!.savingsFormatted})',
+          '┌──────────────────────────────────────────────────────────────────\n'
+          '│ 🚀 [UPLOADING TO VAULT: COMPRESSED]\n'
+          '│ 📄 File Name: $uploadFileName\n'
+          '│ 📦 Compressed Size: ${uploadBytes.length} bytes (${CompressionResult.formatFileSize(uploadBytes.length)})\n'
+          '│ ⚖️ Original Size: ${file.bytes!.length} bytes (${CompressionResult.formatFileSize(file.bytes!.length)})\n'
+          '│ 🔥 Bandwidth Saved: ${compressionResult.value!.savingsFormatted}\n'
+          '│ 🏷️ MIME Type: $uploadMimeType\n'
+          '└──────────────────────────────────────────────────────────────────',
         );
       } else {
         AppLogger.info(
           'UPLOAD_CTRL',
-          'Uploading ORIGINAL version ($uploadFileName, ${uploadBytes.length} bytes)',
+          '┌──────────────────────────────────────────────────────────────────\n'
+          '│ 🚀 [UPLOADING TO VAULT: ORIGINAL QUALITY]\n'
+          '│ 📄 File Name: $uploadFileName\n'
+          '│ 📦 Size: ${uploadBytes.length} bytes (${CompressionResult.formatFileSize(uploadBytes.length)})\n'
+          '│ 🏷️ MIME Type: $uploadMimeType\n'
+          '│ ℹ️ Compression: Skipped (Original Quality selected)\n'
+          '└──────────────────────────────────────────────────────────────────',
         );
       }
 
-      // 3. Create Document Record (Repository handles storage upload and db record)
-      final createdDoc = await _documentRepository.createDocument(
+      // 3. Create Document Record via DocumentsDataset
+      final createdDoc = await _documentsDataset.createDocument(
         title: title,
         description: descriptionController.text.trim().isNotEmpty
             ? descriptionController.text.trim()
@@ -617,14 +1032,7 @@ class DocumentUploadController extends GetxController {
         'Document successfully created in Vault! ID: ${createdDoc.id}',
       );
 
-      Get.snackbar(
-        'Upload Successful',
-        'Document "${createdDoc.title}" stored securely in Kt DocHolder.',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
-
+      // Section 3.B: Navigate away first, then trigger standardized compact success snackbar
       if (isPersonalDoc) {
         Get.offNamed(AppRoutes.PERSONAL_DOCS);
       } else if (isUtilityBill) {
@@ -634,6 +1042,11 @@ class DocumentUploadController extends GetxController {
       } else {
         Get.offNamed(AppRoutes.DOCUMENTS);
       }
+
+      AppSnackbar.showSuccess(
+        'Upload Successful',
+        'Document "${createdDoc.title}" stored securely in ${AppConstants.appName}.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'UPLOAD_CTRL',
@@ -641,14 +1054,11 @@ class DocumentUploadController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Upload Failed',
-        'Error uploading file: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      // Section 3.B: Render inline error in form instead of floating snackbar
+      formErrorMessage.value =
+          'Upload failed: ${e.toString().replaceAll('Exception: ', '')}';
     } finally {
-      isLoading.value = false;
+      isSubmitting.value = false;
     }
   }
 
@@ -667,18 +1077,18 @@ class DocumentUploadController extends GetxController {
     consumerNumberController.dispose();
     meterNumberController.dispose();
     billAmountController.dispose();
-    productNameController.dispose();
-    customBrandController.dispose();
-    modelNumberController.dispose();
-    serialNumberController.dispose();
     billingNameController.dispose();
     storeVendorNameController.dispose();
     invoiceNumberController.dispose();
     purchaseAmountController.dispose();
-    customerCareNumberController.dispose();
+    for (var item in applianceItems) {
+      item.dispose();
+    }
     personalIdNumberController.dispose();
     personalIssuingAuthorityController.dispose();
     personalNotesController.dispose();
+    targetSizeController.dispose();
+    maxDimensionController.dispose();
     super.onClose();
   }
 }

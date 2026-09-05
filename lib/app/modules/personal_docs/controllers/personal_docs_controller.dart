@@ -1,35 +1,47 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/personal_docs_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
+import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
-import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PersonalDocsController extends GetxController {
-  final DocumentRepository _documentRepository;
-  final MasterDataRepository _masterDataRepository;
+  final PersonalDocsDataset _dataset;
 
-  PersonalDocsController(this._documentRepository, this._masterDataRepository);
+  PersonalDocsController(this._dataset);
 
+  // Loading & Pagination State
   final isLoading = true.obs;
+  final isLoadingMore = false.obs;
+  final hasMore = true.obs;
+  final currentPage = 1.obs;
+  final pageSize = 20;
+  final totalCount = 0.obs;
+
+  final scrollController = ScrollController();
+  final searchController = TextEditingController();
+
+  // Data Collections
   final personalDocuments = <DocumentModel>[].obs;
   final dynamicPersons = <String>[].obs;
   final dynamicDocTypes = <String>[].obs;
 
-  // Filters
+  // Reactive Filters
   final selectedPerson = 'All Persons'.obs;
   final selectedDocType = 'All Document Types'.obs;
   final searchQuery = ''.obs;
   final isGridView = true.obs;
 
-  // Summary Metrics
+  // Aggregated Summary Metrics
   final totalDocumentsCount = 0.obs;
   final totalPersonsCoveredCount = 0.obs;
   final expiringSoonCount = 0.obs;
@@ -37,97 +49,177 @@ class PersonalDocsController extends GetxController {
 
   Timer? _searchDebounceTimer;
 
+  // Role Permissions
+  bool get canDelete {
+    try {
+      return AuthService.to.isAdmin;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool get canEdit {
+    try {
+      final role = AuthService.to.currentProfile.value?.role.toLowerCase();
+      return role == 'admin' || role == 'super_admin' || role == 'editor';
+    } catch (_) {
+      return true;
+    }
+  }
+
   @override
   void onInit() {
     super.onInit();
+    scrollController.addListener(_onScroll);
     loadMasterData();
-    loadPersonalDocuments();
+    loadPersonalDocuments(resetPage: true);
   }
 
   @override
   void onClose() {
     _searchDebounceTimer?.cancel();
+    scrollController.removeListener(_onScroll);
+    scrollController.dispose();
+    searchController.dispose();
     super.onClose();
+  }
+
+  void _onScroll() {
+    if (scrollController.hasClients &&
+        scrollController.position.pixels >=
+            scrollController.position.maxScrollExtent - 200) {
+      loadNextPage();
+    }
   }
 
   Future<void> loadMasterData() async {
     try {
-      final pList = await _masterDataRepository.getPersons(activeOnly: true);
+      final pList = await _dataset.getMasterPersons(activeOnly: true);
       dynamicPersons.assignAll(pList.map((p) => p.fullName));
 
-      final dtList = await _masterDataRepository.getPersonalDocTypes(activeOnly: true);
+      final dtList = await _dataset.getMasterPersonalDocTypes(activeOnly: true);
       dynamicDocTypes.assignAll(dtList.map((t) => t.name));
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DOCS_CTRL', 'Error loading master data: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error loading master data: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
-  Future<void> loadPersonalDocuments() async {
-    AppLogger.debug('PERSONAL_DOCS_CTRL', 'Loading personal documents for person: ${selectedPerson.value}, docType: ${selectedDocType.value}');
-    isLoading.value = true;
+  Future<void> loadPersonalDocuments({bool resetPage = false}) async {
+    if (resetPage) {
+      currentPage.value = 1;
+      hasMore.value = true;
+      isLoading.value = true;
+    }
+
+    AppLogger.debug(
+      'PERSONAL_DOCS_CTRL',
+      'Loading personal documents (page: ${currentPage.value}, person: ${selectedPerson.value}, docType: ${selectedDocType.value}, search: ${searchQuery.value})',
+    );
+
     try {
-      final docs = await _documentRepository.getDocuments(
-        categoryCode: 'identity_docs',
-        personName: selectedPerson.value != 'All Persons' ? selectedPerson.value : null,
-        personalDocType: selectedDocType.value != 'All Document Types' ? selectedDocType.value : null,
+      final response = await _dataset.getPersonalDocuments(
+        page: currentPage.value,
+        pageSize: pageSize,
+        personName: selectedPerson.value != 'All Persons'
+            ? selectedPerson.value
+            : null,
+        docType: selectedDocType.value != 'All Document Types'
+            ? selectedDocType.value
+            : null,
         searchQuery: searchQuery.value.isNotEmpty ? searchQuery.value : null,
       );
 
-      final filtered = docs.where((d) => d.personalMetadata != null).toList();
-      personalDocuments.assignAll(filtered);
-      _computeSummaryMetrics(filtered);
+      personalDocuments.assignAll(response.documents);
+      totalCount.value = response.totalCount;
+      totalDocumentsCount.value = response.totalDocumentsCount;
+      totalPersonsCoveredCount.value = response.totalPersonsCoveredCount;
+      expiringSoonCount.value = response.expiringSoonCount;
+      expiredCount.value = response.expiredCount;
+
+      hasMore.value = personalDocuments.length < totalCount.value;
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DOCS_CTRL', 'Error loading personal documents: $e', error: e, stackTrace: st);
-      Get.snackbar(
-        'Error Loading Documents',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error loading personal documents: $e',
+        error: e,
+        stackTrace: st,
       );
+      AppSnackbar.showError('Error Loading Documents', e.toString());
     } finally {
       isLoading.value = false;
     }
   }
 
-  void _computeSummaryMetrics(List<DocumentModel> docs) {
-    final personsSet = <String>{};
-    int expiring = 0;
-    int expired = 0;
+  Future<void> loadNextPage() async {
+    if (isLoadingMore.value || !hasMore.value || isLoading.value) return;
 
-    for (var doc in docs) {
-      final meta = doc.personalMetadata;
-      if (meta != null) {
-        personsSet.add(meta.personName);
-        if (meta.isExpired) {
-          expired++;
-        } else if (meta.isExpiringSoon) {
-          expiring++;
-        }
+    isLoadingMore.value = true;
+    final nextPage = currentPage.value + 1;
+
+    AppLogger.debug('PERSONAL_DOCS_CTRL', 'Loading next page: $nextPage...');
+
+    try {
+      final response = await _dataset.getPersonalDocuments(
+        page: nextPage,
+        pageSize: pageSize,
+        personName: selectedPerson.value != 'All Persons'
+            ? selectedPerson.value
+            : null,
+        docType: selectedDocType.value != 'All Document Types'
+            ? selectedDocType.value
+            : null,
+        searchQuery: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+      );
+
+      if (response.documents.isEmpty) {
+        hasMore.value = false;
+      } else {
+        personalDocuments.addAll(response.documents);
+        currentPage.value = nextPage;
+        hasMore.value = personalDocuments.length < totalCount.value;
       }
+    } catch (e, st) {
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error loading more documents: $e',
+        error: e,
+        stackTrace: st,
+      );
+      AppSnackbar.showError('Failed to load more', e.toString());
+    } finally {
+      isLoadingMore.value = false;
     }
-
-    totalDocumentsCount.value = docs.length;
-    totalPersonsCoveredCount.value = personsSet.length;
-    expiringSoonCount.value = expiring;
-    expiredCount.value = expired;
   }
 
   void onPersonSelected(String person) {
+    if (selectedPerson.value == person) return;
     selectedPerson.value = person;
-    loadPersonalDocuments();
+    loadPersonalDocuments(resetPage: true);
   }
 
   void onDocTypeSelected(String type) {
+    if (selectedDocType.value == type) return;
     selectedDocType.value = type;
-    loadPersonalDocuments();
+    loadPersonalDocuments(resetPage: true);
   }
 
   void onSearchChanged(String query) {
     searchQuery.value = query;
     _searchDebounceTimer?.cancel();
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
-      loadPersonalDocuments();
+      loadPersonalDocuments(resetPage: true);
     });
+  }
+
+  void clearSearch() {
+    searchController.clear();
+    searchQuery.value = '';
+    loadPersonalDocuments(resetPage: true);
   }
 
   void toggleViewMode([bool? grid]) {
@@ -138,13 +230,23 @@ class PersonalDocsController extends GetxController {
     }
   }
 
-  void previewDocument(DocumentModel doc) async {
+  Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
-        PdfViewerDialog.show(title: doc.title, signedPdfUrl: signedUrl);
+        PdfViewerDialog.show(
+          title: doc.title,
+          signedPdfUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else if (doc.isImage) {
-        ImageLightboxDialog.show(title: doc.title, imageUrl: signedUrl);
+        ImageLightboxDialog.show(
+          title: doc.title,
+          imageUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else {
         final uri = Uri.parse(signedUrl);
         if (await canLaunchUrl(uri)) {
@@ -152,21 +254,41 @@ class PersonalDocsController extends GetxController {
         }
       }
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DOCS_CTRL', 'Error opening preview: $e', error: e, stackTrace: st);
-      Get.snackbar('Preview Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error opening preview: $e',
+        error: e,
+        stackTrace: st,
+      );
+      AppSnackbar.showError('Preview Error', e.toString());
     }
   }
 
-  void downloadDocument(DocumentModel doc) async {
+  Future<void> downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(doc.filePath);
-      final uri = Uri.parse(signedUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      await FileApiHelper.downloadFileFromUrl(
+        url: signedUrl,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+      );
+      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DOCS_CTRL', 'Error downloading: $e', error: e, stackTrace: st);
-      Get.snackbar('Download Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error downloading: $e',
+        error: e,
+        stackTrace: st,
+      );
+      try {
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final uri = Uri.parse(fallbackUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      } catch (_) {
+        AppSnackbar.showError('Download Error', e.toString());
+      }
     }
   }
 
@@ -178,50 +300,78 @@ class PersonalDocsController extends GetxController {
     openShareDialog(doc);
   }
 
-  void openShareDialog(DocumentModel doc) async {
+  Future<void> openShareDialog(DocumentModel doc) async {
     try {
-      final token = await _documentRepository.createShareLink(doc.id);
+      final token = await _dataset.createShareLink(doc.id);
       final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DOCS_CTRL', 'Error creating share link: $e', error: e, stackTrace: st);
-      Get.snackbar('Share Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error creating share link: $e',
+        error: e,
+        stackTrace: st,
+      );
+      AppSnackbar.showError('Share Error', e.toString());
     }
   }
 
   Future<void> toggleFavorite(DocumentModel doc) async {
     try {
-      final updated = await _documentRepository.toggleFavorite(
-        doc.id,
-        doc.isFavorite,
-      );
+      final updated = await _dataset.toggleFavorite(doc.id, doc.isFavorite);
       final index = personalDocuments.indexWhere((d) => d.id == doc.id);
       if (index != -1) {
         personalDocuments[index] = doc.copyWith(isFavorite: updated);
       }
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DOCS_CTRL', 'Error toggling favorite: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error toggling favorite: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
   Future<void> moveToTrash(DocumentModel doc) async {
+    if (!canDelete) {
+      AppSnackbar.showWarning(
+        'Permission Denied',
+        'Your role does not have permission to delete documents.',
+      );
+      return;
+    }
+
     try {
-      await _documentRepository.softDeleteDocument(doc.id);
+      await _dataset.softDeleteDocument(doc.id);
       personalDocuments.removeWhere((d) => d.id == doc.id);
-      Get.snackbar(
+      totalCount.value = (totalCount.value - 1).clamp(0, 999999);
+      AppSnackbar.showWarning(
         'Moved to Trash',
         '${doc.title} moved to trash bin.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DOCS_CTRL', 'Error moving to trash: $e', error: e, stackTrace: st);
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
+      AppLogger.error(
+        'PERSONAL_DOCS_CTRL',
+        'Error moving to trash: $e',
+        error: e,
+        stackTrace: st,
       );
+      AppSnackbar.showError('Error', e.toString());
     }
+  }
+
+  void confirmMoveToTrash(DocumentModel doc) {
+    if (!canDelete) {
+      AppSnackbar.showWarning(
+        'Permission Denied',
+        'Your role does not have permission to delete documents.',
+      );
+      return;
+    }
+    DocumentDeleteDialog.show(
+      documentTitle: doc.title,
+      onConfirm: () => moveToTrash(doc),
+    );
   }
 }

@@ -1,30 +1,22 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/category_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/document_repository.dart';
-import 'package:kt_prod_kt_docs/app/data/repositories/master_data_repository.dart';
-import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
-import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DocumentsController extends GetxController {
-  final DocumentRepository _documentRepository;
-  final CategoryRepository _categoryRepository;
-  final MasterDataRepository _masterDataRepository;
+  final DocumentsDataset _dataset;
 
-  DocumentsController(
-    this._documentRepository,
-    this._categoryRepository,
-    this._masterDataRepository,
-  );
+  DocumentsController(this._dataset);
 
   final isLoading = true.obs;
   final documents = <DocumentModel>[].obs;
@@ -34,6 +26,7 @@ class DocumentsController extends GetxController {
   // Filters
   final selectedCity = 'All Cities'.obs;
   final selectedCategoryId = ''.obs;
+  final selectedFolderId = ''.obs;
   final selectedStatus = 'all'.obs;
   final searchQuery = ''.obs;
   final isGridView = true.obs;
@@ -43,6 +36,10 @@ class DocumentsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final paramFolderId = Get.parameters['folderId'];
+    if (paramFolderId != null && paramFolderId.isNotEmpty) {
+      selectedFolderId.value = paramFolderId;
+    }
     loadCategoriesAndDocuments();
     loadDynamicCities();
   }
@@ -55,7 +52,7 @@ class DocumentsController extends GetxController {
 
   Future<void> loadDynamicCities() async {
     try {
-      final cities = await _masterDataRepository.getCities(activeOnly: true);
+      final cities = await _dataset.getCities(activeOnly: true);
       dynamicCities.assignAll(cities.map((c) => c.name));
     } catch (e, st) {
       AppLogger.error(
@@ -71,7 +68,7 @@ class DocumentsController extends GetxController {
     AppLogger.debug('DOCS_CTRL', 'Loading categories and initial documents...');
     isLoading.value = true;
     try {
-      final cats = await _categoryRepository.getAllCategories();
+      final cats = await _dataset.getAllCategories();
       categories.assignAll(cats);
 
       await fetchFilteredDocuments();
@@ -82,12 +79,7 @@ class DocumentsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error Loading Categories', e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -100,9 +92,12 @@ class DocumentsController extends GetxController {
     );
     isLoading.value = true;
     try {
-      final docs = await _documentRepository.getDocuments(
+      final docs = await _dataset.getFilteredDocuments(
         categoryId: selectedCategoryId.value.isNotEmpty
             ? selectedCategoryId.value
+            : null,
+        folderId: selectedFolderId.value.isNotEmpty
+            ? selectedFolderId.value
             : null,
         city: selectedCity.value != 'All Cities' ? selectedCity.value : null,
         status: selectedStatus.value != 'all' ? selectedStatus.value : null,
@@ -116,6 +111,7 @@ class DocumentsController extends GetxController {
         error: e,
         stackTrace: st,
       );
+      AppSnackbar.showError('Error Fetching Documents', e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -156,15 +152,23 @@ class DocumentsController extends GetxController {
     openShareDialog(doc);
   }
 
-  void previewDocument(DocumentModel doc) async {
+  Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
-      );
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
-        PdfViewerDialog.show(title: doc.title, signedPdfUrl: signedUrl);
+        PdfViewerDialog.show(
+          title: doc.title,
+          signedPdfUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else if (doc.isImage) {
-        ImageLightboxDialog.show(title: doc.title, imageUrl: signedUrl);
+        ImageLightboxDialog.show(
+          title: doc.title,
+          imageUrl: signedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       } else {
         final uri = Uri.parse(signedUrl);
         if (await canLaunchUrl(uri)) {
@@ -178,24 +182,19 @@ class DocumentsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Preview Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Preview Error', e.toString());
     }
   }
 
-  void downloadDocument(DocumentModel doc) async {
+  Future<void> downloadDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _documentRepository.getSignedPreviewUrl(
-        doc.filePath,
+      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      await FileApiHelper.downloadFileFromUrl(
+        url: signedUrl,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
       );
-      final uri = Uri.parse(signedUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
+      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
     } catch (e, st) {
       AppLogger.error(
         'DOCS_CTRL',
@@ -203,12 +202,15 @@ class DocumentsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Download Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      try {
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final uri = Uri.parse(fallbackUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      } catch (_) {
+        AppSnackbar.showError('Download Error', e.toString());
+      }
     }
   }
 
@@ -216,9 +218,9 @@ class DocumentsController extends GetxController {
     previewDocument(doc);
   }
 
-  void openShareDialog(DocumentModel doc) async {
+  Future<void> openShareDialog(DocumentModel doc) async {
     try {
-      final token = await _documentRepository.createShareLink(doc.id);
+      final token = await _dataset.createShareLink(doc.id);
       final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
       ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
     } catch (e, st) {
@@ -228,21 +230,13 @@ class DocumentsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Share Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Share Error', e.toString());
     }
   }
 
   Future<void> toggleFavorite(DocumentModel doc) async {
     try {
-      final updated = await _documentRepository.toggleFavorite(
-        doc.id,
-        doc.isFavorite,
-      );
+      final updated = await _dataset.toggleFavorite(doc.id, doc.isFavorite);
       final index = documents.indexWhere((d) => d.id == doc.id);
       if (index != -1) {
         documents[index] = doc.copyWith(isFavorite: updated);
@@ -254,18 +248,17 @@ class DocumentsController extends GetxController {
         error: e,
         stackTrace: st,
       );
+      AppSnackbar.showError('Error', e.toString());
     }
   }
 
   Future<void> moveToTrash(DocumentModel doc) async {
     try {
-      await _documentRepository.softDeleteDocument(doc.id);
+      await _dataset.softDeleteDocument(doc.id);
       documents.removeWhere((d) => d.id == doc.id);
-      Get.snackbar(
+      AppSnackbar.showWarning(
         'Moved to Trash',
         '${doc.title} moved to trash bin.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
     } catch (e, st) {
       AppLogger.error(
@@ -274,12 +267,7 @@ class DocumentsController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      AppSnackbar.showError('Error', e.toString());
     }
   }
 
@@ -293,20 +281,24 @@ class DocumentsController extends GetxController {
   void openEditDocumentDialog(DocumentModel doc) {
     DocumentEditDialog.show(
       document: doc,
-      onSave: ({required title, description, documentNumber}) async {
+      onSave: ({
+        required title,
+        description,
+        documentNumber,
+        applianceWarranty,
+      }) async {
         try {
-          await _documentRepository.updateDocumentDetails(
+          await _dataset.updateDocumentDetails(
             documentId: doc.id,
             title: title,
             description: description,
             documentNumber: documentNumber,
+            applianceWarranty: applianceWarranty,
           );
           await fetchFilteredDocuments();
-          Get.snackbar(
+          AppSnackbar.showSuccess(
             'Document Updated',
             'Document details were saved.',
-            backgroundColor: AppColors.success,
-            colorText: Colors.white,
           );
         } catch (e, st) {
           AppLogger.error(
@@ -315,12 +307,7 @@ class DocumentsController extends GetxController {
             error: e,
             stackTrace: st,
           );
-          Get.snackbar(
-            'Update Error',
-            e.toString(),
-            backgroundColor: AppColors.error,
-            colorText: Colors.white,
-          );
+          // Inline modal error handling: rethrow so the dialog can display the error inside without closing
           rethrow;
         }
       },

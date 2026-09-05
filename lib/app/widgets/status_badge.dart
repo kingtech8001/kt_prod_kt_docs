@@ -82,6 +82,15 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
+  factory StatusBadge.noWarranty() {
+    return const StatusBadge(
+      label: 'No Warranty',
+      textColor: AppColors.textSecondary,
+      backgroundColor: AppColors.border,
+      icon: Icons.receipt_long_outlined,
+    );
+  }
+
   factory StatusBadge.city({required String cityName}) {
     return StatusBadge(
       label: cityName,

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -58,6 +59,10 @@ class SupabaseProvider {
             transform: null,
           );
       AppLogger.info('SUPABASE_STORAGE', 'Signed URL created successfully.');
+      if (download) {
+        final separator = response.contains('?') ? '&' : '?';
+        return '$response${separator}download=true';
+      }
       return response;
     } catch (e, st) {
       AppLogger.error(
@@ -73,6 +78,21 @@ class SupabaseProvider {
   Future<Uint8List> downloadFileBytes(String storagePath) async {
     AppLogger.debug('SUPABASE_STORAGE', 'Downloading bytes for: $storagePath');
     try {
+      if (storagePath.startsWith('gdrive://')) {
+        final fileId = storagePath.replaceFirst('gdrive://', '');
+        final url = getGoogleDrivePreviewUrl(fileId, download: true);
+        final uri = Uri.parse(url);
+        final response = await http.get(uri).timeout(const Duration(seconds: 40));
+        if (response.statusCode != 200) {
+          throw Exception('Failed to download from Google Drive API (HTTP ${response.statusCode})');
+        }
+        if (response.bodyBytes.isEmpty) {
+          throw Exception('File returned from Google Drive API is empty.');
+        }
+        AppLogger.info('GDRIVE_STORAGE', 'Downloaded ${response.bodyBytes.length} bytes for: $storagePath');
+        return response.bodyBytes;
+      }
+
       final bytes = await client.storage
           .from(AppConstants.storageBucket)
           .download(storagePath);

@@ -29,25 +29,78 @@ class WebScaffold extends StatelessWidget {
 
   void _handleSignOut() {
     Get.dialog(
-      AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out of Kt DocHolder?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
+        backgroundColor: AppColors.surface,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingLarge),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorLight,
+                        borderRadius:
+                            BorderRadius.circular(AppConstants.radiusSmall),
+                      ),
+                      child: const Icon(Icons.logout_rounded,
+                          color: AppColors.error, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Are you sure you want to sign out of ${AppConstants.appName}?',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Get.back(),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        Get.back();
+                        final authRepo = Get.find<AuthRepository>();
+                        await authRepo.signOut();
+                        Get.offAllNamed(AppRoutes.LOGIN);
+                      },
+                      child: const Text('Sign Out'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () async {
-              Get.back();
-              final authRepo = Get.find<AuthRepository>();
-              await authRepo.signOut();
-              Get.offAllNamed(AppRoutes.LOGIN);
-            },
-            child: const Text('Sign Out'),
-          ),
-        ],
+        ),
       ),
     );
   }

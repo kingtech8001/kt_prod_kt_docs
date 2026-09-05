@@ -42,6 +42,7 @@ class AppColors {
   static const Color successDark = Color(0xFF047857);
   static const Color warning = Color(0xFFF59E0B); // Amber
   static const Color warningLight = Color(0xFFFEF3C7);
+  static const Color warningDark = Color(0xFFB45309); // Amber 700
   static const Color error = Color(0xFFEF4444); // Rose Red
   static const Color errorLight = Color(0xFFFEE2E2);
   static const Color info = Color(0xFF3B82F6);
