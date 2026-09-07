@@ -244,8 +244,16 @@ class FavoritesDataset {
       if (applianceWarranty != null) {
         final warrantyMap = applianceWarranty.toJson();
         warrantyMap['document_id'] = documentId;
-        final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
-        await _client.from('appliance_warranty_metadata').upsert(cleanMap);
+        try {
+          await _client.from('appliance_warranty_metadata').upsert(warrantyMap);
+        } catch (tableErr) {
+          AppLogger.warning(
+            'FAVORITES_DATASET',
+            'Non-fatal fallback upserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
+          );
+          final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
+          await _client.from('appliance_warranty_metadata').upsert(cleanMap);
+        }
       }
     } catch (e, st) {
       AppLogger.error(
