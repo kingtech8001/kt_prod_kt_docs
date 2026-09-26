@@ -2,6 +2,7 @@ import 'address_model.dart';
 import 'appliance_warranty_model.dart';
 import 'personal_document_models.dart';
 import 'utility_metadata_model.dart';
+import 'vehicle_document_models.dart';
 
 class DocumentModel {
   final String id;
@@ -42,6 +43,7 @@ class DocumentModel {
   final UtilityMetadataModel? utilityMetadata;
   final ApplianceWarrantyModel? applianceWarranty;
   final PersonalDocumentMetadataModel? personalMetadata;
+  final VehicleDocumentMetadataModel? vehicleMetadata;
   final bool isFavorite;
 
   DocumentModel({
@@ -73,6 +75,7 @@ class DocumentModel {
     this.utilityMetadata,
     this.applianceWarranty,
     this.personalMetadata,
+    this.vehicleMetadata,
     this.isFavorite = false,
   });
 
@@ -114,6 +117,7 @@ class DocumentModel {
     final util = _extractMap(json['utility_metadata']);
     final warranty = _extractMap(json['appliance_warranty_metadata']);
     final personal = _extractMap(json['personal_document_metadata']);
+    final vehicle = _extractMap(json['vehicle_document_metadata']);
     final favs = _extractList(json['document_favorites']);
     final extra = (json['extra_attributes'] is Map)
         ? Map<String, dynamic>.from(json['extra_attributes'] as Map)
@@ -172,6 +176,7 @@ class DocumentModel {
       applianceWarranty:
           warrantyMap != null ? ApplianceWarrantyModel.fromJson(warrantyMap) : null,
       personalMetadata: personal != null ? PersonalDocumentMetadataModel.fromJson(personal) : null,
+      vehicleMetadata: vehicle != null ? VehicleDocumentMetadataModel.fromJson(vehicle) : null,
       isFavorite: favs != null && favs.isNotEmpty,
     );
   }
@@ -186,6 +191,7 @@ class DocumentModel {
     UtilityMetadataModel? utilityMetadata,
     ApplianceWarrantyModel? applianceWarranty,
     PersonalDocumentMetadataModel? personalMetadata,
+    VehicleDocumentMetadataModel? vehicleMetadata,
   }) {
     return DocumentModel(
       id: id,
@@ -216,6 +222,7 @@ class DocumentModel {
       utilityMetadata: utilityMetadata ?? this.utilityMetadata,
       applianceWarranty: applianceWarranty ?? this.applianceWarranty,
       personalMetadata: personalMetadata ?? this.personalMetadata,
+      vehicleMetadata: vehicleMetadata ?? this.vehicleMetadata,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }

@@ -46,6 +46,7 @@ class TrashDataset {
             utility_metadata(*),
             appliance_warranty_metadata(*),
             personal_document_metadata(*),
+            vehicle_document_metadata(*),
             document_favorites(document_id, user_id)
           ''')
           .not('deleted_at', 'is', null);

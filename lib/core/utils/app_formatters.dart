@@ -26,6 +26,11 @@ class AppFormatters {
     return _currencyFormat.format(amount);
   }
 
+  static String formatNumber(num? value) {
+    if (value == null) return '0';
+    return NumberFormat.decimalPattern('en_IN').format(value);
+  }
+
   static String formatFileSize(int? bytes) {
     if (bytes == null || bytes <= 0) return '0 B';
     if (bytes < 1024) return '$bytes B';

@@ -2,6 +2,7 @@ import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -662,6 +663,46 @@ class SettingsDataset {
     } catch (e, st) {
       AppLogger.error('SETTINGS_DATASET', 'Error deleting category: $e', error: e, stackTrace: st);
       rethrow;
+    }
+  }
+
+  // ================= VEHICLE OPERATIONS =================
+
+  /// Fetches registered master vehicles.
+  Future<List<MasterVehicleModel>> getVehicles({bool activeOnly = true}) async {
+    try {
+      var query = _client.from('master_vehicles').select();
+      if (activeOnly) {
+        query = query.eq('is_active', true);
+      }
+      final response = await query
+          .order('display_order', ascending: true)
+          .order('vehicle_number', ascending: true);
+      return (response as List)
+          .map((json) => MasterVehicleModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e, st) {
+      AppLogger.error('SETTINGS_DATASET', 'Error fetching vehicles: $e', error: e, stackTrace: st);
+      return [];
+    }
+  }
+
+  /// Fetches master vehicle document types.
+  Future<List<MasterVehicleDocTypeModel>> getVehicleDocTypes({bool activeOnly = true}) async {
+    try {
+      var query = _client.from('master_vehicle_doc_types').select();
+      if (activeOnly) {
+        query = query.eq('is_active', true);
+      }
+      final response = await query
+          .order('display_order', ascending: true)
+          .order('name', ascending: true);
+      return (response as List)
+          .map((json) => MasterVehicleDocTypeModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e, st) {
+      AppLogger.error('SETTINGS_DATASET', 'Error fetching vehicle doc types: $e', error: e, stackTrace: st);
+      return [];
     }
   }
 }

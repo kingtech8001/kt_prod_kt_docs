@@ -8,6 +8,7 @@ class AppRoutes {
   static const String UTILITY_BILLS = '/utility-bills';
   static const String APPLIANCES = '/appliances';
   static const String PERSONAL_DOCS = '/personal-docs';
+  static const String VEHICLE_DOCS = '/vehicle-docs';
   static const String UPLOAD = '/upload';
   static const String DOCUMENT_DETAIL = '/document/:id';
   static const String FOLDERS = '/folders';

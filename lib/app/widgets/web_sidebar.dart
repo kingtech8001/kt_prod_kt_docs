@@ -199,6 +199,14 @@ class WebSidebar extends StatelessWidget {
                   ),
                   _buildNavItem(
                     context,
+                    icon: Icons.directions_car_outlined,
+                    title: 'Vehicle Vault',
+                    route: AppRoutes.VEHICLE_DOCS,
+                    badge: 'RC/Insurance',
+                    badgeColor: const Color(0xFF0284C7),
+                  ),
+                  _buildNavItem(
+                    context,
                     icon: Icons.folder_outlined,
                     title: 'Folders',
                     route: AppRoutes.FOLDERS,

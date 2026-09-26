@@ -314,6 +314,13 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                   const SizedBox(height: 20),
                 ],
               );
+            } else if (controller.isVehicleDoc) {
+              return Column(
+                children: [
+                  _buildVehicleMetadataSection(context),
+                  const SizedBox(height: 20),
+                ],
+              );
             }
             return const SizedBox.shrink();
           }),
@@ -388,6 +395,20 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               'Chutni Card (Voter ID)',
               'Passport',
               'Driving License',
+            ];
+    } else if (controller.isVehicleDoc) {
+      options = controller.dynamicVehicleDocTypes.isNotEmpty
+          ? controller.dynamicVehicleDocTypes.map((t) => t.name).toList()
+          : [
+              'RC Book (Registration Certificate)',
+              'Insurance Policy',
+              'PUC Certificate',
+              'Fitness Certificate',
+              'Road Tax Receipt',
+              'Service & Maintenance Bill',
+              'Purchase Invoice / Bill',
+              'Fastag / Toll Pass',
+              'Loan / Hypothecation NOC',
             ];
     }
 
@@ -1569,6 +1590,456 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleMetadataSection(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.directions_car_outlined, color: AppColors.primary, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Vehicle Document Details',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              OutlinedButton.icon(
+                onPressed: () => controller.openAddVehicleDialog(),
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text('Add Vehicle', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select Vehicle *',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Obx(() {
+                  final vList = controller.dynamicVehicles;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: vList.any((v) => v.vehicleNumber == controller.selectedVehicleNumber.value)
+                            ? controller.selectedVehicleNumber.value
+                            : (vList.isNotEmpty ? vList.first.vehicleNumber : null),
+                        items: vList.map((v) {
+                          return DropdownMenuItem(
+                            value: v.vehicleNumber,
+                            child: Text(v.displayName, style: const TextStyle(fontSize: 13)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            final veh = vList.firstWhereOrNull((v) => v.vehicleNumber == val);
+                            if (veh != null) controller.updateSelectedVehicle(veh);
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Vehicle Document Type *',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Obx(() {
+                  final types = controller.dynamicVehicleDocTypes.map((t) => t.name).toList();
+                  if (types.isEmpty) {
+                    types.addAll([
+                      'RC Book (Registration Certificate)',
+                      'Insurance Policy',
+                      'PUC Certificate',
+                      'Fitness Certificate',
+                      'Service & Maintenance Bill',
+                    ]);
+                  }
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: types.contains(controller.selectedVehicleDocTypeName.value)
+                            ? controller.selectedVehicleDocTypeName.value
+                            : types.first,
+                        items: types.map((t) {
+                          return DropdownMenuItem(
+                            value: t,
+                            child: Text(t, style: const TextStyle(fontSize: 13)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) controller.updateSelectedVehicleDocType(val);
+                        },
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          // Dynamic Pass & FASTag Section
+          Obx(() {
+            if (!controller.isVehiclePassDoc) return const SizedBox.shrink();
+            return Container(
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.toll_outlined, color: AppColors.primary, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Annual Pass & FASTag Configuration',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _buildResponsiveRow(
+                    context: context,
+                    first: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Pass Type *',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Obx(() {
+                          final passTypes = AppConstants.vehiclePassTypes;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: passTypes.contains(controller.selectedVehiclePassType.value)
+                                    ? controller.selectedVehiclePassType.value
+                                    : passTypes.first,
+                                items: passTypes.map((p) {
+                                  return DropdownMenuItem(
+                                    value: p,
+                                    child: Text(p, style: const TextStyle(fontSize: 13)),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) controller.selectedVehiclePassType.value = val;
+                                },
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                    second: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Toll Plaza / Location / Society Name',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        TextField(
+                          controller: controller.vehiclePassPlazaController,
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. Kherki Daula Plaza or Sea Link or Tower B',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'FASTag Barcode / RFID Tag ID (Optional)',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      TextField(
+                        controller: controller.vehicleFastagIdController,
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. 34161FA82032890... (from FASTag card or sticker)',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Obx(() => Text(
+                  controller.isVehiclePassDoc
+                      ? 'Pass / Receipt / Permit Number'
+                      : 'Policy / Certificate / Reg Number',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                )),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.vehiclePolicyOrCertNumberController,
+                  decoration: InputDecoration(
+                    hintText: controller.isVehiclePassDoc
+                        ? 'e.g. Pass receipt # or tag ID'
+                        : 'e.g. Policy # or PUC # or Reg #',
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Obx(() => Text(
+                  controller.isVehiclePassDoc
+                      ? 'Issuing Bank / Tag Issuer / Authority'
+                      : 'Insurance Company / Agency Name',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                )),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.vehicleInsuranceCompanyController,
+                  decoration: InputDecoration(
+                    hintText: controller.isVehiclePassDoc
+                        ? 'e.g. ICICI Bank, IDFC, Paytm, NHAI, Society Office'
+                        : 'e.g. HDFC ERGO, ICICI Lombard, New India',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Obx(() => Text(
+                  controller.isVehiclePassDoc ? 'Pass Valid From' : 'Issue / Start Date',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                )),
+                const SizedBox(height: 4),
+                Obx(
+                  () => InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.vehicleIssueDate.value ?? DateTime.now(),
+                        firstDate: DateTime(1990),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        controller.vehicleIssueDate.value = picked;
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            controller.vehicleIssueDate.value != null
+                                ? AppFormatters.formatDate(controller.vehicleIssueDate.value!)
+                                : 'Select Start Date',
+                            style: TextStyle(
+                              color: controller.vehicleIssueDate.value != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Obx(() => Text(
+                  controller.isVehiclePassDoc
+                      ? 'Pass Expiry Date (Annual/Monthly Renewal)'
+                      : 'Expiry / Renewal Date (For Insurance/PUC/Fitness)',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                )),
+                const SizedBox(height: 4),
+                Obx(
+                  () => InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.vehicleExpiryDate.value ??
+                            DateTime.now().add(const Duration(days: 365)),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now().add(const Duration(days: 365 * 15)),
+                      );
+                      if (picked != null) {
+                        controller.vehicleExpiryDate.value = picked;
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            controller.vehicleExpiryDate.value != null
+                                ? AppFormatters.formatDate(controller.vehicleExpiryDate.value!)
+                                : 'Select Expiry Date',
+                            style: TextStyle(
+                              color: controller.vehicleExpiryDate.value != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const Icon(Icons.event_busy, size: 16, color: AppColors.textMuted),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Obx(() => Text(
+                  controller.isVehiclePassDoc ? 'Pass Fee / Amount (₹)' : 'Premium / Bill Amount (₹)',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                )),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.vehiclePremiumAmountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 3500',
+                    prefixText: '₹ ',
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Service Center / Vendor Name',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.vehicleServiceCenterController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Concept Hyundai / Cargo Honda',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Notes & Remarks (Optional)',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: controller.vehicleNotesController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Comprehensive zero-dep policy with RSA included',
+                ),
+              ),
+            ],
           ),
         ],
       ),

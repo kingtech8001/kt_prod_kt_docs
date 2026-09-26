@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
@@ -104,6 +105,7 @@ class DocumentsDataset {
         utility_metadata(*),
         appliance_warranty_metadata(*),
         personal_document_metadata(*),
+        vehicle_document_metadata(*),
         document_favorites(document_id, user_id)
       ''').isFilter('deleted_at', null);
 
@@ -366,6 +368,7 @@ class DocumentsDataset {
         utility_metadata(*),
         appliance_warranty_metadata(*),
         personal_document_metadata(*),
+        vehicle_document_metadata(*),
         document_favorites(document_id, user_id)
       ''').eq('id', documentId).maybeSingle();
 
@@ -397,6 +400,7 @@ class DocumentsDataset {
     UtilityMetadataModel? utilityMetadata,
     ApplianceWarrantyModel? applianceWarranty,
     PersonalDocumentMetadataModel? personalMetadata,
+    VehicleDocumentMetadataModel? vehicleMetadata,
   }) async {
     final user = _provider.currentUser;
     final docId = const Uuid().v4();
@@ -517,6 +521,18 @@ class DocumentsDataset {
         AppLogger.info(
           'DOCUMENTS_DATASET',
           'Inserted personal document metadata for $docId',
+        );
+      }
+
+      if (vehicleMetadata != null) {
+        final vehicleMap = vehicleMetadata.toJson();
+        vehicleMap['document_id'] = docId;
+        await _client
+            .from('vehicle_document_metadata')
+            .insert(vehicleMap);
+        AppLogger.info(
+          'DOCUMENTS_DATASET',
+          'Inserted vehicle document metadata for $docId',
         );
       }
 

@@ -94,6 +94,7 @@ class DashboardDataset {
             utility_metadata(*),
             appliance_warranty_metadata(*),
             personal_document_metadata(*),
+            vehicle_document_metadata(*),
             document_favorites(document_id, user_id)
           ''')
           .isFilter('deleted_at', null)
@@ -135,6 +136,7 @@ class DashboardDataset {
             utility_metadata(*),
             appliance_warranty_metadata(*),
             personal_document_metadata(*),
+            vehicle_document_metadata(*),
             document_favorites(document_id, user_id)
           ''')
           .isFilter('deleted_at', null)
@@ -181,6 +183,7 @@ class DashboardDataset {
             utility_metadata(*),
             appliance_warranty_metadata(*),
             personal_document_metadata(*),
+            vehicle_document_metadata(*),
             document_favorites(document_id, user_id)
           ''')
           .isFilter('deleted_at', null)

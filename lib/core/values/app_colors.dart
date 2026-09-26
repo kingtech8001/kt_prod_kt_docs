@@ -18,6 +18,7 @@ class AppColors {
   static const Color background = Color(0xFFF8FAFC); // Clean Canvas
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceMuted = Color(0xFFF1F5F9);
+  static const Color surfaceVariant = Color(0xFFF1F5F9);
 
   // Sidebar Specific Palette (Deep Slate Enterprise)
   static const Color sidebarBg = Color(0xFF0F172A); // Slate 900
@@ -33,6 +34,7 @@ class AppColors {
   // Typography
   static const Color textPrimary = Color(0xFF0F172A); // Slate 900
   static const Color textSecondary = Color(0xFF475569); // Slate 600
+  static const Color textTertiary = Color(0xFF94A3B8); // Slate 400
   static const Color textMuted = Color(0xFF94A3B8); // Slate 400
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 

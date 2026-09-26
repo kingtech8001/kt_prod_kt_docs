@@ -9,9 +9,13 @@ import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/folder_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/folder_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/settings_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/vehicle_docs_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehicle_dialog.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
@@ -219,6 +223,42 @@ class DocumentUploadController extends GetxController {
   final personalIssuingAuthorityController = TextEditingController();
   final personalNotesController = TextEditingController();
 
+  // Vehicle Specific Fields
+  final dynamicVehicles = <MasterVehicleModel>[].obs;
+  final dynamicVehicleDocTypes = <MasterVehicleDocTypeModel>[].obs;
+  final selectedVehicleId = RxnString();
+  final selectedVehicleNumber = ''.obs;
+  final selectedVehicleName = ''.obs;
+  final selectedVehicleDocTypeId = RxnString();
+  final selectedVehicleDocTypeName = 'RC Book (Registration Certificate)'.obs;
+  final vehiclePolicyOrCertNumberController = TextEditingController();
+  final vehicleIssueDate = Rxn<DateTime>();
+  final vehicleExpiryDate = Rxn<DateTime>();
+  final vehicleInsuranceCompanyController = TextEditingController();
+  final vehiclePremiumAmountController = TextEditingController();
+  final vehicleServiceCenterController = TextEditingController();
+  final vehicleOdometerController = TextEditingController();
+  final vehicleNotesController = TextEditingController();
+
+  // Vehicle Pass & FASTag Specific Fields
+  final selectedVehiclePassType = 'Annual Toll Pass'.obs;
+  final vehiclePassPlazaController = TextEditingController();
+  final vehicleFastagIdController = TextEditingController();
+
+  bool get isVehiclePassDoc {
+    final typeName = selectedVehicleDocTypeName.value.toLowerCase();
+    final typeCode = dynamicVehicleDocTypes
+            .firstWhereOrNull((t) => t.name == selectedVehicleDocTypeName.value)
+            ?.code
+            .toLowerCase() ??
+        '';
+    return typeName.contains('fastag') ||
+        typeName.contains('pass') ||
+        typeName.contains('toll') ||
+        typeCode == 'fastag' ||
+        typeCode == 'parking_pass';
+  }
+
   CategoryModel? get currentCategory {
     if (selectedCategoryId.value.isEmpty) return null;
     return categories.firstWhereOrNull((c) => c.id == selectedCategoryId.value);
@@ -239,9 +279,20 @@ class DocumentUploadController extends GetxController {
     return currentCategory?.code == 'identity_docs';
   }
 
+  bool get isVehicleDoc {
+    return currentCategory?.code == 'vehicle_docs';
+  }
+
   bool get selectedDocTypeHasExpiry {
     final type = dynamicPersonalDocTypes.firstWhereOrNull(
       (t) => t.name == selectedPersonalDocTypeName.value,
+    );
+    return type?.hasExpiry ?? false;
+  }
+
+  bool get selectedVehicleDocTypeHasExpiry {
+    final type = dynamicVehicleDocTypes.firstWhereOrNull(
+      (t) => t.name == selectedVehicleDocTypeName.value,
     );
     return type?.hasExpiry ?? false;
   }
@@ -324,6 +375,21 @@ class DocumentUploadController extends GetxController {
         dynamicPersonalDocTypes.assignAll(docTypeList);
         selectedPersonalDocTypeId.value = docTypeList.first.id;
         selectedPersonalDocTypeName.value = docTypeList.first.name;
+      }
+
+      final vehicleList = await _settingsDataset.getVehicles(activeOnly: true);
+      if (vehicleList.isNotEmpty) {
+        dynamicVehicles.assignAll(vehicleList);
+        selectedVehicleId.value = vehicleList.first.id;
+        selectedVehicleNumber.value = vehicleList.first.vehicleNumber;
+        selectedVehicleName.value = vehicleList.first.displayName;
+      }
+
+      final vehicleDocTypeList = await _settingsDataset.getVehicleDocTypes(activeOnly: true);
+      if (vehicleDocTypeList.isNotEmpty) {
+        dynamicVehicleDocTypes.assignAll(vehicleDocTypeList);
+        selectedVehicleDocTypeId.value = vehicleDocTypeList.first.id;
+        selectedVehicleDocTypeName.value = vehicleDocTypeList.first.name;
       }
     } catch (e, st) {
       AppLogger.error(
@@ -408,6 +474,55 @@ class DocumentUploadController extends GetxController {
     }
   }
 
+  void updateSelectedVehicle(MasterVehicleModel vehicle) {
+    selectedVehicleId.value = vehicle.id;
+    selectedVehicleNumber.value = vehicle.vehicleNumber;
+    selectedVehicleName.value = vehicle.displayName;
+    _updateTitleForVehicleDoc();
+  }
+
+  void updateSelectedVehicleDocType(String docTypeName) {
+    selectedVehicleDocTypeName.value = docTypeName;
+    final type = dynamicVehicleDocTypes.firstWhereOrNull(
+      (t) => t.name == docTypeName,
+    );
+    selectedVehicleDocTypeId.value = type?.id;
+    selectedSubcategory.value = docTypeName;
+    _updateTitleForVehicleDoc();
+  }
+
+  void _updateTitleForVehicleDoc() {
+    if (isVehicleDoc) {
+      final docType = selectedVehicleDocTypeName.value;
+      final veh = selectedVehicleNumber.value;
+      if (veh.isNotEmpty) {
+        titleController.text = '$docType - $veh';
+      } else {
+        titleController.text = docType;
+      }
+    }
+  }
+
+  void openAddVehicleDialog() {
+    AddVehicleDialog.show(
+      onSave: (newVehicle) async {
+        final dataset = Get.isRegistered<VehicleDocsDataset>()
+            ? Get.find<VehicleDocsDataset>()
+            : VehicleDocsDataset(Get.find<SupabaseProvider>());
+        final created = await dataset.createMasterVehicle(newVehicle);
+        dynamicVehicles.add(created);
+        dynamicVehicles.sort((a, b) => a.vehicleNumber.compareTo(b.vehicleNumber));
+        updateSelectedVehicle(created);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppSnackbar.showSuccess(
+            'Vehicle Registered',
+            '${created.vehicleNumber} registered and selected.',
+          );
+        });
+      },
+    );
+  }
+
   void updateSubcategoriesForCategory(String catCode) {
     if (catCode == 'utility_bills') {
       final list = dynamicUtilityTypes.isNotEmpty
@@ -431,6 +546,10 @@ class DocumentUploadController extends GetxController {
       final list = dynamicPersonalDocTypes.map((t) => t.name).toList();
       selectedSubcategory.value = list.isNotEmpty ? list.first : 'Aadhaar Card';
       _updateTitleForPersonalDoc();
+    } else if (catCode == 'vehicle_docs') {
+      final list = dynamicVehicleDocTypes.map((t) => t.name).toList();
+      selectedSubcategory.value = list.isNotEmpty ? list.first : 'RC Book (Registration Certificate)';
+      _updateTitleForVehicleDoc();
     } else {
       selectedSubcategory.value = 'General Document';
     }
@@ -973,6 +1092,51 @@ class DocumentUploadController extends GetxController {
         );
       }
 
+      VehicleDocumentMetadataModel? vehicleMeta;
+      if (isVehicleDoc) {
+        vehicleMeta = VehicleDocumentMetadataModel(
+          vehicleId: selectedVehicleId.value,
+          vehicleNumber: selectedVehicleNumber.value.isNotEmpty
+              ? selectedVehicleNumber.value
+              : 'VEHICLE',
+          vehicleName: selectedVehicleName.value.isNotEmpty
+              ? selectedVehicleName.value
+              : 'Vehicle',
+          docTypeId: selectedVehicleDocTypeId.value,
+          docTypeName: selectedVehicleDocTypeName.value,
+          policyOrCertNumber:
+              vehiclePolicyOrCertNumberController.text.trim().isNotEmpty
+                  ? vehiclePolicyOrCertNumberController.text.trim()
+                  : null,
+          issueDate: vehicleIssueDate.value,
+          expiryDate: vehicleExpiryDate.value,
+          insuranceCompany:
+              vehicleInsuranceCompanyController.text.trim().isNotEmpty
+                  ? vehicleInsuranceCompanyController.text.trim()
+                  : null,
+          premiumAmount: double.tryParse(
+            vehiclePremiumAmountController.text.trim(),
+          ),
+          serviceCenter:
+              vehicleServiceCenterController.text.trim().isNotEmpty
+                  ? vehicleServiceCenterController.text.trim()
+                  : null,
+          odometerReading: int.tryParse(
+            vehicleOdometerController.text.trim(),
+          ),
+          notes: vehicleNotesController.text.trim().isNotEmpty
+              ? vehicleNotesController.text.trim()
+              : null,
+          passType: isVehiclePassDoc ? selectedVehiclePassType.value : null,
+          tollPlazaName: vehiclePassPlazaController.text.trim().isNotEmpty
+              ? vehiclePassPlazaController.text.trim()
+              : null,
+          fastagId: vehicleFastagIdController.text.trim().isNotEmpty
+              ? vehicleFastagIdController.text.trim()
+              : null,
+        );
+      }
+
       // Determine file bytes, file name, and mime type based on user's compression selection
       Uint8List uploadBytes = file.bytes!;
       String uploadFileName = file.name;
@@ -1014,7 +1178,7 @@ class DocumentUploadController extends GetxController {
             : null,
         documentNumber: documentNumberController.text.trim().isNotEmpty
             ? documentNumberController.text.trim()
-            : (personalMeta?.idNumber),
+            : (personalMeta?.idNumber ?? vehicleMeta?.policyOrCertNumber),
         categoryId: selectedCategoryId.value,
         subCategory: selectedSubcategory.value,
         folderId: selectedFolderId.value,
@@ -1025,6 +1189,7 @@ class DocumentUploadController extends GetxController {
         utilityMetadata: utilityMeta,
         applianceWarranty: applianceMeta,
         personalMetadata: personalMeta,
+        vehicleMetadata: vehicleMeta,
       );
 
       AppLogger.info(
@@ -1035,6 +1200,8 @@ class DocumentUploadController extends GetxController {
       // Section 3.B: Navigate away first, then trigger standardized compact success snackbar
       if (isPersonalDoc) {
         Get.offNamed(AppRoutes.PERSONAL_DOCS);
+      } else if (isVehicleDoc) {
+        Get.offNamed(AppRoutes.VEHICLE_DOCS);
       } else if (isUtilityBill) {
         Get.offNamed(AppRoutes.UTILITY_BILLS);
       } else if (isApplianceWarranty) {
@@ -1087,6 +1254,14 @@ class DocumentUploadController extends GetxController {
     personalIdNumberController.dispose();
     personalIssuingAuthorityController.dispose();
     personalNotesController.dispose();
+    vehiclePolicyOrCertNumberController.dispose();
+    vehicleInsuranceCompanyController.dispose();
+    vehiclePremiumAmountController.dispose();
+    vehicleServiceCenterController.dispose();
+    vehicleOdometerController.dispose();
+    vehicleNotesController.dispose();
+    vehiclePassPlazaController.dispose();
+    vehicleFastagIdController.dispose();
     targetSizeController.dispose();
     maxDimensionController.dispose();
     super.onClose();

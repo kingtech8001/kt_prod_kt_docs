@@ -141,7 +141,6 @@ class WebHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (customActions != null) ...?customActions,
             ElevatedButton.icon(
               onPressed: () => Get.toNamed(AppRoutes.UPLOAD),
               icon: const Icon(Icons.cloud_upload_outlined, size: 14),
@@ -152,6 +151,18 @@ class WebHeader extends StatelessWidget {
             ),
           ],
         ),
+        if (customActions != null && customActions!.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: customActions!
+                  .expand((w) => [w, const SizedBox(width: 8)])
+                  .take(customActions!.length * 2 - 1)
+                  .toList(),
+            ),
+          ),
+        ],
         if (onSearch != null) ...[
           const SizedBox(height: 10),
           SizedBox(

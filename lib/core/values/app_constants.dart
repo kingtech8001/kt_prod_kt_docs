@@ -94,12 +94,46 @@ class AppConstants {
     'Philips',
   ];
 
+  // Vehicle Pass Types (Annual / Monthly / Parking)
+  static const List<String> vehiclePassTypes = [
+    'Annual Toll Pass',
+    'Monthly Toll Pass',
+    'Annual Parking Pass',
+    'Society / Campus Parking Permit',
+    'Expressway / Highway Pass',
+    'Commercial / Municipal Entry Pass',
+    'Other Pass',
+  ];
+
+  // Vehicle Service Maintenance Types
+  static const List<String> vehicleServiceTypes = [
+    'Engine Oil Change',
+    'Oil Filter Replacement',
+    'Periodic / General Service',
+    'Air Filter Replacement',
+    'Cabin / AC Filter',
+    'Brake Pads & Disc Service',
+    'Tyre Rotation & Balancing',
+    'Wheel Alignment',
+    'Battery Health Check / Replace',
+    'Coolant Flush / Top-Up',
+    'Brake Fluid Service',
+    'Transmission / Gearbox Oil',
+    'Spark Plugs Replacement',
+    'Wiper Blades Replacement',
+    'AC Gas & Cooling Service',
+    'Suspension & Shock Absorber',
+    'Washing & Detailing',
+    'Other Repairs',
+  ];
+
   // Document Categories
   static const String catUtilityBills = 'utility_bills';
   static const String catApplianceWarranty = 'appliance_warranty';
   static const String catLegalDocs = 'legal_docs';
   static const String catFinancial = 'financial';
   static const String catIdentityDocs = 'identity_docs';
+  static const String catVehicleDocs = 'vehicle_docs';
 
   // Responsive Breakpoints (AI Master Context: Desktop > 1024px, Tablet 768-1024px, Mobile < 768px)
   static const double desktopBreakpoint = 1024.0;
