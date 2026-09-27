@@ -47,6 +47,7 @@ class KTVaultApp extends StatelessWidget {
       initialRoute: initialRoute,
       getPages: AppPages.routes,
       defaultTransition: Transition.fadeIn,
+      popGesture: false,
     );
   }
 }

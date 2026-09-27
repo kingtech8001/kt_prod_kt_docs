@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 
@@ -22,7 +23,7 @@ class ShareDocumentDialog extends StatelessWidget {
     required String documentTitle,
     required String shareUrl,
   }) {
-    Get.dialog(
+    AppDialog.show(
       ShareDocumentDialog(
         documentTitle: documentTitle,
         shareUrl: shareUrl,

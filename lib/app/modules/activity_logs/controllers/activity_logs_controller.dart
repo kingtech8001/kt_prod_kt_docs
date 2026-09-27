@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/activity_logs_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/activity_log_model.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
@@ -128,7 +129,7 @@ class ActivityLogsController extends GetxController {
 
   /// Opens dialog displaying detailed log metadata payload.
   void openLogDetailsDialog(ActivityLogModel log) {
-    Get.dialog(
+    AppDialog.show(
       Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.radiusMedium),

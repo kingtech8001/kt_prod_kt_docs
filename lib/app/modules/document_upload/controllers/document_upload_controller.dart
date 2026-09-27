@@ -503,8 +503,8 @@ class DocumentUploadController extends GetxController {
     }
   }
 
-  void openAddVehicleDialog() {
-    AddVehicleDialog.show(
+  Future<void> openAddVehicleDialog() async {
+    final success = await AddVehicleDialog.show(
       onSave: (newVehicle) async {
         final dataset = Get.isRegistered<VehicleDocsDataset>()
             ? Get.find<VehicleDocsDataset>()
@@ -513,14 +513,14 @@ class DocumentUploadController extends GetxController {
         dynamicVehicles.add(created);
         dynamicVehicles.sort((a, b) => a.vehicleNumber.compareTo(b.vehicleNumber));
         updateSelectedVehicle(created);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          AppSnackbar.showSuccess(
-            'Vehicle Registered',
-            '${created.vehicleNumber} registered and selected.',
-          );
-        });
       },
     );
+    if (success == true) {
+      AppSnackbar.showSuccess(
+        'Vehicle Registered',
+        'Vehicle registered and selected.',
+      );
+    }
   }
 
   void updateSubcategoriesForCategory(String catCode) {

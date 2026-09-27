@@ -6,16 +6,42 @@ import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 class AppSnackbar {
   AppSnackbar._();
 
+  /// Immediately dismisses any active snackbar to prevent it from intercepting
+  /// subsequent back navigations or blocking button interactions.
+  static void dismiss() {
+    if (Get.isSnackbarOpen) {
+      Get.closeCurrentSnackbar();
+    }
+  }
+
+  /// Closes all active dialogs and bottom sheets.
+  /// Dismisses any open snackbar first to prevent Get.back() from being intercepted.
+  static void closeAllModals() {
+    dismiss();
+    while (Get.isDialogOpen == true || Get.isBottomSheetOpen == true) {
+      Get.back();
+    }
+  }
+
+  /// Displays a success notification.
+  /// Strictly follows Rule 3.B: Closes all pending dialogs/bottom sheets first,
+  /// then waits for the current frame to complete before presenting the snackbar,
+  /// ensuring Get.context is cleanly restored to the page and button clicks are not stuck.
   static void showSuccess(String title, String message) {
-    _show(
-      title: title,
-      message: message,
-      backgroundColor: AppColors.success,
-      icon: Icons.check_circle_outline_rounded,
-    );
+    closeAllModals();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _show(
+        title: title,
+        message: message,
+        backgroundColor: AppColors.success,
+        icon: Icons.check_circle_outline_rounded,
+      );
+    });
   }
 
   static void showError(String title, String message) {
+    dismiss();
     _show(
       title: title,
       message: message,
@@ -25,6 +51,7 @@ class AppSnackbar {
   }
 
   static void showWarning(String title, String message) {
+    dismiss();
     _show(
       title: title,
       message: message,
@@ -34,6 +61,7 @@ class AppSnackbar {
   }
 
   static void showInfo(String title, String message) {
+    dismiss();
     _show(
       title: title,
       message: message,
@@ -48,6 +76,10 @@ class AppSnackbar {
     required Color backgroundColor,
     required IconData icon,
   }) {
+    if (Get.isSnackbarOpen) {
+      Get.closeCurrentSnackbar();
+    }
+
     final screenWidth = Get.width;
     final isDesktopOrTablet = screenWidth >= AppConstants.tabletBreakpoint;
 

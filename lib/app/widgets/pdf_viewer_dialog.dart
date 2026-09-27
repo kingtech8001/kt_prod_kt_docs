@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_preview.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
@@ -49,7 +50,7 @@ class PdfViewerDialog extends StatelessWidget {
     String? fileName,
     VoidCallback? onDownload,
   }) {
-    Get.dialog(
+    AppDialog.show(
       PdfViewerDialog(
         title: title,
         signedPdfUrl: signedPdfUrl,

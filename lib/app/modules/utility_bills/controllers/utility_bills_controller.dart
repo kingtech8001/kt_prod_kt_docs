@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
@@ -242,7 +243,7 @@ class UtilityBillsController extends GetxController {
 
     final isUndoingPayment = metadata.isPaid;
 
-    Get.dialog(
+    AppDialog.show(
       Dialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
@@ -463,10 +464,6 @@ class UtilityBillsController extends GetxController {
             documentNumber: documentNumber,
           );
           await loadUtilityBills();
-          AppSnackbar.showSuccess(
-            'Document Updated',
-            'Bill details were saved.',
-          );
         } catch (e, st) {
           AppLogger.error(
             'UTILITY_CTRL',
@@ -474,7 +471,6 @@ class UtilityBillsController extends GetxController {
             error: e,
             stackTrace: st,
           );
-          AppSnackbar.showError('Update Error', e.toString());
           rethrow;
         }
       },

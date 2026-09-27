@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 
@@ -42,7 +43,7 @@ class CreateStaffDialog extends StatelessWidget {
       String? phoneNumber,
     }) onSubmit,
   }) {
-    return Get.dialog<bool>(
+    return AppDialog.show<bool>(
       CreateStaffDialog(onSubmit: onSubmit),
       barrierDismissible: false,
     );

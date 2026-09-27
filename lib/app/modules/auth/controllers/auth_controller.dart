@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
@@ -29,7 +30,7 @@ class AuthController extends GetxController {
     lastErrorMessage.value = errorMessage;
     final isCopied = false.obs;
 
-    Get.dialog(
+    AppDialog.show(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
         backgroundColor: AppColors.surface,

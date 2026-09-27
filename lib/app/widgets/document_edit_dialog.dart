@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
@@ -167,7 +168,7 @@ class DocumentEditDialog extends StatelessWidget {
     }
   }
 
-  static void show({
+  static Future<bool?> show({
     required DocumentModel document,
     required Future<void> Function({
       required String title,
@@ -176,7 +177,7 @@ class DocumentEditDialog extends StatelessWidget {
       ApplianceWarrantyModel? applianceWarranty,
     }) onSave,
   }) {
-    Get.dialog(
+    return AppDialog.show<bool>(
       DocumentEditDialog(document: document, onSave: onSave),
       barrierDismissible: false,
     );
@@ -295,10 +296,9 @@ class DocumentEditDialog extends StatelessWidget {
         applianceWarranty: updatedAppliance,
       );
 
+      _disposeControllers();
       // Rule 3.B: Close dialog first, then fire success snackbar
-      if (Get.isDialogOpen ?? false) {
-        Get.back();
-      }
+      Get.back(result: true);
       AppSnackbar.showSuccess(
         'Document Updated',
         'Document details have been updated successfully.',
@@ -381,7 +381,7 @@ class DocumentEditDialog extends StatelessWidget {
                     splashRadius: 18,
                     onPressed: () {
                       _disposeControllers();
-                      Get.back();
+                      Get.back(result: false);
                     },
                   ),
                 ],
@@ -771,7 +771,7 @@ class DocumentEditDialog extends StatelessWidget {
                   OutlinedButton(
                     onPressed: () {
                       _disposeControllers();
-                      Get.back();
+                      Get.back(result: false);
                     },
                     child: const Text('Cancel'),
                   ),
@@ -816,7 +816,7 @@ class DocumentDeleteDialog extends StatelessWidget {
     required String documentTitle,
     required Future<void> Function() onConfirm,
   }) {
-    Get.dialog(
+    AppDialog.show(
       DocumentDeleteDialog(documentTitle: documentTitle, onConfirm: onConfirm),
       barrierDismissible: false,
     );

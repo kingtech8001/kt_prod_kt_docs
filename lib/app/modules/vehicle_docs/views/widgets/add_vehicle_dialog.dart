@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 
@@ -14,11 +15,11 @@ class AddVehicleDialog extends StatelessWidget {
     required this.onSave,
   });
 
-  static Future<void> show({
+  static Future<bool?> show({
     MasterVehicleModel? vehicleToEdit,
     required Future<void> Function(MasterVehicleModel vehicle) onSave,
   }) {
-    return Get.dialog<void>(
+    return AppDialog.show<bool>(
       AddVehicleDialog(
         vehicleToEdit: vehicleToEdit,
         onSave: onSave,
@@ -128,8 +129,7 @@ class AddVehicleDialog extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () =>
-                        Navigator.of(context, rootNavigator: true).pop(),
+                    onPressed: () => Get.back(result: false),
                     icon: const Icon(Icons.close, size: 20),
                     color: AppColors.textSecondary,
                   ),
@@ -646,8 +646,7 @@ class AddVehicleDialog extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: () =>
-                        Navigator.of(context, rootNavigator: true).pop(),
+                    onPressed: () => Get.back(result: false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
@@ -699,9 +698,7 @@ class AddVehicleDialog extends StatelessWidget {
                                 );
 
                                 await onSave(vehicle);
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
+                                Get.back(result: true);
                               } catch (e) {
                                 errorMessage.value = 'Failed to save vehicle: $e';
                               } finally {

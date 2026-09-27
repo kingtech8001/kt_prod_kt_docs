@@ -5,6 +5,7 @@ import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
@@ -226,7 +227,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Add New City',
         icon: Icons.location_city,
@@ -335,7 +336,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Add New Brand',
         icon: Icons.branding_watermark_outlined,
@@ -449,7 +450,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Add Appliance Category',
         icon: Icons.kitchen_outlined,
@@ -562,7 +563,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Add Utility Provider',
         icon: Icons.bolt_outlined,
@@ -680,7 +681,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Add Person / Member',
         icon: Icons.person_add_outlined,
@@ -850,7 +851,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Add Personal Document Type',
         icon: Icons.badge_outlined,
@@ -986,7 +987,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Add Corporate Document Category',
         icon: Icons.folder_special_outlined,
@@ -1108,7 +1109,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       _buildDialogContainer(
         title: 'Edit Document Category',
         icon: Icons.edit_note,
@@ -1383,7 +1384,7 @@ class SettingsController extends GetxController {
     dialogErrorMessage.value = '';
     isSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
         backgroundColor: AppColors.surface,

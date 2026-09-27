@@ -363,10 +363,6 @@ class FavoritesController extends GetxController {
             applianceWarranty: applianceWarranty,
           );
           await loadFavorites(resetPage: true);
-          AppSnackbar.showSuccess(
-            'Document Updated',
-            'Document details were saved.',
-          );
         } catch (e, st) {
           AppLogger.error(
             'FAVORITES_CTRL',
@@ -374,7 +370,6 @@ class FavoritesController extends GetxController {
             error: e,
             stackTrace: st,
           );
-          AppSnackbar.showError('Update Error', e.toString());
           rethrow;
         }
       },

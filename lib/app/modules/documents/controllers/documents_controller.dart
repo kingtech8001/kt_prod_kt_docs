@@ -40,8 +40,7 @@ class DocumentsController extends GetxController {
     if (paramFolderId != null && paramFolderId.isNotEmpty) {
       selectedFolderId.value = paramFolderId;
     }
-    loadCategoriesAndDocuments();
-    loadDynamicCities();
+    loadInitialData();
   }
 
   @override
@@ -50,36 +49,38 @@ class DocumentsController extends GetxController {
     super.onClose();
   }
 
-  Future<void> loadDynamicCities() async {
-    try {
-      final cities = await _dataset.getCities(activeOnly: true);
-      dynamicCities.assignAll(cities.map((c) => c.name));
-    } catch (e, st) {
-      AppLogger.error(
-        'DOCS_CTRL',
-        'Error loading dynamic cities: $e',
-        error: e,
-        stackTrace: st,
-      );
-    }
-  }
-
-  Future<void> loadCategoriesAndDocuments() async {
-    AppLogger.debug('DOCS_CTRL', 'Loading categories and initial documents...');
+  Future<void> loadInitialData() async {
+    AppLogger.debug('DOCS_CTRL', 'Loading categories, cities, and documents concurrently...');
     isLoading.value = true;
     try {
-      final cats = await _dataset.getAllCategories();
-      categories.assignAll(cats);
+      final results = await Future.wait([
+        _dataset.getAllCategories(),
+        _dataset.getCities(activeOnly: true),
+        _dataset.getFilteredDocuments(
+          categoryId: selectedCategoryId.value.isNotEmpty
+              ? selectedCategoryId.value
+              : null,
+          folderId: selectedFolderId.value.isNotEmpty
+              ? selectedFolderId.value
+              : null,
+          city: selectedCity.value != 'All Cities' ? selectedCity.value : null,
+          status: selectedStatus.value != 'all' ? selectedStatus.value : null,
+          searchQuery: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        ),
+      ]);
 
-      await fetchFilteredDocuments();
+      categories.assignAll(results[0] as List<CategoryModel>);
+      final cities = results[1] as List<MasterCityModel>;
+      dynamicCities.assignAll(cities.map((c) => c.name));
+      documents.assignAll(results[2] as List<DocumentModel>);
     } catch (e, st) {
       AppLogger.error(
         'DOCS_CTRL',
-        'Error in loadCategoriesAndDocuments: $e',
+        'Error in loadInitialData: $e',
         error: e,
         stackTrace: st,
       );
-      AppSnackbar.showError('Error Loading Categories', e.toString());
+      AppSnackbar.showError('Error Loading Documents', e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -296,10 +297,6 @@ class DocumentsController extends GetxController {
             applianceWarranty: applianceWarranty,
           );
           await fetchFilteredDocuments();
-          AppSnackbar.showSuccess(
-            'Document Updated',
-            'Document details were saved.',
-          );
         } catch (e, st) {
           AppLogger.error(
             'DOCS_CTRL',

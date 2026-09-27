@@ -32,20 +32,12 @@ class DashboardController extends GetxController {
     AppLogger.debug('DASHBOARD_CTRL', 'Loading dashboard data via DashboardDataset...');
     isLoading.value = true;
     try {
-      final metricsData = await _dataset.getDashboardMetrics();
-      metrics.value = metricsData;
+      final bundle = await _dataset.getDashboardBundle();
 
-      // Fetch Recent Documents
-      final docs = await _dataset.getRecentDocuments(limit: 8);
-      recentDocuments.assignAll(docs);
-
-      // Fetch Expiring Warranties (due in <= 30 days)
-      final expiring = await _dataset.getExpiringWarranties(limit: 50);
-      expiringWarranties.assignAll(expiring);
-
-      // Fetch Pending Utility Bills
-      final pending = await _dataset.getPendingUtilityBills(limit: 50);
-      pendingUtilityBills.assignAll(pending);
+      metrics.value = bundle.metrics;
+      recentDocuments.assignAll(bundle.recentDocuments);
+      expiringWarranties.assignAll(bundle.expiringWarranties);
+      pendingUtilityBills.assignAll(bundle.pendingUtilityBills);
 
       AppLogger.info('DASHBOARD_CTRL', 'Dashboard data loaded successfully.');
     } catch (e, st) {
@@ -211,10 +203,6 @@ class DashboardController extends GetxController {
             applianceWarranty: applianceWarranty,
           );
           await loadDashboardData();
-          AppSnackbar.showSuccess(
-            'Document Updated',
-            'Document details were saved.',
-          );
         } catch (e, st) {
           AppLogger.error(
             'DASHBOARD_CTRL',

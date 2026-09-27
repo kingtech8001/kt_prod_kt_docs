@@ -9,6 +9,7 @@ import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
@@ -176,7 +177,7 @@ class FoldersController extends GetxController {
     dialogErrorMessage.value = '';
     isDialogSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
         title: const Row(
@@ -339,7 +340,7 @@ class FoldersController extends GetxController {
     dialogErrorMessage.value = '';
     isDialogSubmitting.value = false;
 
-    Get.dialog(
+    AppDialog.show(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
         title: const Row(
@@ -489,7 +490,7 @@ class FoldersController extends GetxController {
 
   // ================= DELETE FOLDER CONFIRMATION =================
   void confirmDeleteFolder(FolderModel folder) {
-    Get.dialog(
+    AppDialog.show(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
         backgroundColor: AppColors.surface,
@@ -585,7 +586,7 @@ class FoldersController extends GetxController {
     selectedDocIdsToAdd.clear();
     isLoadingAvailableDocs.value = true;
 
-    Get.dialog(
+    AppDialog.show(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
         title: Row(

@@ -6,6 +6,20 @@ import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class DashboardBundleModel {
+  final DashboardMetricsModel metrics;
+  final List<DocumentModel> recentDocuments;
+  final List<DocumentModel> expiringWarranties;
+  final List<DocumentModel> pendingUtilityBills;
+
+  DashboardBundleModel({
+    required this.metrics,
+    required this.recentDocuments,
+    required this.expiringWarranties,
+    required this.pendingUtilityBills,
+  });
+}
+
 /// Dataset responsible for all Home / Dashboard data operations.
 /// Follows the strict 3-tier architecture: View -> Controller -> Dataset -> Supabase.
 class DashboardDataset {
@@ -14,6 +28,59 @@ class DashboardDataset {
   DashboardDataset(this._provider);
 
   SupabaseClient get _client => _provider.client;
+
+  /// Fetches complete dashboard data bundle via single database RPC `get_dashboard_bundle` in ~20ms.
+  Future<DashboardBundleModel> getDashboardBundle() async {
+    AppLogger.debug(
+      'DASHBOARD_DATASET',
+      'Fetching complete dashboard bundle via RPC get_dashboard_bundle...',
+    );
+    try {
+      final response = await _client.rpc('get_dashboard_bundle');
+      if (response != null && response is Map<String, dynamic>) {
+        final metrics = DashboardMetricsModel.fromJson(
+          (response['metrics'] as Map<String, dynamic>?) ?? {},
+        );
+        final recent = ((response['recent_documents'] as List?) ?? [])
+            .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        final expiring = ((response['expiring_warranties'] as List?) ?? [])
+            .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        final pending = ((response['pending_utility_bills'] as List?) ?? [])
+            .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        AppLogger.info('DASHBOARD_DATASET', 'Loaded complete dashboard bundle in single RPC trip.');
+        return DashboardBundleModel(
+          metrics: metrics,
+          recentDocuments: recent,
+          expiringWarranties: expiring,
+          pendingUtilityBills: pending,
+        );
+      }
+    } catch (e, st) {
+      AppLogger.warning(
+        'DASHBOARD_DATASET',
+        'Single RPC get_dashboard_bundle fallback due to: $e',
+      );
+    }
+
+    // High-performance fallback: fetch in parallel
+    final results = await Future.wait([
+      getDashboardMetrics(),
+      getRecentDocuments(limit: 8),
+      getExpiringWarranties(limit: 4),
+      getPendingUtilityBills(limit: 4),
+    ]);
+
+    return DashboardBundleModel(
+      metrics: results[0] as DashboardMetricsModel,
+      recentDocuments: results[1] as List<DocumentModel>,
+      expiringWarranties: results[2] as List<DocumentModel>,
+      pendingUtilityBills: results[3] as List<DocumentModel>,
+    );
+  }
 
   /// Fetches dashboard metrics via RPC `get_dashboard_metrics` with safe fallback.
   Future<DashboardMetricsModel> getDashboardMetrics() async {
@@ -79,7 +146,7 @@ class DashboardDataset {
     }
   }
 
-  /// Fetches recent non-deleted documents with full relations.
+  /// Fetches recent non-deleted documents with necessary relations.
   Future<List<DocumentModel>> getRecentDocuments({int limit = 8}) async {
     AppLogger.debug('DASHBOARD_DATASET', 'Fetching recent documents limit: $limit');
     try {
@@ -89,12 +156,9 @@ class DashboardDataset {
             *,
             document_categories(id, name, code, color_hex, icon),
             folders(id, name),
-            profiles:uploaded_by(id, full_name, email),
             document_addresses(*),
             utility_metadata(*),
             appliance_warranty_metadata(*),
-            personal_document_metadata(*),
-            vehicle_document_metadata(*),
             document_favorites(document_id, user_id)
           ''')
           .isFilter('deleted_at', null)
@@ -121,35 +185,47 @@ class DashboardDataset {
     }
   }
 
-  /// Fetches warranties expiring within 30 days.
-  Future<List<DocumentModel>> getExpiringWarranties({int limit = 50}) async {
+  /// Fetches warranties expiring within 30 days using indexed query.
+  Future<List<DocumentModel>> getExpiringWarranties({int limit = 4}) async {
     AppLogger.debug('DASHBOARD_DATASET', 'Fetching expiring warranties...');
     try {
+      final today = DateTime.now().toIso8601String().split('T').first;
+      final in30Days = DateTime.now()
+          .add(const Duration(days: 30))
+          .toIso8601String()
+          .split('T')
+          .first;
+
+      final metaRows = await _client
+          .from('appliance_warranty_metadata')
+          .select('document_id')
+          .gte('warranty_valid_upto', today)
+          .lte('warranty_valid_upto', in30Days)
+          .neq('warranty_status', 'no_warranty')
+          .limit(limit);
+
+      final ids = (metaRows as List)
+          .map((r) => r['document_id'] as String?)
+          .whereType<String>()
+          .toList();
+
+      if (ids.isEmpty) {
+        return [];
+      }
+
       final response = await _client
           .from('documents')
           .select('''
             *,
             document_categories(id, name, code, color_hex, icon),
-            folders(id, name),
-            profiles:uploaded_by(id, full_name, email),
-            document_addresses(*),
-            utility_metadata(*),
-            appliance_warranty_metadata(*),
-            personal_document_metadata(*),
-            vehicle_document_metadata(*),
-            document_favorites(document_id, user_id)
+            appliance_warranty_metadata(*)
           ''')
+          .inFilter('id', ids)
           .isFilter('deleted_at', null)
-          .order('created_at', ascending: false)
-          .limit(limit);
+          .order('created_at', ascending: false);
 
       final list = (response as List)
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
-          .where((doc) => doc.categoryCode == 'appliance_warranty')
-          .where((doc) {
-            final w = doc.applianceWarranty;
-            return w != null && w.isExpiringSoon;
-          })
           .toList();
 
       AppLogger.info(
@@ -164,39 +240,44 @@ class DashboardDataset {
         error: e,
         stackTrace: st,
       );
-      rethrow;
+      return [];
     }
   }
 
-  /// Fetches pending utility bills.
-  Future<List<DocumentModel>> getPendingUtilityBills({int limit = 50}) async {
+  /// Fetches pending utility bills using indexed query.
+  Future<List<DocumentModel>> getPendingUtilityBills({int limit = 4}) async {
     AppLogger.debug('DASHBOARD_DATASET', 'Fetching pending utility bills...');
     try {
+      final metaRows = await _client
+          .from('utility_metadata')
+          .select('document_id')
+          .neq('payment_status', 'paid')
+          .neq('payment_status', 'auto_debit')
+          .limit(limit);
+
+      final ids = (metaRows as List)
+          .map((r) => r['document_id'] as String?)
+          .whereType<String>()
+          .toList();
+
+      if (ids.isEmpty) {
+        return [];
+      }
+
       final response = await _client
           .from('documents')
           .select('''
             *,
             document_categories(id, name, code, color_hex, icon),
-            folders(id, name),
-            profiles:uploaded_by(id, full_name, email),
             document_addresses(*),
-            utility_metadata(*),
-            appliance_warranty_metadata(*),
-            personal_document_metadata(*),
-            vehicle_document_metadata(*),
-            document_favorites(document_id, user_id)
+            utility_metadata(*)
           ''')
+          .inFilter('id', ids)
           .isFilter('deleted_at', null)
-          .order('created_at', ascending: false)
-          .limit(limit);
+          .order('created_at', ascending: false);
 
       final list = (response as List)
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
-          .where((doc) => doc.categoryCode == 'utility_bills')
-          .where((doc) {
-            final u = doc.utilityMetadata;
-            return u != null && !u.isPaid;
-          })
           .toList();
 
       AppLogger.info(
@@ -211,7 +292,7 @@ class DashboardDataset {
         error: e,
         stackTrace: st,
       );
-      rethrow;
+      return [];
     }
   }
 

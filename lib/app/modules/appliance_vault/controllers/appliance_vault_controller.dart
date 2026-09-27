@@ -378,10 +378,6 @@ class ApplianceVaultController extends GetxController {
             applianceWarranty: applianceWarranty,
           );
           await loadApplianceVault(resetPage: true);
-          AppSnackbar.showSuccess(
-            'Document Updated',
-            'Invoice and product details were saved.',
-          );
         } catch (e, st) {
           AppLogger.error(
             'APPLIANCE_CTRL',
@@ -389,7 +385,6 @@ class ApplianceVaultController extends GetxController {
             error: e,
             stackTrace: st,
           );
-          AppSnackbar.showError('Update Error', e.toString());
           rethrow;
         }
       },

@@ -10,6 +10,7 @@ import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehic
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_download_helper.dart';
@@ -252,27 +253,27 @@ class VehicleDocsController extends GetxController {
 
   // --- Vehicle Master Management Actions ---
 
-  void openAddVehicleDialog() {
-    AddVehicleDialog.show(
+  Future<void> openAddVehicleDialog() async {
+    final success = await AddVehicleDialog.show(
       onSave: (newVehicle) async {
         final created = await _dataset.createMasterVehicle(newVehicle);
         masterVehicles.add(created);
         masterVehicles.sort((a, b) => a.vehicleNumber.compareTo(b.vehicleNumber));
         selectedVehicle.value = created;
-        await loadVehicleDocuments(resetPage: true);
-        await loadVehicleServices();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          AppSnackbar.showSuccess(
-            'Vehicle Registered',
-            '${created.vehicleNumber} added and selected successfully.',
-          );
-        });
+        loadVehicleDocuments(resetPage: true);
+        loadVehicleServices();
       },
     );
+    if (success == true) {
+      AppSnackbar.showSuccess(
+        'Vehicle Registered',
+        'Vehicle added and selected successfully.',
+      );
+    }
   }
 
-  void openEditVehicleDialog(MasterVehicleModel vehicle) {
-    AddVehicleDialog.show(
+  Future<void> openEditVehicleDialog(MasterVehicleModel vehicle) async {
+    final success = await AddVehicleDialog.show(
       vehicleToEdit: vehicle,
       onSave: (updated) async {
         await _dataset.updateMasterVehicle(updated);
@@ -283,20 +284,20 @@ class VehicleDocsController extends GetxController {
         if (selectedVehicle.value?.id == updated.id) {
           selectedVehicle.value = updated;
         }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          AppSnackbar.showSuccess(
-            'Vehicle Updated',
-            '${updated.vehicleNumber} updated successfully.',
-          );
-        });
       },
     );
+    if (success == true) {
+      AppSnackbar.showSuccess(
+        'Vehicle Updated',
+        '${vehicle.vehicleNumber} updated successfully.',
+      );
+    }
   }
 
   // --- Vehicle Service Record Management Actions ---
 
-  void openAddServiceDialog() {
-    AddVehicleServiceDialog.show(
+  Future<void> openAddServiceDialog() async {
+    final success = await AddVehicleServiceDialog.show(
       vehicles: masterVehicles,
       initialVehicle: selectedVehicle.value,
       onSave: (newService) async {
@@ -307,18 +308,18 @@ class VehicleDocsController extends GetxController {
           if (comp != 0) return comp;
           return b.odometerKm.compareTo(a.odometerKm);
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          AppSnackbar.showSuccess(
-            'Service Logged',
-            'Service at ${created.odometerKm} KM recorded successfully.',
-          );
-        });
       },
     );
+    if (success == true) {
+      AppSnackbar.showSuccess(
+        'Service Logged',
+        'Service record added successfully.',
+      );
+    }
   }
 
-  void openEditServiceDialog(VehicleServiceModel service) {
-    AddVehicleServiceDialog.show(
+  Future<void> openEditServiceDialog(VehicleServiceModel service) async {
+    final success = await AddVehicleServiceDialog.show(
       vehicles: masterVehicles,
       serviceToEdit: service,
       onSave: (updated) async {
@@ -332,18 +333,18 @@ class VehicleDocsController extends GetxController {
           if (comp != 0) return comp;
           return b.odometerKm.compareTo(a.odometerKm);
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          AppSnackbar.showSuccess(
-            'Service Updated',
-            'Service record updated successfully.',
-          );
-        });
       },
     );
+    if (success == true) {
+      AppSnackbar.showSuccess(
+        'Service Updated',
+        'Service record updated successfully.',
+      );
+    }
   }
 
   Future<void> deleteServiceRecord(VehicleServiceModel service) async {
-    final confirmed = await Get.dialog<bool>(
+    final confirmed = await AppDialog.show<bool>(
       AlertDialog(
         title: const Text('Delete Service Record'),
         content: Text(
@@ -503,7 +504,7 @@ class VehicleDocsController extends GetxController {
       return;
     }
 
-    final confirmed = await Get.dialog<bool>(
+    final confirmed = await AppDialog.show<bool>(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(

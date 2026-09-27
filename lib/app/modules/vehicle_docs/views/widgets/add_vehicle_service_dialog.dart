@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
@@ -20,13 +21,13 @@ class AddVehicleServiceDialog extends StatelessWidget {
     required this.onSave,
   });
 
-  static Future<void> show({
+  static Future<bool?> show({
     required List<MasterVehicleModel> vehicles,
     MasterVehicleModel? initialVehicle,
     VehicleServiceModel? serviceToEdit,
     required Future<void> Function(VehicleServiceModel service) onSave,
   }) {
-    return Get.dialog<void>(
+    return AppDialog.show<bool>(
       AddVehicleServiceDialog(
         vehicles: vehicles,
         initialVehicle: initialVehicle,
@@ -136,8 +137,7 @@ class AddVehicleServiceDialog extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () =>
-                        Navigator.of(context, rootNavigator: true).pop(),
+                    onPressed: () => Get.back(result: false),
                     icon: const Icon(Icons.close, size: 20),
                     color: AppColors.textSecondary,
                   ),
@@ -883,8 +883,7 @@ class AddVehicleServiceDialog extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: () =>
-                        Navigator.of(context, rootNavigator: true).pop(),
+                    onPressed: () => Get.back(result: false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -949,10 +948,7 @@ class AddVehicleServiceDialog extends StatelessWidget {
                                 );
 
                                 await onSave(service);
-
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
+                                Get.back(result: true);
                               } catch (e) {
                                 errorMessage.value = 'Failed to save service record: $e';
                               } finally {

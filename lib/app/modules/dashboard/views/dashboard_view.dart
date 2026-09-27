@@ -58,7 +58,7 @@ class DashboardView extends GetView<DashboardController> {
                     );
                     final card3 = MetricCard(
                       title: 'EXPIRING WARRANTIES',
-                      value: '${controller.expiringWarranties.length}',
+                      value: '${m.expiringWarrantiesCount}',
                       subtitle: 'Due within 30 days',
                       icon: Icons.shield_outlined,
                       accentColor: AppColors.warrantyEmerald,
@@ -66,7 +66,7 @@ class DashboardView extends GetView<DashboardController> {
                     );
                     final card4 = MetricCard(
                       title: 'PENDING UTILITIES',
-                      value: '${controller.pendingUtilityBills.length}',
+                      value: '${m.pendingBillsCount}',
                       subtitle: 'Light, Gas, Water bills',
                       icon: Icons.bolt_outlined,
                       accentColor: AppColors.utilityAmber,

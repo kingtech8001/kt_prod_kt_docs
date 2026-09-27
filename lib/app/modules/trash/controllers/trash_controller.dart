@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/trash_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
@@ -149,7 +150,7 @@ class TrashController extends GetxController {
   }
 
   void confirmPermanentDelete(DocumentModel doc) {
-    Get.dialog(
+    AppDialog.show(
       Dialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
