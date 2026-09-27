@@ -59,7 +59,7 @@ class DashboardDataset {
           pendingUtilityBills: pending,
         );
       }
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.warning(
         'DASHBOARD_DATASET',
         'Single RPC get_dashboard_bundle fallback due to: $e',

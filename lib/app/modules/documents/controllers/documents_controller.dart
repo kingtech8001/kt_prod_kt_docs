@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -69,7 +70,7 @@ class DocumentsController extends GetxController {
         ),
       ]);
 
-      categories.assignAll(results[0] as List<CategoryModel>);
+      categories.assignAll(results[0] as List<CategoryModel>);  
       final cities = results[1] as List<MasterCityModel>;
       dynamicCities.assignAll(cities.map((c) => c.name));
       documents.assignAll(results[2] as List<DocumentModel>);
