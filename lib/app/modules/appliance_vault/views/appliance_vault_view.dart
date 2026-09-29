@@ -150,9 +150,13 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 600;
-        final brandList = controller.dynamicBrands.isNotEmpty
-            ? ['All Brands', ...controller.dynamicBrands]
-            : ['All Brands', ...AppConstants.popularBrands];
+        final rawBrands = controller.dynamicBrands.isNotEmpty
+            ? controller.dynamicBrands
+            : AppConstants.popularBrands;
+        final brandList = ['All Brands', ...rawBrands];
+        if (!brandList.contains('Other')) {
+          brandList.add('Other');
+        }
 
         final chipListView = SizedBox(
           height: 36,

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -226,6 +227,7 @@ class FavoritesDataset {
     String? description,
     String? documentNumber,
     dynamic applianceWarranty,
+    VehicleDocumentMetadataModel? vehicleMetadata,
   }) async {
     AppLogger.info(
       'FAVORITES_DATASET',
@@ -255,6 +257,16 @@ class FavoritesDataset {
           final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
           await _client.from('appliance_warranty_metadata').upsert(cleanMap);
         }
+      }
+
+      if (vehicleMetadata != null) {
+        final payload = vehicleMetadata.toJson()
+          ..remove('id')
+          ..remove('document_id');
+        await _client
+            .from('vehicle_document_metadata')
+            .update(payload)
+            .eq('document_id', documentId);
       }
     } catch (e, st) {
       AppLogger.error(

@@ -193,6 +193,7 @@ class DashboardController extends GetxController {
         description,
         documentNumber,
         applianceWarranty,
+        vehicleMetadata,
       }) async {
         try {
           await _dataset.updateDocumentDetails(

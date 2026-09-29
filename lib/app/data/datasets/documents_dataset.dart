@@ -301,6 +301,7 @@ class DocumentsDataset {
     String? description,
     String? documentNumber,
     ApplianceWarrantyModel? applianceWarranty,
+    VehicleDocumentMetadataModel? vehicleMetadata,
   }) async {
     final user = _provider.currentUser;
     AppLogger.debug(
@@ -329,6 +330,16 @@ class DocumentsDataset {
           final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
           await _client.from('appliance_warranty_metadata').upsert(cleanMap);
         }
+      }
+
+      if (vehicleMetadata != null) {
+        final payload = vehicleMetadata.toJson()
+          ..remove('id')
+          ..remove('document_id');
+        await _client
+            .from('vehicle_document_metadata')
+            .update(payload)
+            .eq('document_id', documentId);
       }
 
       await _client.from('document_activity_logs').insert({

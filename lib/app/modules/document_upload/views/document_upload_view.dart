@@ -507,19 +507,56 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Provider Name',
+                  'Provider Name *',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
-                TextField(
-                  controller: controller.utilityProviderController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Torrent Power, Adani Gas, UGVCL',
-                  ),
-                ),
+                Obx(() {
+                  final providers = controller.availableProvidersForSelectedType;
+                  final currentVal = providers.contains(controller.selectedProviderName.value)
+                      ? controller.selectedProviderName.value
+                      : (providers.isNotEmpty ? providers.first : 'Other');
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: currentVal,
+                        items: providers
+                            .map(
+                              (p) => DropdownMenuItem(
+                                value: p,
+                                child: Text(p, style: const TextStyle(fontSize: 13)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: controller.onUtilityProviderChanged,
+                      ),
+                    ),
+                  );
+                }),
+                Obx(() {
+                  if (controller.selectedProviderName.value != 'Other') {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: TextField(
+                      controller: controller.utilityProviderController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter custom provider name',
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
             second: Column(
@@ -601,6 +638,123 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             controller.utilityPaymentStatus.value = val;
                           }
                         },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Bill Date',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(
+                  () => InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.billDate.value,
+                        firstDate: DateTime(2010),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) controller.billDate.value = picked;
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            AppFormatters.formatDate(controller.billDate.value),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Due Date (if applicable)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(
+                  () => InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.dueDate.value ??
+                            controller.billDate.value.add(const Duration(days: 15)),
+                        firstDate: DateTime(2010),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) controller.dueDate.value = picked;
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            controller.dueDate.value != null
+                                ? AppFormatters.formatDate(controller.dueDate.value!)
+                                : 'Select Due Date',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: controller.dueDate.value != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.event,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -733,6 +887,75 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+
+          // Shared Invoice Details Row 3 (Purchase Date)
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Purchase / Invoice Date',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Obx(
+                  () => InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.purchaseDate.value,
+                        firstDate: DateTime(2010),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        controller.purchaseDate.value = picked;
+                        for (var item in controller.applianceItems) {
+                          item.updateWarranty(
+                            item.warrantyMonths.value,
+                            picked,
+                          );
+                        }
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            AppFormatters.formatDate(controller.purchaseDate.value),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            second: const SizedBox.shrink(),
           ),
           const SizedBox(height: 16),
           const Divider(height: 1),

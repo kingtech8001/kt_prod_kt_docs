@@ -7,6 +7,7 @@ import 'package:kt_prod_kt_docs/app/data/models/address_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/folder_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
@@ -70,6 +71,9 @@ class ApplianceItemFormState {
       customerCareNumberController.text = initialCareNumber;
     }
   }
+
+  void updateWarranty(int months, DateTime purchaseDate) =>
+      updateWarrantyMonths(months, purchaseDate);
 
   void updateWarrantyMonths(int months, DateTime purchaseDate) {
     warrantyMonths.value = months;
@@ -194,6 +198,8 @@ class DocumentUploadController extends GetxController {
   final postalCodeController = TextEditingController();
 
   // Utility Bill Specific Fields
+  final dynamicUtilityProviders = <MasterUtilityProviderModel>[].obs;
+  final selectedProviderName = ''.obs;
   final utilityProviderController = TextEditingController();
   final consumerNumberController = TextEditingController();
   final meterNumberController = TextEditingController();
@@ -201,6 +207,32 @@ class DocumentUploadController extends GetxController {
   final billDate = Rx<DateTime>(DateTime.now());
   final dueDate = Rxn<DateTime>();
   final utilityPaymentStatus = 'pending'.obs;
+
+  List<String> get availableProvidersForSelectedType {
+    final currentSubcategory = selectedSubcategory.value.toLowerCase().trim();
+    final matched = dynamicUtilityProviders
+        .where((p) =>
+            p.utilityType.toLowerCase().trim() == currentSubcategory ||
+            currentSubcategory.contains(p.utilityType.toLowerCase().trim()) ||
+            p.utilityType.toLowerCase().trim().contains(currentSubcategory))
+        .map((p) => p.name)
+        .toList();
+    if (matched.isEmpty) {
+      final all = dynamicUtilityProviders.map((p) => p.name).toSet().toList();
+      return all.isNotEmpty ? [...all, 'Other'] : ['Other'];
+    }
+    return [...matched, 'Other'];
+  }
+
+  void onUtilityProviderChanged(String? val) {
+    if (val == null) return;
+    selectedProviderName.value = val;
+    if (val != 'Other') {
+      utilityProviderController.text = val;
+    } else {
+      utilityProviderController.clear();
+    }
+  }
 
   // Appliance Warranty Specific Fields (Invoice Level)
   final billingNameController = TextEditingController();
@@ -354,9 +386,14 @@ class DocumentUploadController extends GetxController {
         activeOnly: true,
       );
       if (pList.isNotEmpty) {
+        dynamicUtilityProviders.assignAll(pList);
         dynamicUtilityTypes.assignAll(
           pList.map((p) => p.utilityType).toSet().toList(),
         );
+        if (selectedProviderName.value.isEmpty && pList.isNotEmpty) {
+          selectedProviderName.value = pList.first.name;
+          utilityProviderController.text = pList.first.name;
+        }
       }
 
       final personList = await _settingsDataset.getPersons(
@@ -453,7 +490,6 @@ class DocumentUploadController extends GetxController {
       (p) => p.fullName == personName,
     );
     selectedPersonId.value = person?.id;
-    _updateTitleForPersonalDoc();
   }
 
   void onPersonalDocTypeChanged(String? docTypeName) {
@@ -464,21 +500,12 @@ class DocumentUploadController extends GetxController {
     );
     selectedPersonalDocTypeId.value = type?.id;
     selectedSubcategory.value = docTypeName;
-    _updateTitleForPersonalDoc();
-  }
-
-  void _updateTitleForPersonalDoc() {
-    if (isPersonalDoc) {
-      titleController.text =
-          '${selectedPersonalDocTypeName.value} - ${selectedPersonName.value}';
-    }
   }
 
   void updateSelectedVehicle(MasterVehicleModel vehicle) {
     selectedVehicleId.value = vehicle.id;
     selectedVehicleNumber.value = vehicle.vehicleNumber;
     selectedVehicleName.value = vehicle.displayName;
-    _updateTitleForVehicleDoc();
   }
 
   void updateSelectedVehicleDocType(String docTypeName) {
@@ -488,19 +515,6 @@ class DocumentUploadController extends GetxController {
     );
     selectedVehicleDocTypeId.value = type?.id;
     selectedSubcategory.value = docTypeName;
-    _updateTitleForVehicleDoc();
-  }
-
-  void _updateTitleForVehicleDoc() {
-    if (isVehicleDoc) {
-      final docType = selectedVehicleDocTypeName.value;
-      final veh = selectedVehicleNumber.value;
-      if (veh.isNotEmpty) {
-        titleController.text = '$docType - $veh';
-      } else {
-        titleController.text = docType;
-      }
-    }
   }
 
   Future<void> openAddVehicleDialog() async {
@@ -529,27 +543,24 @@ class DocumentUploadController extends GetxController {
           ? dynamicUtilityTypes
           : AppConstants.utilitySubcategories;
       selectedSubcategory.value = list.first;
-      if (titleController.text.isEmpty ||
-          titleController.text.contains(' - ')) {
-        titleController.text = 'Electricity / Light Bill';
+      final available = availableProvidersForSelectedType;
+      if (available.isNotEmpty && !available.contains(selectedProviderName.value)) {
+        selectedProviderName.value = available.first;
+        if (available.first != 'Other') {
+          utilityProviderController.text = available.first;
+        }
       }
     } else if (catCode == 'appliance_warranty') {
       final list = dynamicApplianceSubcategories.isNotEmpty
           ? dynamicApplianceSubcategories
           : AppConstants.applianceSubcategories;
       selectedSubcategory.value = list.first;
-      if (titleController.text.isEmpty ||
-          titleController.text.contains(' - ')) {
-        titleController.text = 'Appliance Warranty Invoice';
-      }
     } else if (catCode == 'identity_docs') {
       final list = dynamicPersonalDocTypes.map((t) => t.name).toList();
       selectedSubcategory.value = list.isNotEmpty ? list.first : 'Aadhaar Card';
-      _updateTitleForPersonalDoc();
     } else if (catCode == 'vehicle_docs') {
       final list = dynamicVehicleDocTypes.map((t) => t.name).toList();
       selectedSubcategory.value = list.isNotEmpty ? list.first : 'RC Book (Registration Certificate)';
-      _updateTitleForVehicleDoc();
     } else {
       selectedSubcategory.value = 'General Document';
     }
@@ -846,14 +857,10 @@ class DocumentUploadController extends GetxController {
     formErrorMessage.value = '';
 
     if (titleController.text.isEmpty) {
-      if (isPersonalDoc) {
-        _updateTitleForPersonalDoc();
-      } else {
-        final nameWithoutExt = file.name.contains('.')
-            ? file.name.substring(0, file.name.lastIndexOf('.'))
-            : file.name;
-        titleController.text = nameWithoutExt.replaceAll('_', ' ');
-      }
+      final nameWithoutExt = file.name.contains('.')
+          ? file.name.substring(0, file.name.lastIndexOf('.'))
+          : file.name;
+      titleController.text = nameWithoutExt.replaceAll('_', ' ');
     }
 
     AppLogger.info(
@@ -981,11 +988,14 @@ class DocumentUploadController extends GetxController {
       UtilityMetadataModel? utilityMeta;
       if (isUtilityBill) {
         final amount = double.tryParse(billAmountController.text.trim()) ?? 0.0;
+        final pName = selectedProviderName.value == 'Other'
+            ? utilityProviderController.text.trim()
+            : (selectedProviderName.value.isNotEmpty
+                ? selectedProviderName.value
+                : utilityProviderController.text.trim());
         utilityMeta = UtilityMetadataModel(
           utilityType: selectedSubcategory.value,
-          providerName: utilityProviderController.text.trim().isNotEmpty
-              ? utilityProviderController.text.trim()
-              : 'Generic Provider',
+          providerName: pName.isNotEmpty ? pName : 'Generic Provider',
           consumerNumber: consumerNumberController.text.trim().isNotEmpty
               ? consumerNumberController.text.trim()
               : 'CN-${DateTime.now().millisecondsSinceEpoch}',
@@ -1178,7 +1188,12 @@ class DocumentUploadController extends GetxController {
             : null,
         documentNumber: documentNumberController.text.trim().isNotEmpty
             ? documentNumberController.text.trim()
-            : (personalMeta?.idNumber ?? vehicleMeta?.policyOrCertNumber),
+            : (invoiceNumberController.text.trim().isNotEmpty
+                ? invoiceNumberController.text.trim()
+                : (personalMeta?.idNumber ??
+                    vehicleMeta?.policyOrCertNumber ??
+                    applianceMeta?.invoiceNumber ??
+                    utilityMeta?.consumerNumber)),
         categoryId: selectedCategoryId.value,
         subCategory: selectedSubcategory.value,
         folderId: selectedFolderId.value,

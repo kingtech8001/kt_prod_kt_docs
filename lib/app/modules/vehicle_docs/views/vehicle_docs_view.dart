@@ -1931,6 +1931,15 @@ class _VehicleDocumentCard extends StatelessWidget {
                           tooltip: 'Favorite',
                           visualDensity: VisualDensity.compact,
                         ),
+                        if (controller.canEdit)
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            onPressed: () =>
+                                controller.openEditDocumentDialog(doc),
+                            tooltip: 'Edit',
+                            color: AppColors.textSecondary,
+                            visualDensity: VisualDensity.compact,
+                          ),
                         if (controller.canDelete)
                           IconButton(
                             icon: const Icon(Icons.delete_outline, size: 18),
@@ -2089,6 +2098,17 @@ class _VehicleDocumentListTile extends StatelessWidget {
                           padding: const EdgeInsets.all(6),
                           constraints: const BoxConstraints(),
                         ),
+                        if (controller.canEdit) ...[
+                          const SizedBox(width: 6),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            onPressed: () =>
+                                controller.openEditDocumentDialog(doc),
+                            tooltip: 'Edit',
+                            padding: const EdgeInsets.all(6),
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                         if (controller.canDelete) ...[
                           const SizedBox(width: 6),
                           IconButton(
@@ -2217,6 +2237,13 @@ class _VehicleDocumentListTile extends StatelessWidget {
                   onPressed: () => controller.shareDocument(doc),
                   tooltip: 'Share',
                 ),
+                if (controller.canEdit)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    onPressed: () =>
+                        controller.openEditDocumentDialog(doc),
+                    tooltip: 'Edit',
+                  ),
                 if (controller.canDelete)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 18),

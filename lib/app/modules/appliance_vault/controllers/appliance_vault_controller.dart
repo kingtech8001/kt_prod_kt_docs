@@ -92,10 +92,18 @@ class ApplianceVaultController extends GetxController {
   Future<void> loadMasterData() async {
     try {
       final brandsList = await _dataset.getMasterBrands(activeOnly: true);
-      dynamicBrands.assignAll(brandsList.map((b) => b.name));
+      final names = brandsList.map((b) => b.name).toList();
+      if (!names.contains('Other')) {
+        names.add('Other');
+      }
+      dynamicBrands.assignAll(names);
 
       final subsList = await _dataset.getApplianceSubcategories(activeOnly: true);
-      dynamicSubcategories.assignAll(subsList.map((s) => s.name));
+      final subs = subsList.map((s) => s.name).toList();
+      if (!subs.contains('Other')) {
+        subs.add('Other');
+      }
+      dynamicSubcategories.assignAll(subs);
     } catch (e, st) {
       AppLogger.error(
         'APPLIANCE_CTRL',
@@ -368,6 +376,7 @@ class ApplianceVaultController extends GetxController {
         description,
         documentNumber,
         applianceWarranty,
+        vehicleMetadata,
       }) async {
         try {
           await _dataset.updateDocumentDetails(

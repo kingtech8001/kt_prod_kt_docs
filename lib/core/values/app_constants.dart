@@ -92,6 +92,7 @@ class AppConstants {
     'Lenovo',
     'Sony',
     'Philips',
+    'Other',
   ];
 
   // Vehicle Pass Types (Annual / Monthly / Parking)

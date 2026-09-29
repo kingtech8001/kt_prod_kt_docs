@@ -288,6 +288,7 @@ class DocumentsController extends GetxController {
         description,
         documentNumber,
         applianceWarranty,
+        vehicleMetadata,
       }) async {
         try {
           await _dataset.updateDocumentDetails(
@@ -296,6 +297,7 @@ class DocumentsController extends GetxController {
             description: description,
             documentNumber: documentNumber,
             applianceWarranty: applianceWarranty,
+            vehicleMetadata: vehicleMetadata,
           );
           await fetchFilteredDocuments();
         } catch (e, st) {

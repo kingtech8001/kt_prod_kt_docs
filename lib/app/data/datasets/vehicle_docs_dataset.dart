@@ -532,6 +532,58 @@ class VehicleDocsDataset {
     }
   }
 
+  /// Updates document title, description, document_number, and vehicle metadata.
+  Future<void> updateDocumentDetails({
+    required String documentId,
+    required String title,
+    String? description,
+    String? documentNumber,
+    VehicleDocumentMetadataModel? vehicleMetadata,
+  }) async {
+    AppLogger.info(
+      'VEHICLE_DOCS_DATASET',
+      'Updating details for vehicle document: $documentId...',
+    );
+    try {
+      await _client
+          .from('documents')
+          .update({
+            'title': title,
+            'description': description,
+            'document_number': documentNumber,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', documentId);
+
+      if (vehicleMetadata != null) {
+        await updateVehicleDocumentMetadata(vehicleMetadata);
+      }
+
+      final user = _provider.currentUser;
+      await _client.from('document_activity_logs').insert({
+        'document_id': documentId,
+        'user_id': user?.id,
+        'action': 'updated',
+        'details': {
+          'title': title,
+          'document_number': documentNumber,
+        },
+      });
+      AppLogger.info(
+        'VEHICLE_DOCS_DATASET',
+        'Vehicle document $documentId updated successfully.',
+      );
+    } catch (e, st) {
+      AppLogger.error(
+        'VEHICLE_DOCS_DATASET',
+        'Error in updateDocumentDetails: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentFavorite) async {
     final userId = _client.auth.currentUser?.id;

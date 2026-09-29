@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
@@ -86,6 +87,7 @@ class DocumentEditDialog extends StatelessWidget {
     String? description,
     String? documentNumber,
     ApplianceWarrantyModel? applianceWarranty,
+    VehicleDocumentMetadataModel? vehicleMetadata,
   }) onSave;
 
   final TextEditingController _titleController;
@@ -99,6 +101,12 @@ class DocumentEditDialog extends StatelessWidget {
   final Rx<DateTime> _purchaseDate;
   final RxList<EditApplianceItemState> _applianceItems;
 
+  // Vehicle Document Details (If applicable)
+  final TextEditingController _insuranceCompanyController;
+  final TextEditingController _premiumAmountController;
+  final Rx<DateTime?> _issueDate;
+  final Rx<DateTime?> _expiryDate;
+
   final RxBool _isSaving = false.obs;
   final RxString _errorMessage = ''.obs;
 
@@ -109,8 +117,16 @@ class DocumentEditDialog extends StatelessWidget {
   })  : _titleController = TextEditingController(text: document.title),
         _descriptionController =
             TextEditingController(text: document.description ?? ''),
-        _documentNumberController =
-            TextEditingController(text: document.documentNumber ?? ''),
+        _documentNumberController = TextEditingController(
+          text: (document.documentNumber != null &&
+                  document.documentNumber!.trim().isNotEmpty)
+              ? document.documentNumber!.trim()
+              : (document.applianceWarranty?.invoiceNumber ??
+                  document.vehicleMetadata?.policyOrCertNumber ??
+                  document.personalMetadata?.idNumber ??
+                  document.utilityMetadata?.consumerNumber ??
+                  ''),
+        ),
         _storeVendorController = TextEditingController(
             text: document.applianceWarranty?.storeVendorName ?? ''),
         _billingNameController = TextEditingController(
@@ -124,13 +140,28 @@ class DocumentEditDialog extends StatelessWidget {
         _purchaseDate = (document.applianceWarranty?.purchaseDate ??
                 document.createdAt)
             .obs,
-        _applianceItems = <EditApplianceItemState>[].obs {
+        _applianceItems = <EditApplianceItemState>[].obs,
+        _insuranceCompanyController = TextEditingController(
+          text: document.vehicleMetadata?.insuranceCompany ?? '',
+        ),
+        _premiumAmountController = TextEditingController(
+          text: (document.vehicleMetadata?.premiumAmount != null &&
+                  document.vehicleMetadata!.premiumAmount! > 0)
+              ? document.vehicleMetadata!.premiumAmount!.toStringAsFixed(0)
+              : '',
+        ),
+        _issueDate = Rx<DateTime?>(document.vehicleMetadata?.issueDate),
+        _expiryDate = Rx<DateTime?>(document.vehicleMetadata?.expiryDate) {
     _initializeItems();
   }
 
   bool get _isAppliance =>
       document.applianceWarranty != null ||
       document.categoryCode == 'appliance_warranty';
+
+  bool get _isVehicle =>
+      document.vehicleMetadata != null ||
+      document.categoryCode == 'vehicle_docs';
 
   void _initializeItems() {
     final w = document.applianceWarranty;
@@ -175,6 +206,7 @@ class DocumentEditDialog extends StatelessWidget {
       String? description,
       String? documentNumber,
       ApplianceWarrantyModel? applianceWarranty,
+      VehicleDocumentMetadataModel? vehicleMetadata,
     }) onSave,
   }) {
     return AppDialog.show<bool>(
@@ -285,6 +317,25 @@ class DocumentEditDialog extends StatelessWidget {
         );
       }
 
+      VehicleDocumentMetadataModel? updatedVehicle;
+      if (_isVehicle && document.vehicleMetadata != null) {
+        final premium = double.tryParse(_premiumAmountController.text.trim());
+        updatedVehicle = document.vehicleMetadata!.copyWith(
+          policyOrCertNumber: _documentNumberController.text.trim().isNotEmpty
+              ? _documentNumberController.text.trim()
+              : null,
+          insuranceCompany: _insuranceCompanyController.text.trim().isNotEmpty
+              ? _insuranceCompanyController.text.trim()
+              : null,
+          premiumAmount: premium,
+          issueDate: _issueDate.value,
+          expiryDate: _expiryDate.value,
+          notes: _descriptionController.text.trim().isNotEmpty
+              ? _descriptionController.text.trim()
+              : null,
+        );
+      }
+
       await onSave(
         title: title,
         description: _descriptionController.text.trim().isNotEmpty
@@ -294,6 +345,7 @@ class DocumentEditDialog extends StatelessWidget {
             ? _documentNumberController.text.trim()
             : null,
         applianceWarranty: updatedAppliance,
+        vehicleMetadata: updatedVehicle,
       );
 
       _disposeControllers();
@@ -318,6 +370,8 @@ class DocumentEditDialog extends StatelessWidget {
     _storeVendorController.dispose();
     _billingNameController.dispose();
     _totalAmountController.dispose();
+    _insuranceCompanyController.dispose();
+    _premiumAmountController.dispose();
     for (var item in _applianceItems) {
       item.dispose();
     }
@@ -332,7 +386,7 @@ class DocumentEditDialog extends StatelessWidget {
       backgroundColor: AppColors.surface,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: _isAppliance ? 680 : 480,
+          maxWidth: (_isAppliance || _isVehicle) ? 680 : 480,
           maxHeight: MediaQuery.sizeOf(context).height * 0.90,
         ),
         child: Padding(
@@ -357,7 +411,9 @@ class DocumentEditDialog extends StatelessWidget {
                         child: Icon(
                           _isAppliance
                               ? Icons.kitchen_outlined
-                              : Icons.edit_document,
+                              : _isVehicle
+                                  ? Icons.directions_car_outlined
+                                  : Icons.edit_document,
                           color: AppColors.primary,
                           size: 20,
                         ),
@@ -366,7 +422,9 @@ class DocumentEditDialog extends StatelessWidget {
                       Text(
                         _isAppliance
                             ? 'Edit Appliance Invoice'
-                            : 'Edit Document Details',
+                            : _isVehicle
+                                ? 'Edit Vehicle Document'
+                                : 'Edit Document Details',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -441,9 +499,15 @@ class DocumentEditDialog extends StatelessWidget {
                       const SizedBox(height: 14),
                       TextField(
                         controller: _documentNumberController,
-                        decoration: const InputDecoration(
-                          labelText: 'Invoice / Document Number',
-                          hintText: 'e.g. INV-98123',
+                        decoration: InputDecoration(
+                          labelText: _isVehicle
+                              ? 'Policy / Certificate / Doc Number'
+                              : (_isAppliance
+                                  ? 'Invoice Number'
+                                  : 'Invoice / Document Number'),
+                          hintText: _isVehicle
+                              ? 'e.g. POL-98123 or Certificate Number'
+                              : 'e.g. INV-98123',
                         ),
                         textInputAction: TextInputAction.next,
                       ),
@@ -458,6 +522,147 @@ class DocumentEditDialog extends StatelessWidget {
                         minLines: 2,
                         maxLines: 4,
                       ),
+
+                      // Vehicle Document Section
+                      if (_isVehicle) ...[
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _insuranceCompanyController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Insurance Co. / Issuer',
+                                  hintText: 'e.g. HDFC ERGO, ICICI Lombard',
+                                ),
+                                textInputAction: TextInputAction.next,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: _premiumAmountController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Premium Amount (₹)',
+                                  hintText: 'e.g. 12500',
+                                ),
+                                textInputAction: TextInputAction.next,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Obx(
+                                () => InkWell(
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: _issueDate.value ??
+                                          DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime.now().add(
+                                        const Duration(days: 365),
+                                      ),
+                                    );
+                                    if (picked != null) {
+                                      _issueDate.value = picked;
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusSmall,
+                                  ),
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Issue / Start Date',
+                                      suffixIcon: _issueDate.value != null
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear,
+                                                  size: 16),
+                                              onPressed: () =>
+                                                  _issueDate.value = null,
+                                            )
+                                          : const Icon(
+                                              Icons.calendar_today,
+                                              size: 16,
+                                            ),
+                                    ),
+                                    child: Text(
+                                      _issueDate.value != null
+                                          ? AppFormatters.formatDate(
+                                              _issueDate.value!,
+                                            )
+                                          : 'Select Issue Date',
+                                      style: TextStyle(
+                                        color: _issueDate.value != null
+                                            ? AppColors.textPrimary
+                                            : AppColors.textSecondary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Obx(
+                                () => InkWell(
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: _expiryDate.value ??
+                                          DateTime.now().add(
+                                            const Duration(days: 365),
+                                          ),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2050),
+                                    );
+                                    if (picked != null) {
+                                      _expiryDate.value = picked;
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusSmall,
+                                  ),
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Expiry Date',
+                                      suffixIcon: _expiryDate.value != null
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear,
+                                                  size: 16),
+                                              onPressed: () =>
+                                                  _expiryDate.value = null,
+                                            )
+                                          : const Icon(
+                                              Icons.calendar_today,
+                                              size: 16,
+                                            ),
+                                    ),
+                                    child: Text(
+                                      _expiryDate.value != null
+                                          ? AppFormatters.formatDate(
+                                              _expiryDate.value!,
+                                            )
+                                          : 'Select Expiry Date',
+                                      style: TextStyle(
+                                        color: _expiryDate.value != null
+                                            ? AppColors.textPrimary
+                                            : AppColors.textSecondary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       // Multi-Product Appliance Section
                       if (_isAppliance) ...[

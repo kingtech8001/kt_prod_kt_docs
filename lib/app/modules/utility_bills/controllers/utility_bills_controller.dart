@@ -455,6 +455,7 @@ class UtilityBillsController extends GetxController {
         description,
         documentNumber,
         applianceWarranty,
+        vehicleMetadata,
       }) async {
         try {
           await _dataset.updateDocumentDetails(

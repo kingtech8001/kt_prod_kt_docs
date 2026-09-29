@@ -7,6 +7,7 @@ import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehicle_dialog.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehicle_service_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
@@ -560,5 +561,45 @@ class VehicleDocsController extends GetxController {
         'Could not delete "${doc.title}".',
       );
     }
+  }
+
+  void openEditDocumentDialog(DocumentModel doc) {
+    if (!canEdit) {
+      AppSnackbar.showError(
+        'Permission Denied',
+        'You do not have permission to edit this document.',
+      );
+      return;
+    }
+
+    DocumentEditDialog.show(
+      document: doc,
+      onSave: ({
+        required title,
+        description,
+        documentNumber,
+        applianceWarranty,
+        vehicleMetadata,
+      }) async {
+        try {
+          await _dataset.updateDocumentDetails(
+            documentId: doc.id,
+            title: title,
+            description: description,
+            documentNumber: documentNumber,
+            vehicleMetadata: vehicleMetadata,
+          );
+          await loadVehicleDocuments();
+        } catch (e, st) {
+          AppLogger.error(
+            'VEHICLE_DOCS_CTRL',
+            'Error editing vehicle document: $e',
+            error: e,
+            stackTrace: st,
+          );
+          rethrow;
+        }
+      },
+    );
   }
 }

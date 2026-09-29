@@ -353,6 +353,7 @@ class FavoritesController extends GetxController {
         description,
         documentNumber,
         applianceWarranty,
+        vehicleMetadata,
       }) async {
         try {
           await _dataset.updateDocumentDetails(
@@ -361,6 +362,7 @@ class FavoritesController extends GetxController {
             description: description,
             documentNumber: documentNumber,
             applianceWarranty: applianceWarranty,
+            vehicleMetadata: vehicleMetadata,
           );
           await loadFavorites(resetPage: true);
         } catch (e, st) {
