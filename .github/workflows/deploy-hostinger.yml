@@ -1,0 +1,54 @@
+name: Deploy Flutter Web to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Flutter Web
+        run: flutter config --enable-web
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Verify Flutter Setup
+        run: flutter doctor -v
+
+      - name: Build Flutter Web
+        run: flutter build web --release
+
+      - name: Ensure .htaccess is included in build output
+        run: |
+          if [ -f web/.htaccess ]; then
+            cp web/.htaccess build/web/.htaccess
+          fi
+
+      - name: Upload to Hostinger via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: build/web/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          log-level: verbose
