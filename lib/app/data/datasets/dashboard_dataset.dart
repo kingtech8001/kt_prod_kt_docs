@@ -3,6 +3,7 @@ import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/dashboard_metrics_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -31,6 +32,10 @@ class DashboardDataset {
 
   /// Fetches complete dashboard data bundle via single database RPC `get_dashboard_bundle` in ~20ms.
   Future<DashboardBundleModel> getDashboardBundle() async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Returning static dashboard bundle.');
+      return DemoDataService.getDashboardBundle();
+    }
     AppLogger.debug(
       'DASHBOARD_DATASET',
       'Fetching complete dashboard bundle via RPC get_dashboard_bundle...',
@@ -84,6 +89,9 @@ class DashboardDataset {
 
   /// Fetches dashboard metrics via RPC `get_dashboard_metrics` with safe fallback.
   Future<DashboardMetricsModel> getDashboardMetrics() async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getDashboardBundle().metrics;
+    }
     AppLogger.debug(
       'DASHBOARD_DATASET',
       'Fetching dashboard metrics via RPC get_dashboard_metrics...',
@@ -148,6 +156,9 @@ class DashboardDataset {
 
   /// Fetches recent non-deleted documents with necessary relations.
   Future<List<DocumentModel>> getRecentDocuments({int limit = 8}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getAllDocuments().take(limit).toList();
+    }
     AppLogger.debug('DASHBOARD_DATASET', 'Fetching recent documents limit: $limit');
     try {
       final response = await _client
@@ -187,6 +198,12 @@ class DashboardDataset {
 
   /// Fetches warranties expiring within 30 days using indexed query.
   Future<List<DocumentModel>> getExpiringWarranties({int limit = 4}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getAllDocuments()
+          .where((d) => d.categoryId == 'cat-3' || d.applianceWarranty != null)
+          .take(limit)
+          .toList();
+    }
     AppLogger.debug('DASHBOARD_DATASET', 'Fetching expiring warranties...');
     try {
       final today = DateTime.now().toIso8601String().split('T').first;
@@ -246,6 +263,12 @@ class DashboardDataset {
 
   /// Fetches pending utility bills using indexed query.
   Future<List<DocumentModel>> getPendingUtilityBills({int limit = 4}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getAllDocuments()
+          .where((d) => d.categoryId == 'cat-1' || d.utilityMetadata != null)
+          .take(limit)
+          .toList();
+    }
     AppLogger.debug('DASHBOARD_DATASET', 'Fetching pending utility bills...');
     try {
       final metaRows = await _client
@@ -298,6 +321,9 @@ class DashboardDataset {
 
   /// Obtains signed preview URL from Supabase storage.
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     return await _provider.createSignedUrl(
       storagePath: storagePath,
       expiresInSeconds: 3600,
@@ -307,11 +333,18 @@ class DashboardDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String storagePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(storagePath);
   }
 
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentlyFavorite) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Toggled favorite in-memory');
+      return !currentlyFavorite;
+    }
     final user = _provider.currentUser;
     if (user == null) return false;
     AppLogger.debug(
@@ -346,6 +379,10 @@ class DashboardDataset {
 
   /// Soft deletes document using RPC `soft_delete_document` with direct fallback.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Soft delete simulated in-memory');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug('DASHBOARD_DATASET', 'softDeleteDocument for ID: $documentId');
     try {
@@ -394,6 +431,10 @@ class DashboardDataset {
     String? documentNumber,
     ApplianceWarrantyModel? applianceWarranty,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Document update simulated in-memory');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug(
       'DASHBOARD_DATASET',

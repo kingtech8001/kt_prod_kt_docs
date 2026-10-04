@@ -3,6 +3,7 @@ import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -36,6 +37,9 @@ class ApplianceVaultDataset {
 
   /// Fetches active master brands.
   Future<List<MasterBrandModel>> getMasterBrands({bool activeOnly = true}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getBrands();
+    }
     AppLogger.debug(
       'APPLIANCE_DATASET',
       'Fetching master brands (activeOnly: $activeOnly)...',
@@ -68,6 +72,9 @@ class ApplianceVaultDataset {
   Future<List<MasterApplianceSubcategoryModel>> getApplianceSubcategories({
     bool activeOnly = true,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getApplianceSubcategories();
+    }
     AppLogger.debug(
       'APPLIANCE_DATASET',
       'Fetching appliance subcategories (activeOnly: $activeOnly)...',
@@ -127,6 +134,74 @@ class ApplianceVaultDataset {
     String? warrantyStatus,
     String? searchQuery,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getAllDocuments()
+          .where((d) => d.categoryId == 'cat-3' || d.applianceWarranty != null)
+          .toList();
+
+      if (brand != null && brand.isNotEmpty && brand != 'All Brands') {
+        list = list.where((d) =>
+          d.applianceWarranty?.brand.toLowerCase() == brand.toLowerCase() ||
+          (d.applianceWarranty?.items.any((i) => i.brand.toLowerCase() == brand.toLowerCase()) ?? false)
+        ).toList();
+      }
+      if (subCategory != null && subCategory.isNotEmpty && subCategory != 'All Appliances') {
+        list = list.where((d) => d.subCategory.toLowerCase() == subCategory.toLowerCase()).toList();
+      }
+      if (warrantyStatus != null && warrantyStatus.isNotEmpty && warrantyStatus != 'all') {
+        final now = DateTime.now();
+        list = list.where((d) {
+          final wDate = d.applianceWarranty?.warrantyValidUpto;
+          if (wDate == null) return warrantyStatus == 'no_warranty';
+          if (warrantyStatus == 'expired') return wDate.isBefore(now);
+          if (warrantyStatus == 'expiring_soon') {
+            final diff = wDate.difference(now).inDays;
+            return diff >= 0 && diff <= 30;
+          }
+          if (warrantyStatus == 'active') return wDate.isAfter(now);
+          return true;
+        }).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((d) =>
+          d.title.toLowerCase().contains(q) ||
+          d.subCategory.toLowerCase().contains(q) ||
+          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+          (d.applianceWarranty?.modelNumber?.toLowerCase().contains(q) ?? false) ||
+          (d.applianceWarranty?.serialNumber?.toLowerCase().contains(q) ?? false)
+        ).toList();
+      }
+
+      int activeCount = 0;
+      int expiringCount = 0;
+      int expiredCount = 0;
+      final now = DateTime.now();
+
+      for (final d in list) {
+        final wDate = d.applianceWarranty?.warrantyValidUpto;
+        if (wDate != null) {
+          if (wDate.isBefore(now)) {
+            expiredCount++;
+          } else {
+            activeCount++;
+            final diff = wDate.difference(now).inDays;
+            if (diff >= 0 && diff <= 30) {
+              expiringCount++;
+            }
+          }
+        }
+      }
+
+      return ApplianceVaultResponse(
+        documents: list,
+        totalCount: list.length,
+        totalAppliancesCount: list.length,
+        activeWarrantiesCount: activeCount,
+        expiringSoonCount: expiringCount,
+        expiredCount: expiredCount,
+      );
+    }
     final from = (page - 1) * pageSize;
     final to = from + pageSize - 1;
 
@@ -315,6 +390,10 @@ class ApplianceVaultDataset {
 
   /// Soft deletes an appliance document by setting deleted_at timestamp.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('APPLIANCE_DATASET', 'Demo Mode: Soft deleted invoice $documentId');
+      return;
+    }
     AppLogger.info(
       'APPLIANCE_DATASET',
       'Soft deleting appliance invoice: $documentId...',
@@ -325,7 +404,7 @@ class ApplianceVaultDataset {
         'soft_delete_document',
         params: {
           'p_document_id': documentId,
-          'p_user_id': ?userId,
+          'p_user_id': userId,
         },
       );
     } catch (e, st) {
@@ -347,6 +426,10 @@ class ApplianceVaultDataset {
     String? documentNumber,
     ApplianceWarrantyModel? applianceWarranty,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('APPLIANCE_DATASET', 'Demo Mode: Updated details for $documentId');
+      return;
+    }
     AppLogger.info(
       'APPLIANCE_DATASET',
       'Updating details for appliance invoice: $documentId...',
@@ -389,6 +472,9 @@ class ApplianceVaultDataset {
 
   /// Generates a signed preview URL for downloading or displaying.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     try {
       return await _provider.createSignedUrl(
         storagePath: filePath,
@@ -408,11 +494,17 @@ class ApplianceVaultDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String filePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(filePath);
   }
 
   /// Generates a shareable token for an appliance document.
   Future<String> createShareLink(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      return 'demo-appliance-share-link';
+    }
     try {
       final token = const Uuid().v4().replaceAll('-', '');
       final expiresAt = DateTime.now().add(const Duration(days: 7));

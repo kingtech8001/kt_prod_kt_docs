@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -35,6 +36,9 @@ class PersonalDocsDataset {
 
   /// Fetches active master persons.
   Future<List<MasterPersonModel>> getMasterPersons({bool activeOnly = true}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getPersons();
+    }
     AppLogger.debug(
       'PERSONAL_DOCS_DATASET',
       'Fetching master persons (activeOnly: $activeOnly)...',
@@ -67,6 +71,9 @@ class PersonalDocsDataset {
   Future<List<MasterPersonalDocTypeModel>> getMasterPersonalDocTypes({
     bool activeOnly = true,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getPersonalDocTypes();
+    }
     AppLogger.debug(
       'PERSONAL_DOCS_DATASET',
       'Fetching master personal doc types (activeOnly: $activeOnly)...',
@@ -125,6 +132,65 @@ class PersonalDocsDataset {
     String? docType,
     String? searchQuery,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getAllDocuments()
+          .where((d) => d.categoryId == 'cat-4' || d.personalMetadata != null)
+          .toList();
+
+      if (personName != null && personName.isNotEmpty && personName != 'All Persons') {
+        list = list.where((d) =>
+          d.personalMetadata?.personName.toLowerCase() == personName.toLowerCase()
+        ).toList();
+      }
+      if (docType != null && docType.isNotEmpty && docType != 'All Document Types') {
+        list = list.where((d) =>
+          (d.personalMetadata?.docTypeName.toLowerCase() == docType.toLowerCase()) ||
+          (d.subCategory.toLowerCase() == docType.toLowerCase())
+        ).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((d) =>
+          d.title.toLowerCase().contains(q) ||
+          d.subCategory.toLowerCase().contains(q) ||
+          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+          (d.personalMetadata?.personName.toLowerCase().contains(q) ?? false) ||
+          (d.personalMetadata?.idNumber?.toLowerCase().contains(q) ?? false)
+        ).toList();
+      }
+
+      final personSet = <String>{};
+      int expiringCount = 0;
+      int expiredCount = 0;
+      final now = DateTime.now();
+
+      for (final d in list) {
+        final pName = d.personalMetadata?.personName;
+        if (pName != null && pName.isNotEmpty) {
+          personSet.add(pName.trim().toLowerCase());
+        }
+        final expDate = d.personalMetadata?.expiryDate;
+        if (expDate != null) {
+          if (expDate.isBefore(now)) {
+            expiredCount++;
+          } else {
+            final diff = expDate.difference(now).inDays;
+            if (diff >= 0 && diff <= 60) {
+              expiringCount++;
+            }
+          }
+        }
+      }
+
+      return PersonalDocsResponse(
+        documents: list,
+        totalCount: list.length,
+        totalDocumentsCount: list.length,
+        totalPersonsCoveredCount: personSet.length,
+        expiringSoonCount: expiringCount,
+        expiredCount: expiredCount,
+      );
+    }
     final from = (page - 1) * pageSize;
     final to = from + pageSize - 1;
 
@@ -280,6 +346,9 @@ class PersonalDocsDataset {
 
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentFavorite) async {
+    if (DemoDataService.isDemoMode) {
+      return !currentFavorite;
+    }
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return currentFavorite;
 
@@ -311,6 +380,10 @@ class PersonalDocsDataset {
 
   /// Soft deletes a personal document by setting deleted_at timestamp.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('PERSONAL_DOCS_DATASET', 'Demo Mode: Soft deleted personal doc $documentId');
+      return;
+    }
     AppLogger.info(
       'PERSONAL_DOCS_DATASET',
       'Soft deleting personal document: $documentId...',
@@ -321,7 +394,7 @@ class PersonalDocsDataset {
         'soft_delete_document',
         params: {
           'p_document_id': documentId,
-          'p_user_id': ?userId,
+          'p_user_id': userId,
         },
       );
     } catch (e, st) {
@@ -337,6 +410,9 @@ class PersonalDocsDataset {
 
   /// Generates a signed preview URL for viewing or downloading.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     try {
       return await _provider.createSignedUrl(
         storagePath: filePath,
@@ -356,11 +432,17 @@ class PersonalDocsDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String filePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(filePath);
   }
 
   /// Generates a shareable token for a document.
   Future<String> createShareLink(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      return 'demo-personal-share-token';
+    }
     try {
       final token = const Uuid().v4().replaceAll('-', '');
       final expiresAt = DateTime.now().add(const Duration(days: 7));

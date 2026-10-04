@@ -483,6 +483,28 @@ class DocumentUploadController extends GetxController {
     }
   }
 
+  void onSubcategoryChanged(String? val) {
+    if (val == null) return;
+    selectedSubcategory.value = val;
+    if (isPersonalDoc) {
+      selectedPersonalDocTypeName.value = val;
+      final type = dynamicPersonalDocTypes.firstWhereOrNull((t) => t.name == val);
+      selectedPersonalDocTypeId.value = type?.id;
+    } else if (isVehicleDoc) {
+      selectedVehicleDocTypeName.value = val;
+      final type = dynamicVehicleDocTypes.firstWhereOrNull((t) => t.name == val);
+      selectedVehicleDocTypeId.value = type?.id;
+    } else if (isUtilityBill) {
+      final available = availableProvidersForSelectedType;
+      if (available.isNotEmpty && !available.contains(selectedProviderName.value)) {
+        selectedProviderName.value = available.first;
+        if (available.first != 'Other') {
+          utilityProviderController.text = available.first;
+        }
+      }
+    }
+  }
+
   void onPersonChanged(String? personName) {
     if (personName == null) return;
     selectedPersonName.value = personName;
@@ -557,10 +579,16 @@ class DocumentUploadController extends GetxController {
       selectedSubcategory.value = list.first;
     } else if (catCode == 'identity_docs') {
       final list = dynamicPersonalDocTypes.map((t) => t.name).toList();
-      selectedSubcategory.value = list.isNotEmpty ? list.first : 'Aadhaar Card';
+      final sub = list.isNotEmpty ? list.first : 'Aadhaar Card';
+      selectedSubcategory.value = sub;
+      selectedPersonalDocTypeName.value = sub;
+      selectedPersonalDocTypeId.value = dynamicPersonalDocTypes.firstWhereOrNull((t) => t.name == sub)?.id;
     } else if (catCode == 'vehicle_docs') {
       final list = dynamicVehicleDocTypes.map((t) => t.name).toList();
-      selectedSubcategory.value = list.isNotEmpty ? list.first : 'RC Book (Registration Certificate)';
+      final sub = list.isNotEmpty ? list.first : 'RC Book (Registration Certificate)';
+      selectedSubcategory.value = sub;
+      selectedVehicleDocTypeName.value = sub;
+      selectedVehicleDocTypeId.value = dynamicVehicleDocTypes.firstWhereOrNull((t) => t.name == sub)?.id;
     } else {
       selectedSubcategory.value = 'General Document';
     }

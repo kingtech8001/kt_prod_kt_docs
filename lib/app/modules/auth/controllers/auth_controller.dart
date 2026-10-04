@@ -183,6 +183,21 @@ class AuthController extends GetxController {
     }
   }
 
+  void enterDemoMode() {
+    AppLogger.info('AUTH_CTRL', 'Entering demo presentation mode...');
+    if (Get.isRegistered<AuthService>()) {
+      AuthService.to.enterDemoMode();
+    }
+    Get.snackbar(
+      'Demo Mode Active',
+      'Viewing static mock data. No database operations will be performed.',
+      backgroundColor: AppColors.primary,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 4),
+    );
+    Get.offAllNamed(AppRoutes.DASHBOARD);
+  }
+
   @override
   void onClose() {
     emailController.dispose();

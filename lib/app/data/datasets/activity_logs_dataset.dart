@@ -1,5 +1,6 @@
 import 'package:kt_prod_kt_docs/app/data/models/activity_log_model.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -30,6 +31,25 @@ class ActivityLogsDataset {
     String? searchQuery,
     String? documentId,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getActivityLogs();
+      if (documentId != null && documentId.isNotEmpty) {
+        list = list.where((l) => l.documentId == documentId).toList();
+      }
+      if (actionFilter != null && actionFilter.isNotEmpty && actionFilter != 'all') {
+        list = list.where((l) => l.action.toLowerCase() == actionFilter.toLowerCase()).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((l) =>
+          l.action.toLowerCase().contains(q) ||
+          (l.userName?.toLowerCase().contains(q) ?? false) ||
+          (l.documentTitle?.toLowerCase().contains(q) ?? false)
+        ).toList();
+      }
+      return ActivityLogsResponse(logs: list, totalCount: list.length);
+    }
+
     final from = (page - 1) * pageSize;
     final to = from + pageSize - 1;
 
@@ -109,6 +129,9 @@ class ActivityLogsDataset {
     required String action,
     Map<String, dynamic> details = const {},
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug('ACTIVITY_DATASET', 'logActivity action: $action, docId: $documentId');
     try {

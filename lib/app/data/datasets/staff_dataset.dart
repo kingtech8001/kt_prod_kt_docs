@@ -1,5 +1,6 @@
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,6 +15,18 @@ class StaffDataset {
 
   /// Fetches profile for the currently authenticated session.
   Future<ProfileModel?> getCurrentProfile() async {
+    if (DemoDataService.isDemoMode) {
+      return ProfileModel(
+        id: 'demo-admin-id',
+        fullName: 'Demo Administrator (Mihir)',
+        email: 'demo@kingtechnology.com',
+        role: 'admin',
+        department: 'Technology (Demo)',
+        phoneNumber: '+91 98765 43210',
+        isActive: true,
+        createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      );
+    }
     final user = _provider.currentUser;
     if (user == null) return null;
 
@@ -40,6 +53,40 @@ class StaffDataset {
 
   /// Fetches all staff users via RPC `admin_get_all_users` with table query fallback.
   Future<List<ProfileModel>> getAllStaffUsers() async {
+    if (DemoDataService.isDemoMode) {
+      return [
+        ProfileModel(
+          id: 'staff-demo-1',
+          fullName: 'Mihir Gandhi',
+          email: 'mihir@kingtechnology.com',
+          role: 'admin',
+          department: 'Technology & Management',
+          phoneNumber: '+91 98765 43210',
+          isActive: true,
+          createdAt: DateTime.now().subtract(const Duration(days: 365)),
+        ),
+        ProfileModel(
+          id: 'staff-demo-2',
+          fullName: 'Darshit Gandhi',
+          email: 'darshit@kingtechnology.com',
+          role: 'editor',
+          department: 'Operations',
+          phoneNumber: '+91 98765 12345',
+          isActive: true,
+          createdAt: DateTime.now().subtract(const Duration(days: 200)),
+        ),
+        ProfileModel(
+          id: 'staff-demo-3',
+          fullName: 'Pooja Patel',
+          email: 'pooja@kingtechnology.com',
+          role: 'viewer',
+          department: 'Finance & Accounts',
+          phoneNumber: '+91 91234 56789',
+          isActive: true,
+          createdAt: DateTime.now().subtract(const Duration(days: 90)),
+        ),
+      ];
+    }
     AppLogger.debug('STAFF_DATASET', 'Fetching all staff users via RPC admin_get_all_users...');
     try {
       final response = await _client.rpc('admin_get_all_users');
@@ -86,6 +133,10 @@ class StaffDataset {
     String? department,
     String? phoneNumber,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('STAFF_DATASET', '[DEMO] Simulated creating staff user: $email');
+      return;
+    }
     AppLogger.debug(
       'STAFF_DATASET',
       'Calling RPC admin_create_staff_user for: $email ($role)',
@@ -122,6 +173,10 @@ class StaffDataset {
     required String role,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('STAFF_DATASET', '[DEMO] Simulated updating user role: $targetUserId -> $role');
+      return;
+    }
     final currentUserId = _provider.currentUser?.id;
     if (currentUserId != null && currentUserId == targetUserId) {
       AppLogger.warning(

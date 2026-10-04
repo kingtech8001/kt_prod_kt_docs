@@ -4,6 +4,7 @@ import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,6 +21,17 @@ class SettingsDataset {
 
   /// Fetches profile for the currently authenticated session.
   Future<ProfileModel?> getCurrentProfile() async {
+    if (DemoDataService.isDemoMode) {
+      return ProfileModel(
+        id: 'demo-user-id',
+        fullName: 'Demo Administrator',
+        email: 'demo@kt-docs.internal',
+        role: 'admin',
+        department: 'Operations & IT',
+        phoneNumber: '+91 98765 43210',
+        createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      );
+    }
     final user = _provider.currentUser;
     if (user == null) return null;
 
@@ -50,6 +62,10 @@ class SettingsDataset {
     String? department,
     String? phoneNumber,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('SETTINGS_DATASET', 'Demo Mode: Updated profile');
+      return;
+    }
     final user = _provider.currentUser;
     if (user == null) throw Exception('No authenticated user session found.');
 
@@ -76,6 +92,9 @@ class SettingsDataset {
 
   /// Fetches list of cities.
   Future<List<MasterCityModel>> getCities({bool activeOnly = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getCities();
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Fetching cities (activeOnly: $activeOnly)');
     try {
       var query = _client.from('master_cities').select();
@@ -97,6 +116,9 @@ class SettingsDataset {
 
   /// Adds a new city record.
   Future<MasterCityModel> addCity({required String name, String state = 'Gujarat'}) async {
+    if (DemoDataService.isDemoMode) {
+      return MasterCityModel(id: 'city-demo-${name.toLowerCase()}', name: name, state: state, isActive: true);
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Adding city: $name, $state');
     try {
       final response = await _client
@@ -118,6 +140,7 @@ class SettingsDataset {
     required String state,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Updating city: $id');
     try {
       await _client.from('master_cities').update({
@@ -133,6 +156,7 @@ class SettingsDataset {
 
   /// Deletes a city record.
   Future<void> deleteCity(String id) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Deleting city: $id');
     try {
       await _client.from('master_cities').delete().eq('id', id);
@@ -146,6 +170,9 @@ class SettingsDataset {
 
   /// Fetches list of appliance & equipment brands.
   Future<List<MasterBrandModel>> getBrands({bool activeOnly = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getBrands();
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Fetching brands (activeOnly: $activeOnly)');
     try {
       var query = _client.from('master_brands').select();
@@ -170,6 +197,9 @@ class SettingsDataset {
     required String name,
     String categoryType = 'appliance',
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return MasterBrandModel(id: 'brand-demo-${name.toLowerCase()}', name: name, categoryType: categoryType, isActive: true);
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Adding brand: $name ($categoryType)');
     try {
       final response = await _client
@@ -191,6 +221,7 @@ class SettingsDataset {
     required String categoryType,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Updating brand: $id');
     try {
       await _client.from('master_brands').update({
@@ -206,6 +237,7 @@ class SettingsDataset {
 
   /// Deletes a brand.
   Future<void> deleteBrand(String id) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Deleting brand: $id');
     try {
       await _client.from('master_brands').delete().eq('id', id);
@@ -221,6 +253,9 @@ class SettingsDataset {
   Future<List<MasterApplianceSubcategoryModel>> getApplianceSubcategories({
     bool activeOnly = false,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getApplianceSubcategories();
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Fetching appliance subcategories...');
     try {
       var query = _client.from('master_appliance_subcategories').select();
@@ -251,6 +286,9 @@ class SettingsDataset {
     int defaultWarrantyMonths = 12,
     String iconName = 'kitchen',
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return MasterApplianceSubcategoryModel(id: 'app-sub-${name.toLowerCase()}', name: name, defaultWarrantyMonths: defaultWarrantyMonths, iconName: iconName, isActive: true);
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Adding appliance subcategory: $name');
     try {
       final response = await _client
@@ -283,6 +321,7 @@ class SettingsDataset {
     required String iconName,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Updating appliance subcategory: $id');
     try {
       await _client.from('master_appliance_subcategories').update({
@@ -304,6 +343,7 @@ class SettingsDataset {
 
   /// Deletes an appliance subcategory.
   Future<void> deleteApplianceSubcategory(String id) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Deleting appliance subcategory: $id');
     try {
       await _client.from('master_appliance_subcategories').delete().eq('id', id);
@@ -324,6 +364,9 @@ class SettingsDataset {
   Future<List<MasterUtilityProviderModel>> getUtilityProviders({
     bool activeOnly = false,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getUtilityProviders();
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Fetching utility providers...');
     try {
       var query = _client.from('master_utility_providers').select();
@@ -348,6 +391,9 @@ class SettingsDataset {
     required String name,
     required String utilityType,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return MasterUtilityProviderModel(id: 'util-prov-${name.toLowerCase()}', name: name, utilityType: utilityType, isActive: true);
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Adding utility provider: $name');
     try {
       final response = await _client
@@ -373,6 +419,7 @@ class SettingsDataset {
     required String utilityType,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Updating utility provider: $id');
     try {
       await _client.from('master_utility_providers').update({
@@ -388,6 +435,7 @@ class SettingsDataset {
 
   /// Deletes a utility provider.
   Future<void> deleteUtilityProvider(String id) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Deleting utility provider: $id');
     try {
       await _client.from('master_utility_providers').delete().eq('id', id);
@@ -401,6 +449,9 @@ class SettingsDataset {
 
   /// Fetches master persons.
   Future<List<MasterPersonModel>> getPersons({bool activeOnly = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getPersons();
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Fetching persons (activeOnly: $activeOnly)');
     try {
       var query = _client.from('master_persons').select();
@@ -428,6 +479,19 @@ class SettingsDataset {
     String? phoneNumber,
     String? email,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return MasterPersonModel(
+        id: 'person-demo-${fullName.toLowerCase()}',
+        fullName: fullName,
+        relationship: relationship,
+        dateOfBirth: dateOfBirth,
+        phoneNumber: phoneNumber,
+        email: email,
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Adding person: $fullName ($relationship)');
     try {
       final response = await _client
@@ -460,6 +524,7 @@ class SettingsDataset {
     String? email,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Updating person: $id');
     try {
       await _client.from('master_persons').update({
@@ -479,6 +544,7 @@ class SettingsDataset {
 
   /// Deletes a person.
   Future<void> deletePerson(String id) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Deleting person: $id');
     try {
       await _client.from('master_persons').delete().eq('id', id);
@@ -494,6 +560,9 @@ class SettingsDataset {
   Future<List<MasterPersonalDocTypeModel>> getPersonalDocTypes({
     bool activeOnly = false,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getPersonalDocTypes();
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Fetching personal document types...');
     try {
       var query = _client.from('master_personal_doc_types').select();
@@ -520,6 +589,17 @@ class SettingsDataset {
     String iconName = 'badge',
     bool hasExpiry = false,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return MasterPersonalDocTypeModel(
+        id: 'doc-type-${code.toLowerCase()}',
+        name: name,
+        code: code,
+        iconName: iconName,
+        hasExpiry: hasExpiry,
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Adding personal doc type: $name ($code)');
     try {
       final response = await _client
@@ -549,6 +629,7 @@ class SettingsDataset {
     required bool hasExpiry,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Updating personal doc type: $id');
     try {
       await _client.from('master_personal_doc_types').update({
@@ -566,6 +647,7 @@ class SettingsDataset {
 
   /// Deletes a personal document type.
   Future<void> deletePersonalDocType(String id) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Deleting personal doc type: $id');
     try {
       await _client.from('master_personal_doc_types').delete().eq('id', id);
@@ -579,6 +661,9 @@ class SettingsDataset {
 
   /// Fetches corporate document categories.
   Future<List<CategoryModel>> getDocumentCategories() async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getCategories();
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Fetching document categories...');
     try {
       final response = await _client
@@ -605,6 +690,18 @@ class SettingsDataset {
     bool hasCityFilter = true,
     bool hasTitleField = true,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return CategoryModel(
+        id: 'cat-demo-${code.toLowerCase()}',
+        name: name,
+        code: code,
+        icon: icon ?? 'folder',
+        colorHex: colorHex ?? '#1E3A8A',
+        description: description,
+        hasCityFilter: hasCityFilter,
+        hasTitleField: hasTitleField,
+      );
+    }
     AppLogger.debug('SETTINGS_DATASET', 'Adding corporate category: $name ($code)');
     try {
       final response = await _client
@@ -638,6 +735,7 @@ class SettingsDataset {
     required bool hasCityFilter,
     required bool hasTitleField,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Updating corporate category: $id');
     try {
       await _client.from('document_categories').update({
@@ -657,6 +755,7 @@ class SettingsDataset {
 
   /// Deletes a corporate document category.
   Future<void> deleteDocumentCategory(String id) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('SETTINGS_DATASET', 'Deleting corporate category: $id');
     try {
       await _client.from('document_categories').delete().eq('id', id);
@@ -670,6 +769,9 @@ class SettingsDataset {
 
   /// Fetches registered master vehicles.
   Future<List<MasterVehicleModel>> getVehicles({bool activeOnly = true}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getVehicles();
+    }
     try {
       var query = _client.from('master_vehicles').select();
       if (activeOnly) {
@@ -689,6 +791,9 @@ class SettingsDataset {
 
   /// Fetches master vehicle document types.
   Future<List<MasterVehicleDocTypeModel>> getVehicleDocTypes({bool activeOnly = true}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getVehicleDocTypes();
+    }
     try {
       var query = _client.from('master_vehicle_doc_types').select();
       if (activeOnly) {

@@ -433,9 +433,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               )
               .toList(),
-          onChanged: (val) {
-            if (val != null) controller.selectedSubcategory.value = val;
-          },
+          onChanged: controller.onSubcategoryChanged,
         ),
       ),
     );
@@ -1593,64 +1591,6 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Personal Document Type *',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Obx(() {
-                  final types = controller.dynamicPersonalDocTypes
-                      .map((t) => t.name)
-                      .toList();
-                  if (types.isEmpty) {
-                    types.addAll([
-                      'Aadhaar Card',
-                      'PAN Card',
-                      'Passport',
-                      'Driving License',
-                    ]);
-                  }
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: types.contains(
-                          controller.selectedPersonalDocTypeName.value,
-                        )
-                            ? controller.selectedPersonalDocTypeName.value
-                            : types.first,
-                        items: types
-                            .map(
-                              (type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(type),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: controller.onPersonalDocTypeChanged,
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildResponsiveRow(
-            context: context,
-            first: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
                   'ID / Document / Card Number',
                   style: TextStyle(
                     fontSize: 12,
@@ -1666,7 +1606,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-            second: Column(
+          ),
+          const SizedBox(height: 12),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -1685,11 +1629,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildResponsiveRow(
-            context: context,
-            first: Column(
+            second: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -1751,9 +1691,15 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-            second: Column(
+          ),
+          Obx(() {
+            if (!controller.selectedDocTypeHasExpiry) {
+              return const SizedBox.shrink();
+            }
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 12),
                 const Text(
                   'Expiry Date (if applicable)',
                   style: TextStyle(
@@ -1762,58 +1708,56 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Obx(
-                  () => InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: controller.personalExpiryDate.value ??
-                            DateTime.now().add(const Duration(days: 3650)),
-                        firstDate: DateTime(1950),
-                        lastDate: DateTime(2060),
-                      );
-                      if (picked != null)
-                        controller.personalExpiryDate.value = picked;
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            controller.personalExpiryDate.value != null
-                                ? AppFormatters.formatDate(
-                                    controller.personalExpiryDate.value!,
-                                  )
-                                : 'Select Expiry Date',
-                            style: TextStyle(
-                              color: controller.personalExpiryDate.value != null
-                                  ? AppColors.textPrimary
-                                  : AppColors.textMuted,
-                              fontSize: 13,
-                            ),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: controller.personalExpiryDate.value ??
+                          DateTime.now().add(const Duration(days: 3650)),
+                      firstDate: DateTime(1950),
+                      lastDate: DateTime(2060),
+                    );
+                    if (picked != null)
+                      controller.personalExpiryDate.value = picked;
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          controller.personalExpiryDate.value != null
+                              ? AppFormatters.formatDate(
+                                  controller.personalExpiryDate.value!,
+                                )
+                              : 'Select Expiry Date',
+                          style: TextStyle(
+                            color: controller.personalExpiryDate.value != null
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
+                            fontSize: 13,
                           ),
-                          const Icon(
-                            Icons.event_busy,
-                            size: 16,
-                            color: AppColors.textMuted,
-                          ),
-                        ],
-                      ),
+                        ),
+                        const Icon(
+                          Icons.event_busy,
+                          size: 16,
+                          color: AppColors.textMuted,
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -1905,48 +1849,21 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             second: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Vehicle Document Type *',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
+                Obx(() => Text(
+                  controller.isVehiclePassDoc
+                      ? 'Pass / Receipt / Permit Number'
+                      : 'Policy / Certificate / Reg Number',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                )),
                 const SizedBox(height: 4),
-                Obx(() {
-                  final types = controller.dynamicVehicleDocTypes.map((t) => t.name).toList();
-                  if (types.isEmpty) {
-                    types.addAll([
-                      'RC Book (Registration Certificate)',
-                      'Insurance Policy',
-                      'PUC Certificate',
-                      'Fitness Certificate',
-                      'Service & Maintenance Bill',
-                    ]);
-                  }
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: types.contains(controller.selectedVehicleDocTypeName.value)
-                            ? controller.selectedVehicleDocTypeName.value
-                            : types.first,
-                        items: types.map((t) {
-                          return DropdownMenuItem(
-                            value: t,
-                            child: Text(t, style: const TextStyle(fontSize: 13)),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) controller.updateSelectedVehicleDocType(val);
-                        },
-                      ),
-                    ),
-                  );
-                }),
+                TextField(
+                  controller: controller.vehiclePolicyOrCertNumberController,
+                  decoration: InputDecoration(
+                    hintText: controller.isVehiclePassDoc
+                        ? 'e.g. Pass receipt # or tag ID'
+                        : 'e.g. Policy # or PUC # or Reg #',
+                  ),
+                ),
               ],
             ),
           ),
@@ -2065,26 +1982,6 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 Obx(() => Text(
                   controller.isVehiclePassDoc
-                      ? 'Pass / Receipt / Permit Number'
-                      : 'Policy / Certificate / Reg Number',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                )),
-                const SizedBox(height: 4),
-                TextField(
-                  controller: controller.vehiclePolicyOrCertNumberController,
-                  decoration: InputDecoration(
-                    hintText: controller.isVehiclePassDoc
-                        ? 'e.g. Pass receipt # or tag ID'
-                        : 'e.g. Policy # or PUC # or Reg #',
-                  ),
-                ),
-              ],
-            ),
-            second: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Obx(() => Text(
-                  controller.isVehiclePassDoc
                       ? 'Issuing Bank / Tag Issuer / Authority'
                       : 'Insurance Company / Agency Name',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -2100,11 +1997,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildResponsiveRow(
-            context: context,
-            first: Column(
+            second: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Obx(() => Text(
@@ -2154,7 +2047,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-            second: Column(
+          ),
+          const SizedBox(height: 12),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Obx(() => Text(
@@ -2207,11 +2104,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildResponsiveRow(
-            context: context,
-            first: Column(
+            second: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Obx(() => Text(
@@ -2229,7 +2122,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-            second: Column(
+          ),
+          const SizedBox(height: 12),
+          _buildResponsiveRow(
+            context: context,
+            first: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -2245,24 +2142,23 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Notes & Remarks (Optional)',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              TextField(
-                controller: controller.vehicleNotesController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Comprehensive zero-dep policy with RSA included',
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Notes & Remarks (Optional)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                TextField(
+                  controller: controller.vehicleNotesController,
+                  maxLines: 1,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Comprehensive zero-dep policy with RSA included',
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

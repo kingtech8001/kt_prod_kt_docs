@@ -13,10 +13,13 @@ class AuthService extends GetxService {
 
   final currentProfile = Rxn<ProfileModel>();
   final isLoadingProfile = false.obs;
+  final isDemoMode = false.obs;
 
-  bool get isAuthenticated => Supabase.instance.client.auth.currentUser != null;
+  bool get isAuthenticated =>
+      isDemoMode.value || Supabase.instance.client.auth.currentUser != null;
 
   bool get isAdmin {
+    if (isDemoMode.value) return true;
     final role = currentProfile.value?.role.toLowerCase();
     if (role == 'admin' || role == 'super_admin') return true;
     // Check fallback user metadata if database profile is still loading
@@ -26,7 +29,28 @@ class AuthService extends GetxService {
   }
 
   bool get isSuperAdmin {
+    if (isDemoMode.value) return false;
     return currentProfile.value?.role.toLowerCase() == 'super_admin';
+  }
+
+  void enterDemoMode() {
+    isDemoMode.value = true;
+    currentProfile.value = ProfileModel(
+      id: 'demo-admin-id',
+      fullName: 'Demo Administrator (Mihir)',
+      email: 'demo@kingtechnology.com',
+      role: 'admin',
+      department: 'Technology (Demo)',
+      isActive: true,
+      createdAt: DateTime.now(),
+    );
+    AppLogger.info('AUTH_SERVICE', 'Entered Demo Mode with in-memory Profile.');
+  }
+
+  void exitDemoMode() {
+    isDemoMode.value = false;
+    currentProfile.value = null;
+    AppLogger.info('AUTH_SERVICE', 'Exited Demo Mode.');
   }
 
   String get userRoleDisplay {
@@ -69,6 +93,7 @@ class AuthService extends GetxService {
   }
 
   Future<void> loadProfile() async {
+    if (isDemoMode.value) return;
     if (!isAuthenticated) return;
     isLoadingProfile.value = true;
     try {

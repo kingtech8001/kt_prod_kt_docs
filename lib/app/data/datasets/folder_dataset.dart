@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/folder_model.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -16,6 +17,14 @@ class FolderDataset {
 
   /// Fetches all folders with accurate document counts.
   Future<List<FolderModel>> getFolders({String? parentId, String? searchQuery}) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getFolders();
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((f) => f.name.toLowerCase().contains(q) || (f.description?.toLowerCase().contains(q) ?? false)).toList();
+      }
+      return list;
+    }
     AppLogger.debug('FOLDER_DATASET', 'Fetching folders (parentId: $parentId, search: $searchQuery)...');
     try {
       var query = _client.from('folders').select('*, documents(id, deleted_at)');
@@ -44,6 +53,14 @@ class FolderDataset {
 
   /// Fetches single folder details by ID.
   Future<FolderModel?> getFolderById(String id) async {
+    if (DemoDataService.isDemoMode) {
+      final folders = DemoDataService.getFolders();
+      try {
+        return folders.firstWhere((f) => f.id == id);
+      } catch (_) {
+        return folders.isNotEmpty ? folders.first : null;
+      }
+    }
     AppLogger.debug('FOLDER_DATASET', 'Fetching folder ID: $id');
     try {
       final response = await _client
@@ -62,6 +79,18 @@ class FolderDataset {
 
   /// Fetches all active documents inside a specific folder with full relations.
   Future<List<DocumentModel>> getFolderDocuments(String folderId, {String? searchQuery}) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getAllDocuments().where((d) => d.folderId == folderId).toList();
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((d) =>
+          d.title.toLowerCase().contains(q) ||
+          d.subCategory.toLowerCase().contains(q) ||
+          (d.documentNumber?.toLowerCase().contains(q) ?? false)
+        ).toList();
+      }
+      return list;
+    }
     AppLogger.debug('FOLDER_DATASET', 'Fetching documents for folder: $folderId (search: $searchQuery)');
     try {
       var query = _client
@@ -100,6 +129,9 @@ class FolderDataset {
 
   /// Fetches active documents not currently assigned to this folder.
   Future<List<DocumentModel>> getAvailableDocumentsForFolder(String folderId) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getAllDocuments().where((d) => d.folderId != folderId).toList();
+    }
     AppLogger.debug('FOLDER_DATASET', 'Fetching available documents to add to folder $folderId');
     try {
       final response = await _client
@@ -138,6 +170,17 @@ class FolderDataset {
     String? parentId,
     String? color,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return FolderModel(
+        id: 'folder-demo-${name.toLowerCase().replaceAll(' ', '-')}',
+        name: name,
+        description: description,
+        parentId: parentId,
+        color: color ?? '#3B82F6',
+        createdAt: DateTime.now(),
+        documentCount: 0,
+      );
+    }
     final user = _provider.currentUser;
     AppLogger.info('FOLDER_DATASET', 'Creating folder "$name" for user: ${user?.id}');
     try {
@@ -167,6 +210,16 @@ class FolderDataset {
     String? description,
     String? color,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return FolderModel(
+        id: id,
+        name: name,
+        description: description,
+        color: color ?? '#3B82F6',
+        createdAt: DateTime.now().subtract(const Duration(days: 30)),
+        documentCount: 2,
+      );
+    }
     AppLogger.info('FOLDER_DATASET', 'Updating folder "$id" -> "$name"');
     try {
       final response = await _client
@@ -190,6 +243,7 @@ class FolderDataset {
 
   /// Deletes a folder (DB FK SET NULL automatically unlinks documents without deleting them).
   Future<void> deleteFolder(String folderId) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('FOLDER_DATASET', 'Deleting folder ID: $folderId');
     try {
       await _client.from('folders').delete().eq('id', folderId);
@@ -205,6 +259,7 @@ class FolderDataset {
     required String folderId,
     required List<String> documentIds,
   }) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('FOLDER_DATASET', 'Adding ${documentIds.length} documents to folder $folderId');
     try {
       await _client
@@ -224,6 +279,7 @@ class FolderDataset {
 
   /// Unlinks a document from its folder.
   Future<void> removeDocumentFromFolder(String documentId) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.debug('FOLDER_DATASET', 'Removing document $documentId from folder');
     try {
       await _client.from('documents').update({
@@ -240,6 +296,9 @@ class FolderDataset {
 
   /// Obtains signed preview URL for viewing or downloading.
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     return await _provider.createSignedUrl(
       storagePath: storagePath,
       expiresInSeconds: 3600,
@@ -249,11 +308,17 @@ class FolderDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String storagePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(storagePath);
   }
 
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentlyFavorite) async {
+    if (DemoDataService.isDemoMode) {
+      return !currentlyFavorite;
+    }
     final user = _provider.currentUser;
     if (user == null) return false;
     AppLogger.debug('FOLDER_DATASET', 'toggleFavorite doc: $documentId, currentlyFav: $currentlyFavorite');
@@ -279,6 +344,10 @@ class FolderDataset {
 
   /// Soft deletes document using RPC `soft_delete_document` with fallback.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('FOLDER_DATASET', 'Demo Mode: Soft deleted document $documentId');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug('FOLDER_DATASET', 'softDeleteDocument for ID: $documentId');
     try {

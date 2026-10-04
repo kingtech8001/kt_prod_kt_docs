@@ -1,5 +1,6 @@
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,6 +30,30 @@ class TrashDataset {
     int pageSize = 20,
     String? searchQuery,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      final mockTrash = [
+        DocumentModel(
+          id: 'trash-demo-1',
+          title: 'Old Equipment AMC Contract 2023',
+          description: 'Expired contract for decommissioned server room AC.',
+          categoryId: 'cat-3',
+          categoryName: 'Appliance & Warranty',
+          categoryCode: 'APPLIANCE_WARRANTY',
+          subCategory: 'Air Conditioner',
+          fileName: 'old_ac_contract_2023.pdf',
+          filePath: 'appliance_warranty/old_ac_contract_2023.pdf',
+          fileType: 'pdf',
+          mimeType: 'application/pdf',
+          fileSize: 1048576,
+          documentNumber: 'AMC-2023-991',
+          status: 'inactive',
+          deletedAt: DateTime.now().subtract(const Duration(days: 4)),
+          createdAt: DateTime.now().subtract(const Duration(days: 400)),
+          updatedAt: DateTime.now().subtract(const Duration(days: 4)),
+        ),
+      ];
+      return TrashDataResponse(documents: mockTrash, totalCount: mockTrash.length);
+    }
     final from = (page - 1) * pageSize;
     final to = from + pageSize - 1;
 
@@ -83,8 +108,6 @@ class TrashDataset {
 
       return TrashDataResponse(documents: list, totalCount: total);
     } catch (e, st) {
-
-
       AppLogger.error(
         'TRASH_DATASET',
         'Error fetching trash documents: $e',
@@ -97,6 +120,10 @@ class TrashDataset {
 
   /// Restores a document from trash via RPC `restore_document` with fallback.
   Future<void> restoreDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('TRASH_DATASET', 'Demo Mode: Restored document $documentId');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug('TRASH_DATASET', 'Restoring document ID: $documentId');
 
@@ -144,6 +171,10 @@ class TrashDataset {
     String documentId,
     String filePath,
   ) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('TRASH_DATASET', 'Demo Mode: Permanently deleted document $documentId');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug(
       'TRASH_DATASET',

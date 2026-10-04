@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -138,6 +139,18 @@ class ProfileController extends GetxController {
         'Password Mismatch',
         'The password confirmation does not match.',
         backgroundColor: AppColors.warning,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (DemoDataService.isDemoMode) {
+      newPasswordController.clear();
+      confirmPasswordController.clear();
+      Get.snackbar(
+        'Password Changed (Demo)',
+        'Simulated password update successfully in demo mode.',
+        backgroundColor: AppColors.success,
         colorText: Colors.white,
       );
       return;

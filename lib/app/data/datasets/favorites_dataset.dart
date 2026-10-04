@@ -3,6 +3,7 @@ import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -28,6 +29,9 @@ class FavoritesDataset {
 
   /// Fetches document categories for filtering favorites.
   Future<List<CategoryModel>> getCategories() async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getCategories();
+    }
     try {
       final res = await _client
           .from('document_categories')
@@ -54,6 +58,21 @@ class FavoritesDataset {
     String? categoryCode,
     String? searchQuery,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getAllDocuments().take(4).toList();
+      if (categoryCode != null && categoryCode.isNotEmpty && categoryCode != 'all') {
+        list = list.where((d) => d.categoryCode == categoryCode).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((d) =>
+          d.title.toLowerCase().contains(q) ||
+          d.subCategory.toLowerCase().contains(q) ||
+          (d.documentNumber?.toLowerCase().contains(q) ?? false)
+        ).toList();
+      }
+      return FavoritesResponse(documents: list, totalCount: list.length);
+    }
     final from = (page - 1) * pageSize;
     final to = from + pageSize - 1;
     final userId = _client.auth.currentUser?.id;
@@ -165,6 +184,9 @@ class FavoritesDataset {
 
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentFavorite) async {
+    if (DemoDataService.isDemoMode) {
+      return !currentFavorite;
+    }
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return currentFavorite;
 
@@ -196,6 +218,10 @@ class FavoritesDataset {
 
   /// Soft deletes a document by setting deleted_at timestamp.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('FAVORITES_DATASET', 'Demo Mode: Soft deleted document $documentId');
+      return;
+    }
     AppLogger.info(
       'FAVORITES_DATASET',
       'Soft deleting document: $documentId...',
@@ -206,7 +232,7 @@ class FavoritesDataset {
         'soft_delete_document',
         params: {
           'p_document_id': documentId,
-          'p_user_id': ?userId,
+          'p_user_id': userId,
         },
       );
     } catch (e, st) {
@@ -229,6 +255,10 @@ class FavoritesDataset {
     dynamic applianceWarranty,
     VehicleDocumentMetadataModel? vehicleMetadata,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('FAVORITES_DATASET', 'Demo Mode: Updated document details for $documentId');
+      return;
+    }
     AppLogger.info(
       'FAVORITES_DATASET',
       'Updating details for document: $documentId...',
@@ -281,6 +311,9 @@ class FavoritesDataset {
 
   /// Generates a signed preview URL for downloading or displaying.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     try {
       return await _provider.createSignedUrl(
         storagePath: filePath,
@@ -300,11 +333,17 @@ class FavoritesDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String filePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(filePath);
   }
 
   /// Generates a shareable token for a document.
   Future<String> createShareLink(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      return 'demo-fav-share-link';
+    }
     try {
       final token = const Uuid().v4().replaceAll('-', '');
       final expiresAt = DateTime.now().add(const Duration(days: 7));

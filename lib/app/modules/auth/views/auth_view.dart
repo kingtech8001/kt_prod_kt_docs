@@ -144,7 +144,31 @@ class AuthView extends GetView<AuthController> {
                                   ),
                                 ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 12),
+
+                        // Demo Mode Button (Explore Static Presentation without DB)
+                        OutlinedButton.icon(
+                          onPressed: controller.isLoading.value
+                              ? null
+                              : controller.enterDemoMode,
+                          icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+                          label: const Text(
+                            'Explore Demo Mode (Static Data)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            foregroundColor: AppColors.primary,
+                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
                         // Admin provisioning note
                         Container(

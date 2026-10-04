@@ -1,5 +1,6 @@
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -47,6 +48,10 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('AUTH_REPO', '[DEMO] Exiting demo session.');
+      return;
+    }
     AppLogger.debug('AUTH_REPO', 'Signing out currentUser: ${currentUser?.id}');
     try {
       await _provider.client.auth.signOut();
@@ -58,6 +63,18 @@ class AuthRepository {
   }
 
   Future<ProfileModel?> getCurrentProfile() async {
+    if (DemoDataService.isDemoMode) {
+      return ProfileModel(
+        id: 'demo-admin-id',
+        fullName: 'Demo Administrator (Mihir)',
+        email: 'demo@kingtechnology.com',
+        role: 'admin',
+        department: 'Technology (Demo)',
+        phoneNumber: '+91 98765 43210',
+        isActive: true,
+        createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      );
+    }
     final user = _provider.currentUser;
     AppLogger.debug('AUTH_REPO', 'Fetching profile for user: ${user?.id} (${user?.email})');
     if (user == null) {
@@ -122,6 +139,10 @@ class AuthRepository {
     String? department,
     String? phoneNumber,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('AUTH_REPO', '[DEMO] Simulated profile update: $fullName');
+      return;
+    }
     final user = _provider.currentUser;
     if (user == null) return;
     AppLogger.debug('AUTH_REPO', 'Updating profile for user ${user.id}');
@@ -147,6 +168,10 @@ class AuthRepository {
     String? phoneNumber,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('AUTH_REPO', '[DEMO] Simulated staff profile update: $id');
+      return;
+    }
     AppLogger.debug('AUTH_REPO', 'Updating staff profile for user $id');
     try {
       await _provider.client.from('profiles').update({
@@ -172,6 +197,10 @@ class AuthRepository {
     String? department,
     String? phoneNumber,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('AUTH_REPO', '[DEMO] Simulated adminCreateStaffUser: $email');
+      return;
+    }
     AppLogger.debug('AUTH_REPO', 'adminCreateStaffUser for: $email ($role)');
     try {
       await _provider.client.rpc('admin_create_staff_user', params: {
@@ -190,6 +219,30 @@ class AuthRepository {
   }
 
   Future<List<ProfileModel>> adminGetAllStaffUsers() async {
+    if (DemoDataService.isDemoMode) {
+      return [
+        ProfileModel(
+          id: 'staff-demo-1',
+          fullName: 'Mihir Gandhi',
+          email: 'mihir@kingtechnology.com',
+          role: 'admin',
+          department: 'Technology & Management',
+          phoneNumber: '+91 98765 43210',
+          isActive: true,
+          createdAt: DateTime.now().subtract(const Duration(days: 365)),
+        ),
+        ProfileModel(
+          id: 'staff-demo-2',
+          fullName: 'Darshit Gandhi',
+          email: 'darshit@kingtechnology.com',
+          role: 'editor',
+          department: 'Operations',
+          phoneNumber: '+91 98765 12345',
+          isActive: true,
+          createdAt: DateTime.now().subtract(const Duration(days: 200)),
+        ),
+      ];
+    }
     AppLogger.debug('AUTH_REPO', 'adminGetAllStaffUsers...');
     try {
       final response = await _provider.client.rpc('admin_get_all_users');
@@ -209,6 +262,10 @@ class AuthRepository {
     required String role,
     required bool isActive,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('AUTH_REPO', '[DEMO] Simulated adminUpdateUserRole: $targetUserId -> $role');
+      return;
+    }
     AppLogger.debug('AUTH_REPO', 'adminUpdateUserRole for $targetUserId -> $role (active: $isActive)');
     try {
       await _provider.client.rpc('admin_update_user_role', params: {

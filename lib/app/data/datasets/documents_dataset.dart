@@ -8,8 +8,8 @@ import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
-import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -24,6 +24,9 @@ class DocumentsDataset {
 
   /// Fetches all document categories ordered by name.
   Future<List<CategoryModel>> getAllCategories() async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getCategories();
+    }
     AppLogger.debug('DOCUMENTS_DATASET', 'Fetching all document categories...');
     try {
       final response = await _client
@@ -49,6 +52,9 @@ class DocumentsDataset {
 
   /// Fetches active cities from master data.
   Future<List<MasterCityModel>> getCities({bool activeOnly = true}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getCities();
+    }
     AppLogger.debug(
       'DOCUMENTS_DATASET',
       'Fetching master cities (activeOnly: $activeOnly)...',
@@ -87,6 +93,33 @@ class DocumentsDataset {
     int limit = 100,
     int offset = 0,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: Returning filtered demo documents.');
+      var list = DemoDataService.getAllDocuments();
+      if (categoryId != null && categoryId.isNotEmpty) {
+        list = list.where((d) => d.categoryId == categoryId).toList();
+      }
+      if (folderId != null && folderId.isNotEmpty) {
+        list = list.where((d) => d.folderId == folderId).toList();
+      }
+      if (status != null && status.isNotEmpty && status != 'all') {
+        list = list.where((d) => d.status.toLowerCase() == status.toLowerCase()).toList();
+      }
+      if (city != null && city.isNotEmpty && city != 'All Cities') {
+        list = list.where((d) => d.address?.city.toLowerCase() == city.toLowerCase()).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((d) =>
+          d.title.toLowerCase().contains(q) ||
+          d.subCategory.toLowerCase().contains(q) ||
+          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+          d.fileName.toLowerCase().contains(q)
+        ).toList();
+      }
+      return list;
+    }
+
     AppLogger.debug('DOCUMENTS_DATASET', 'Querying documents with filters:', {
       'categoryId': categoryId,
       'folderId': folderId,
@@ -159,6 +192,9 @@ class DocumentsDataset {
 
   /// Obtains signed preview URL from Supabase storage.
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     return await _provider.createSignedUrl(
       storagePath: storagePath,
       expiresInSeconds: 3600,
@@ -168,11 +204,17 @@ class DocumentsDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String storagePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(storagePath);
   }
 
   /// Creates a secure expiring share link for the document.
   Future<String> createShareLink(String documentId, {int daysValid = 7}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'demo-share-preview-token';
+    }
     final user = _provider.currentUser;
     final token = const Uuid().v4().replaceAll('-', '').substring(0, 16);
     final expiresAt = DateTime.now().add(Duration(days: daysValid));
@@ -211,6 +253,9 @@ class DocumentsDataset {
 
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentlyFavorite) async {
+    if (DemoDataService.isDemoMode) {
+      return !currentlyFavorite;
+    }
     final user = _provider.currentUser;
     if (user == null) return false;
 
@@ -246,6 +291,10 @@ class DocumentsDataset {
 
   /// Soft deletes document using RPC `soft_delete_document` with fallback.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: soft-deleted document $documentId');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug(
       'DOCUMENTS_DATASET',
@@ -299,6 +348,10 @@ class DocumentsDataset {
     ApplianceWarrantyModel? applianceWarranty,
     VehicleDocumentMetadataModel? vehicleMetadata,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: updated document details for $documentId');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug(
       'DOCUMENTS_DATASET',
@@ -364,6 +417,14 @@ class DocumentsDataset {
 
   /// Fetches single document by ID with all relations.
   Future<DocumentModel?> getDocumentById(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      final docs = DemoDataService.getAllDocuments();
+      try {
+        return docs.firstWhere((d) => d.id == documentId);
+      } catch (_) {
+        return docs.isNotEmpty ? docs.first : null;
+      }
+    }
     AppLogger.debug('DOCUMENTS_DATASET', 'Fetching document by ID: $documentId');
     try {
       final response = await _client.from('documents').select('''
@@ -409,8 +470,43 @@ class DocumentsDataset {
     PersonalDocumentMetadataModel? personalMetadata,
     VehicleDocumentMetadataModel? vehicleMetadata,
   }) async {
-    final user = _provider.currentUser;
     final docId = const Uuid().v4();
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: Mocking document creation for "$title"');
+      final newDoc = DocumentModel(
+        id: docId,
+        title: title,
+        description: description,
+        categoryId: categoryId,
+        subCategory: subCategory,
+        folderId: folderId,
+        fileName: fileName,
+        filePath: 'demo/$docId-$fileName',
+        fileType: fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'pdf',
+        mimeType: mimeType,
+        fileSize: fileBytes.lengthInBytes,
+        documentNumber: documentNumber,
+        status: 'active',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        categoryName: DemoDataService.getCategories().firstWhere(
+          (c) => c.id == categoryId,
+          orElse: () => DemoDataService.getCategories().first,
+        ).name,
+        categoryCode: DemoDataService.getCategories().firstWhere(
+          (c) => c.id == categoryId,
+          orElse: () => DemoDataService.getCategories().first,
+        ).code,
+        address: address,
+        utilityMetadata: utilityMetadata,
+        applianceWarranty: applianceWarranty,
+        personalMetadata: personalMetadata,
+        vehicleMetadata: vehicleMetadata,
+      );
+      return newDoc;
+    }
+
+    final user = _provider.currentUser;
     final sanitizedFileName = fileName.replaceAll(
       RegExp(r'[^a-zA-Z0-9._-]'),
       '_',

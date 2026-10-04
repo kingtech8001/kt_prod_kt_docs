@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -36,6 +37,9 @@ class UtilityBillsDataset {
 
   /// Fetches active cities from master data.
   Future<List<MasterCityModel>> getMasterCities({bool activeOnly = true}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getCities();
+    }
     AppLogger.debug(
       'UTILITY_DATASET',
       'Fetching master cities (activeOnly: $activeOnly)...',
@@ -68,6 +72,9 @@ class UtilityBillsDataset {
   Future<List<MasterUtilityProviderModel>> getUtilityProviders({
     bool activeOnly = true,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getUtilityProviders();
+    }
     AppLogger.debug(
       'UTILITY_DATASET',
       'Fetching utility providers (activeOnly: $activeOnly)...',
@@ -126,6 +133,66 @@ class UtilityBillsDataset {
     String? paymentStatus,
     String? searchQuery,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getAllDocuments()
+          .where((d) => d.categoryId == 'cat-2' || d.utilityMetadata != null)
+          .toList();
+
+      if (city != null && city.isNotEmpty && city != 'All Cities') {
+        list = list.where((d) => d.address?.city.toLowerCase() == city.toLowerCase()).toList();
+      }
+      if (subCategory != null && subCategory.isNotEmpty && subCategory != 'All Utilities') {
+        list = list.where((d) => d.subCategory.toLowerCase() == subCategory.toLowerCase()).toList();
+      }
+      if (paymentStatus != null && paymentStatus.isNotEmpty && paymentStatus != 'all') {
+        list = list.where((d) {
+          final s = d.utilityMetadata?.paymentStatus.toLowerCase() ?? 'pending';
+          if (paymentStatus == 'paid') return s == 'paid' || s == 'auto_debit';
+          if (paymentStatus == 'pending') return s != 'paid';
+          if (paymentStatus == 'overdue') {
+            final due = d.utilityMetadata?.dueDate;
+            return s != 'paid' && due != null && due.isBefore(DateTime.now());
+          }
+          return true;
+        }).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((d) =>
+          d.title.toLowerCase().contains(q) ||
+          d.subCategory.toLowerCase().contains(q) ||
+          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+          (d.utilityMetadata?.consumerNumber.toLowerCase().contains(q) ?? false)
+        ).toList();
+      }
+
+      double totalAmt = 0.0;
+      double pendingAmt = 0.0;
+      int paidCnt = 0;
+      int pendingCnt = 0;
+
+      for (final d in list) {
+        final amt = d.utilityMetadata?.billAmount ?? 0.0;
+        final s = d.utilityMetadata?.paymentStatus.toLowerCase() ?? 'pending';
+        final isPaid = s == 'paid' || s == 'auto_debit';
+        totalAmt += amt;
+        if (isPaid) {
+          paidCnt++;
+        } else {
+          pendingAmt += amt;
+          pendingCnt++;
+        }
+      }
+
+      return UtilityBillsResponse(
+        documents: list,
+        totalCount: list.length,
+        totalAmount: totalAmt,
+        pendingAmount: pendingAmt,
+        paidCount: paidCnt,
+        pendingCount: pendingCnt,
+      );
+    }
     final from = (page - 1) * pageSize;
     final to = from + pageSize - 1;
 
@@ -296,6 +363,10 @@ class UtilityBillsDataset {
     required bool isPaid,
     String? paymentDate,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('UTILITY_DATASET', 'Demo Mode: Updated payment status for $metadataId');
+      return;
+    }
     AppLogger.debug(
       'UTILITY_DATASET',
       'Updating payment status for metadata $metadataId -> isPaid: $isPaid',
@@ -320,6 +391,10 @@ class UtilityBillsDataset {
 
   /// Soft deletes a document (moves to trash) and writes an audit log.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('UTILITY_DATASET', 'Demo Mode: Moved doc to trash $documentId');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug('UTILITY_DATASET', 'Moving document to trash: $documentId');
     try {
@@ -354,6 +429,10 @@ class UtilityBillsDataset {
     String? description,
     String? documentNumber,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('UTILITY_DATASET', 'Demo Mode: Updated details for $documentId');
+      return;
+    }
     final user = _provider.currentUser;
     AppLogger.debug('UTILITY_DATASET', 'Updating document details: $documentId');
     try {
@@ -387,6 +466,9 @@ class UtilityBillsDataset {
 
   /// Obtains a signed preview URL for downloading or viewing.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     return await _provider.createSignedUrl(
       storagePath: filePath,
       expiresInSeconds: 3600,
@@ -396,12 +478,18 @@ class UtilityBillsDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String filePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(filePath);
   }
 
 
   /// Creates a share link for a document.
   Future<String> createShareLink(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      return 'demo-utility-share-link';
+    }
     final user = _provider.currentUser;
     final token = const Uuid().v4();
     await _client.from('document_shares').insert({

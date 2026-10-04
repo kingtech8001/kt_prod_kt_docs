@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -37,6 +38,9 @@ class VehicleDocsDataset {
   Future<List<MasterVehicleModel>> getMasterVehicles({
     bool activeOnly = true,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getVehicles();
+    }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
       'Fetching master vehicles (activeOnly: $activeOnly)...',
@@ -69,6 +73,9 @@ class VehicleDocsDataset {
   Future<MasterVehicleModel> createMasterVehicle(
     MasterVehicleModel vehicle,
   ) async {
+    if (DemoDataService.isDemoMode) {
+      return vehicle;
+    }
     AppLogger.info(
       'VEHICLE_DOCS_DATASET',
       'Creating master vehicle: ${vehicle.vehicleNumber}...',
@@ -94,6 +101,7 @@ class VehicleDocsDataset {
 
   /// Updates an existing master vehicle.
   Future<void> updateMasterVehicle(MasterVehicleModel vehicle) async {
+    if (DemoDataService.isDemoMode) return;
     AppLogger.info(
       'VEHICLE_DOCS_DATASET',
       'Updating master vehicle: ${vehicle.id} (${vehicle.vehicleNumber})...',
@@ -119,6 +127,9 @@ class VehicleDocsDataset {
   Future<List<MasterVehicleDocTypeModel>> getMasterVehicleDocTypes({
     bool activeOnly = true,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getVehicleDocTypes();
+    }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
       'Fetching master vehicle doc types (activeOnly: $activeOnly)...',
@@ -179,6 +190,81 @@ class VehicleDocsDataset {
     String? expiryFilter, // 'All', 'Active', 'Expiring in 30 Days', 'Expired'
     String? searchQuery,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      var list = DemoDataService.getAllDocuments()
+          .where((d) => d.categoryId == 'cat-5' || d.vehicleMetadata != null)
+          .toList();
+
+      if (vehicleNumber != null && vehicleNumber.isNotEmpty && vehicleNumber != 'All Vehicles') {
+        list = list.where((d) =>
+          d.vehicleMetadata?.vehicleNumber.toUpperCase() == vehicleNumber.toUpperCase()
+        ).toList();
+      }
+      if (docType != null && docType.isNotEmpty && docType != 'All Document Types' && docType != 'All Docs') {
+        list = list.where((d) =>
+          (d.vehicleMetadata?.docTypeName.toLowerCase() == docType.toLowerCase()) ||
+          (d.subCategory.toLowerCase() == docType.toLowerCase())
+        ).toList();
+      }
+      if (expiryFilter != null && expiryFilter.isNotEmpty && expiryFilter != 'All' && expiryFilter != 'All Statuses') {
+        final now = DateTime.now();
+        list = list.where((d) {
+          final expDate = d.vehicleMetadata?.expiryDate;
+          if (expDate == null) return true;
+          if (expiryFilter == 'Expired') return expDate.isBefore(now);
+          if (expiryFilter == 'Expiring in 30 Days' || expiryFilter == 'Expiring Soon') {
+            final diff = expDate.difference(now).inDays;
+            return diff >= 0 && diff <= 30;
+          }
+          if (expiryFilter == 'Active' || expiryFilter == 'Valid') {
+            return expDate.difference(now).inDays > 30;
+          }
+          return true;
+        }).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final q = searchQuery.toLowerCase().trim();
+        list = list.where((d) =>
+          d.title.toLowerCase().contains(q) ||
+          d.subCategory.toLowerCase().contains(q) ||
+          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+          (d.vehicleMetadata?.vehicleNumber.toLowerCase().contains(q) ?? false) ||
+          (d.vehicleMetadata?.policyOrCertNumber?.toLowerCase().contains(q) ?? false)
+        ).toList();
+      }
+
+      final vehicleSet = <String>{};
+      int expiringCount = 0;
+      int expiredCount = 0;
+      final now = DateTime.now();
+
+      for (final d in list) {
+        final vNum = d.vehicleMetadata?.vehicleNumber;
+        if (vNum != null && vNum.isNotEmpty) {
+          vehicleSet.add(vNum.trim().toUpperCase());
+        }
+        final expDate = d.vehicleMetadata?.expiryDate;
+        if (expDate != null) {
+          if (expDate.isBefore(now)) {
+            expiredCount++;
+          } else {
+            final diff = expDate.difference(now).inDays;
+            if (diff >= 0 && diff <= 30) {
+              expiringCount++;
+            }
+          }
+        }
+      }
+
+      return VehicleDocsResponse(
+        documents: list,
+        totalCount: list.length,
+        totalDocumentsCount: list.length,
+        totalVehiclesCount: vehicleSet.length,
+        expiringSoonCount: expiringCount,
+        expiredCount: expiredCount,
+      );
+    }
     final from = (page - 1) * pageSize;
     final to = from + pageSize - 1;
 
@@ -411,10 +497,16 @@ class VehicleDocsDataset {
   }
 
   /// Fetches all documents for a single vehicle and document type to show history/renewals.
+  /// Fetches all documents for a single vehicle and document type to show history/renewals.
   Future<List<DocumentModel>> getVehicleDocTypeHistory({
     required String vehicleNumber,
     required String docTypeName,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getAllDocuments()
+          .where((d) => d.vehicleMetadata?.vehicleNumber.toUpperCase() == vehicleNumber.trim().toUpperCase())
+          .toList();
+    }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
       'Fetching history for vehicle: $vehicleNumber, docType: $docTypeName...',
@@ -484,6 +576,10 @@ class VehicleDocsDataset {
   Future<void> saveVehicleDocumentMetadata(
     VehicleDocumentMetadataModel meta,
   ) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('VEHICLE_DOCS_DATASET', '[DEMO] Simulated saveVehicleDocumentMetadata');
+      return;
+    }
     AppLogger.info(
       'VEHICLE_DOCS_DATASET',
       'Saving vehicle metadata for doc: ${meta.documentId}...',
@@ -506,6 +602,10 @@ class VehicleDocsDataset {
   Future<void> updateVehicleDocumentMetadata(
     VehicleDocumentMetadataModel meta,
   ) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('VEHICLE_DOCS_DATASET', '[DEMO] Simulated updateVehicleDocumentMetadata');
+      return;
+    }
     AppLogger.info(
       'VEHICLE_DOCS_DATASET',
       'Updating vehicle metadata for doc: ${meta.documentId}...',
@@ -540,6 +640,10 @@ class VehicleDocsDataset {
     String? documentNumber,
     VehicleDocumentMetadataModel? vehicleMetadata,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('VEHICLE_DOCS_DATASET', '[DEMO] Simulated updateDocumentDetails');
+      return;
+    }
     AppLogger.info(
       'VEHICLE_DOCS_DATASET',
       'Updating details for vehicle document: $documentId...',
@@ -586,6 +690,9 @@ class VehicleDocsDataset {
 
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentFavorite) async {
+    if (DemoDataService.isDemoMode) {
+      return !currentFavorite;
+    }
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return currentFavorite;
 
@@ -617,6 +724,10 @@ class VehicleDocsDataset {
 
   /// Soft deletes a vehicle document by setting deleted_at timestamp.
   Future<void> softDeleteDocument(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      AppLogger.info('VEHICLE_DOCS_DATASET', 'Demo Mode: Soft deleted vehicle doc $documentId');
+      return;
+    }
     AppLogger.info(
       'VEHICLE_DOCS_DATASET',
       'Soft deleting vehicle document: $documentId...',
@@ -627,7 +738,7 @@ class VehicleDocsDataset {
         'soft_delete_document',
         params: {
           'p_document_id': documentId,
-          'p_user_id': ?userId,
+          'p_user_id': userId,
         },
       );
     } catch (e, st) {
@@ -646,6 +757,9 @@ class VehicleDocsDataset {
     String filePath, {
     bool download = false,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
+    }
     try {
       return await _provider.createSignedUrl(
         storagePath: filePath,
@@ -665,11 +779,17 @@ class VehicleDocsDataset {
 
   /// Downloads file binary bytes via API.
   Future<Uint8List> downloadFileBytes(String filePath) async {
+    if (DemoDataService.isDemoMode) {
+      return Uint8List(0);
+    }
     return await _provider.downloadFileBytes(filePath);
   }
 
   /// Generates a shareable token for a document.
   Future<String> createShareLink(String documentId) async {
+    if (DemoDataService.isDemoMode) {
+      return 'demo-vehicle-share-link';
+    }
     try {
       final token = const Uuid().v4().replaceAll('-', '');
       final expiresAt = DateTime.now().add(const Duration(days: 7));
@@ -697,6 +817,21 @@ class VehicleDocsDataset {
   Future<List<VehicleServiceModel>> getVehicleServices({
     String? vehicleId,
   }) async {
+    if (DemoDataService.isDemoMode) {
+      return [
+        VehicleServiceModel(
+          id: 'srv-demo-1',
+          vehicleId: vehicleId ?? 'veh-demo-1',
+          serviceDate: DateTime.now().subtract(const Duration(days: 45)),
+          odometerKm: 32500,
+          serviceCenterName: 'Authorized Service Center (Demo)',
+          costAmount: 4500.0,
+          notes: 'Periodic service, oil change & filter replacement.',
+          createdAt: DateTime.now().subtract(const Duration(days: 45)),
+          updatedAt: DateTime.now().subtract(const Duration(days: 45)),
+        ),
+      ];
+    }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
       'Fetching vehicle services (vehicleId: $vehicleId)...',
@@ -730,6 +865,9 @@ class VehicleDocsDataset {
   Future<VehicleServiceModel> createVehicleService(
     VehicleServiceModel service,
   ) async {
+    if (DemoDataService.isDemoMode) {
+      return service;
+    }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
       'Creating vehicle service log for vehicle: ${service.vehicleId}...',
@@ -761,6 +899,9 @@ class VehicleDocsDataset {
   Future<VehicleServiceModel> updateVehicleService(
     VehicleServiceModel service,
   ) async {
+    if (DemoDataService.isDemoMode) {
+      return service;
+    }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
       'Updating vehicle service log: ${service.id}...',
@@ -790,6 +931,9 @@ class VehicleDocsDataset {
 
   /// Deletes a vehicle service record.
   Future<void> deleteVehicleService(String serviceId) async {
+    if (DemoDataService.isDemoMode) {
+      return;
+    }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
       'Deleting vehicle service log: $serviceId...',

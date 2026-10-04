@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_header.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_sidebar.dart';
@@ -37,6 +38,7 @@ class _WebScaffoldState extends State<WebScaffold> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _handleSignOut() {
+    final isDemo = AuthService.to.isDemoMode.value;
     AppDialog.show(
       Dialog(
         shape: RoundedRectangleBorder(
@@ -56,17 +58,20 @@ class _WebScaffoldState extends State<WebScaffold> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.errorLight,
+                        color: isDemo ? AppColors.warningLight : AppColors.errorLight,
                         borderRadius:
                             BorderRadius.circular(AppConstants.radiusSmall),
                       ),
-                      child: const Icon(Icons.logout_rounded,
-                          color: AppColors.error, size: 20),
+                      child: Icon(
+                        isDemo ? Icons.exit_to_app_rounded : Icons.logout_rounded,
+                        color: isDemo ? AppColors.warning : AppColors.error,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'Sign Out',
-                      style: TextStyle(
+                    Text(
+                      isDemo ? 'Exit Demo Mode' : 'Sign Out',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -76,7 +81,9 @@ class _WebScaffoldState extends State<WebScaffold> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Are you sure you want to sign out of ${AppConstants.appName}?',
+                  isDemo
+                      ? 'Are you sure you want to exit Demo Mode and return to the login screen?'
+                      : 'Are you sure you want to sign out of ${AppConstants.appName}?',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -93,16 +100,20 @@ class _WebScaffoldState extends State<WebScaffold> {
                     const SizedBox(width: 12),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.error,
+                        backgroundColor: isDemo ? AppColors.warning : AppColors.error,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () async {
                         Get.back();
-                        final authRepo = Get.find<AuthRepository>();
-                        await authRepo.signOut();
-                        Get.offAllNamed(AppRoutes.LOGIN);
+                        if (isDemo) {
+                          AuthService.to.exitDemoMode();
+                        } else {
+                          final authRepo = Get.find<AuthRepository>();
+                          await authRepo.signOut();
+                          Get.offAllNamed(AppRoutes.LOGIN);
+                        }
                       },
-                      child: const Text('Sign Out'),
+                      child: Text(isDemo ? 'Exit Demo' : 'Sign Out'),
                     ),
                   ],
                 ),
