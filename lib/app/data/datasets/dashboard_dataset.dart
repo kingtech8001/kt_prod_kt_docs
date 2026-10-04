@@ -296,15 +296,11 @@ class DashboardDataset {
     }
   }
 
-  /// Obtains signed preview URL for storage or Google Drive.
+  /// Obtains signed preview URL from Supabase storage.
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
-    if (storagePath.startsWith('gdrive://')) {
-      final fileId = storagePath.replaceFirst('gdrive://', '');
-      return _provider.getGoogleDrivePreviewUrl(fileId, download: download);
-    }
     return await _provider.createSignedUrl(
       storagePath: storagePath,
-      expiresInSeconds: 600,
+      expiresInSeconds: 3600,
       download: download,
     );
   }

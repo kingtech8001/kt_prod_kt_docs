@@ -7,19 +7,12 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // Supabase Configuration
-  static const String supabaseUrl = 'https://cackyudszvdmwrnpbhlx.supabase.co';
+  static const String supabaseUrl = 'https://db.docholder.kingtechnology.in';
   static const String supabaseAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhY2t5dWRzenZkbXdybnBiaGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTk5NzUsImV4cCI6MjEwMjk5NTk3NX0.45Z49-uGGjGi1eM4NfLK-ByUA1xrduQ2D4j1GH2u-O0';
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNjA5NDU5MjAwLCJleHAiOjMzMjYwOTc2MDAwfQ.OBb1rjgP0-MKYhcpGdS0ahbyZaDR_B9jTQPI6nXLKhg';
   static const String storageBucket = 'documents';
   static const String webBaseUrl = 'https://kt-vault.kingtechnology.com';
 
-  // Storage Provider Configuration
-  // 'gdrive' uploads binary files to Google Drive via Supabase Edge Function
-  // 'supabase' uploads directly to Supabase Storage bucket
-  static const String storageProvider = 'gdrive';
-  static const String edgeFunctionGdriveUpload = 'gdrive-upload';
-  static const String edgeFunctionGdriveProxy = 'gdrive-proxy';
-  static const String edgeFunctionGdriveDelete = 'gdrive-delete';
 
   // King Technology Media Engine API Configuration
   static const String apiEngineBaseUrl = 'https://apiengine.kingtechnology.in';

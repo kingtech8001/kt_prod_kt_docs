@@ -387,13 +387,9 @@ class UtilityBillsDataset {
 
   /// Obtains a signed preview URL for downloading or viewing.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
-    if (filePath.startsWith('gdrive://')) {
-      final fileId = filePath.replaceFirst('gdrive://', '');
-      return _provider.getGoogleDrivePreviewUrl(fileId, download: download);
-    }
     return await _provider.createSignedUrl(
       storagePath: filePath,
-      expiresInSeconds: 600,
+      expiresInSeconds: 3600,
       download: download,
     );
   }

@@ -157,15 +157,11 @@ class DocumentsDataset {
     }
   }
 
-  /// Obtains signed preview URL for storage or Google Drive proxy.
+  /// Obtains signed preview URL from Supabase storage.
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
-    if (storagePath.startsWith('gdrive://')) {
-      final fileId = storagePath.replaceFirst('gdrive://', '');
-      return _provider.getGoogleDrivePreviewUrl(fileId, download: download);
-    }
     return await _provider.createSignedUrl(
       storagePath: storagePath,
-      expiresInSeconds: 600,
+      expiresInSeconds: 3600,
       download: download,
     );
   }
@@ -421,39 +417,41 @@ class DocumentsDataset {
     );
     AppLogger.info(
       'DOCUMENTS_DATASET',
-      'Creating document: "$title" ($fileName) via provider: ${AppConstants.storageProvider}',
+      'Creating document: "$title" ($fileName) in category: $categoryId, subCategory: $subCategory',
     );
 
     try {
-      String storagePath;
-      Map<String, dynamic> extraAttributes = {};
-
-      if (AppConstants.storageProvider == 'gdrive') {
-        final gdriveRes = await _provider.uploadToGoogleDrive(
-          fileBytes: fileBytes,
-          fileName: fileName,
-          mimeType: mimeType,
-          folderName: subCategory,
-        );
-        final fileId = gdriveRes['fileId'] as String;
-        storagePath = 'gdrive://$fileId';
-        extraAttributes = {
-          'storage_provider': 'gdrive',
-          'gdrive_file_id': fileId,
-          if (gdriveRes['webViewLink'] != null)
-            'web_view_link': gdriveRes['webViewLink'],
-          if (gdriveRes['webContentLink'] != null)
-            'web_content_link': gdriveRes['webContentLink'],
-        };
-      } else {
-        storagePath = 'vault/${user?.id ?? "shared"}/$docId/$sanitizedFileName';
-        await _provider.uploadDocumentFile(
-          storagePath: storagePath,
-          fileBytes: fileBytes,
-          mimeType: mimeType,
-        );
-        extraAttributes = {'storage_provider': 'supabase'};
+      String categoryFolder = 'documents';
+      try {
+        final catRes = await _provider.client
+            .from('document_categories')
+            .select('code')
+            .eq('id', categoryId)
+            .maybeSingle();
+        if (catRes != null && catRes['code'] != null) {
+          categoryFolder = catRes['code'] as String;
+        } else {
+          categoryFolder = categoryId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+        }
+      } catch (_) {
+        categoryFolder = categoryId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
       }
+
+      final sanitizedSubCat = subCategory
+          .trim()
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')
+          .toLowerCase();
+
+      final storagePath = sanitizedSubCat.isNotEmpty
+          ? '$categoryFolder/$sanitizedSubCat/$docId-$sanitizedFileName'
+          : '$categoryFolder/$docId-$sanitizedFileName';
+
+      await _provider.uploadDocumentFile(
+        storagePath: storagePath,
+        fileBytes: fileBytes,
+        mimeType: mimeType,
+      );
+      final extraAttributes = <String, dynamic>{'storage_provider': 'supabase'};
 
       final fileType = fileName.contains('.')
           ? fileName.split('.').last.toLowerCase()

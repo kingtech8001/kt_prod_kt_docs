@@ -152,20 +152,15 @@ class TrashDataset {
 
     try {
       // 1. Storage file deletion
-      if (filePath.startsWith('gdrive://')) {
-        final fileId = filePath.replaceFirst('gdrive://', '');
-        await _provider.deleteFromGoogleDrive(fileId);
-      } else {
-        try {
-          await _client.storage
-              .from(AppConstants.storageBucket)
-              .remove([filePath]);
-        } catch (storageErr) {
-          AppLogger.warning(
-            'TRASH_DATASET',
-            'Storage file remove warning (non-fatal): $storageErr',
-          );
-        }
+      try {
+        await _client.storage
+            .from(AppConstants.storageBucket)
+            .remove([filePath]);
+      } catch (storageErr) {
+        AppLogger.warning(
+          'TRASH_DATASET',
+          'Storage file remove warning (non-fatal): $storageErr',
+        );
       }
 
       // 2. Database permanent delete

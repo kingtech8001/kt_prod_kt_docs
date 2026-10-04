@@ -282,10 +282,6 @@ class FavoritesDataset {
   /// Generates a signed preview URL for downloading or displaying.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
     try {
-      if (filePath.startsWith('gdrive://')) {
-        final fileId = filePath.replaceFirst('gdrive://', '');
-        return _provider.getGoogleDrivePreviewUrl(fileId, download: download);
-      }
       return await _provider.createSignedUrl(
         storagePath: filePath,
         expiresInSeconds: 3600,
