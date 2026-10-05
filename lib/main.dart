@@ -14,6 +14,7 @@ void main() async {
   usePathUrlStrategy();
 
   // Initialize Supabase Backend
+
   await Supabase.initialize(
     url: AppConstants.supabaseUrl,
     anonKey: AppConstants.supabaseAnonKey,
