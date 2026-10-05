@@ -35,9 +35,10 @@ class TrashController extends GetxController {
 
   void _onScroll() {
     if (!scrollController.hasClients) return;
+    if (isLoadingMore.value || !hasMore.value || isLoading.value) return;
     final maxScroll = scrollController.position.maxScrollExtent;
     final currentScroll = scrollController.position.pixels;
-    if (maxScroll - currentScroll <= 200) {
+    if (maxScroll > 100 && currentScroll >= maxScroll - 200) {
       loadNextPage();
     }
   }

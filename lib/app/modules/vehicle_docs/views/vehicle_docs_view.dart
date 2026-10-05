@@ -1504,30 +1504,23 @@ class VehicleDocsView extends GetView<VehicleDocsController> {
   Widget _buildSliverGrid() {
     return SliverPadding(
       padding: const EdgeInsets.all(20),
-      sliver: SliverLayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.crossAxisExtent;
-          final int crossAxisCount = w > 1200 ? 3 : (w > 768 ? 2 : 1);
-
-          return SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              mainAxisExtent: crossAxisCount == 1 ? 245.0 : 285.0,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final doc = controller.vehicleDocuments[index];
-                return _VehicleDocumentCard(
-                  doc: doc,
-                  controller: controller,
-                );
-              },
-              childCount: controller.vehicleDocuments.length,
-            ),
-          );
-        },
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 420,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          mainAxisExtent: 285.0,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final doc = controller.vehicleDocuments[index];
+            return _VehicleDocumentCard(
+              doc: doc,
+              controller: controller,
+            );
+          },
+          childCount: controller.vehicleDocuments.length,
+        ),
       ),
     );
   }

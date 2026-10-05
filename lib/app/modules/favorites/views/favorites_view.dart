@@ -75,49 +75,38 @@ class FavoritesView extends GetView<FavoritesController> {
               else
                 SliverPadding(
                   padding: const EdgeInsets.all(20),
-                  sliver: SliverLayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.crossAxisExtent;
-                      int crossAxis = 3;
-                      if (width < 700) {
-                        crossAxis = 1;
-                      } else if (width < 1100) {
-                        crossAxis = 2;
-                      }
-
-                      return SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxis,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          mainAxisExtent: 240,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final doc = controller.favoriteDocuments[index];
-                            return DocumentCard(
-                              document: doc,
-                              onPreview: () =>
-                                  controller.previewDocument(doc),
-                              onDownload: () =>
-                                  controller.downloadDocument(doc),
-                              onShare: () => controller.shareDocument(doc),
-                              onToggleFavorite: () =>
-                                  controller.toggleFavorite(doc),
-                              onEdit: controller.canEdit
-                                  ? () =>
-                                      controller.openEditDocumentDialog(doc)
-                                  : null,
-                              onDelete: controller.canDelete
-                                  ? () =>
-                                      controller.confirmMoveToTrash(doc)
-                                  : null,
-                            );
-                          },
-                          childCount: controller.favoriteDocuments.length,
-                        ),
-                      );
-                    },
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 400,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      mainAxisExtent: 240,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final doc = controller.favoriteDocuments[index];
+                        return DocumentCard(
+                          document: doc,
+                          onPreview: () =>
+                              controller.previewDocument(doc),
+                          onDownload: () =>
+                              controller.downloadDocument(doc),
+                          onShare: () => controller.shareDocument(doc),
+                          onToggleFavorite: () =>
+                              controller.toggleFavorite(doc),
+                          onEdit: controller.canEdit
+                              ? () =>
+                                  controller.openEditDocumentDialog(doc)
+                              : null,
+                          onDelete: controller.canDelete
+                              ? () =>
+                                  controller.confirmMoveToTrash(doc)
+                              : null,
+                        );
+                      },
+                      childCount: controller.favoriteDocuments.length,
+                    ),
                   ),
                 ),
 

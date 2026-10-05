@@ -85,9 +85,11 @@ class PersonalDocsController extends GetxController {
   }
 
   void _onScroll() {
-    if (scrollController.hasClients &&
-        scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
+    if (!scrollController.hasClients) return;
+    if (isLoadingMore.value || !hasMore.value || isLoading.value) return;
+    final maxScroll = scrollController.position.maxScrollExtent;
+    final currentScroll = scrollController.position.pixels;
+    if (maxScroll > 100 && currentScroll >= maxScroll - 200) {
       loadNextPage();
     }
   }

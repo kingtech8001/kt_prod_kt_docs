@@ -46,6 +46,7 @@ class KTVaultApp extends StatelessWidget {
       initialBinding: InitialBinding(),
       initialRoute: initialRoute,
       getPages: AppPages.routes,
+      unknownRoute: AppPages.unknownRoute,
       defaultTransition: Transition.fadeIn,
       popGesture: false,
     );

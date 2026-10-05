@@ -459,32 +459,20 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
   Widget _buildSliverGrid() {
     return SliverPadding(
       padding: const EdgeInsets.all(20),
-      sliver: SliverLayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.crossAxisExtent;
-          int crossAxis = 3;
-          if (width < 650) {
-            crossAxis = 1;
-          } else if (width < 1050) {
-            crossAxis = 2;
-          }
-
-          return SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxis,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              mainAxisExtent: 260,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final doc = controller.personalDocuments[index];
-                return _buildPersonalDocCard(doc);
-              },
-              childCount: controller.personalDocuments.length,
-            ),
-          );
-        },
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 420,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          mainAxisExtent: 260,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final doc = controller.personalDocuments[index];
+            return _buildPersonalDocCard(doc);
+          },
+          childCount: controller.personalDocuments.length,
+        ),
       ),
     );
   }

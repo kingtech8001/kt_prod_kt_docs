@@ -36,6 +36,12 @@ class AppPages {
 
   static const initial = AppRoutes.DASHBOARD;
 
+  static final unknownRoute = GetPage(
+    name: '/notfound',
+    page: () => const DashboardView(),
+    binding: DashboardBinding(),
+  );
+
   static final routes = [
     GetPage(
       name: AppRoutes.LOGIN,
