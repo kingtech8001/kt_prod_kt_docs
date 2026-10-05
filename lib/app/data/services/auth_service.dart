@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
+import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,6 +15,11 @@ class AuthService extends GetxService {
   final currentProfile = Rxn<ProfileModel>();
   final isLoadingProfile = false.obs;
   final isDemoMode = false.obs;
+
+  /// Flag to track whether the splash screen has finished resolving
+  /// the initial session. Prevents the auth listener from firing
+  /// premature redirects during startup.
+  bool _initialSessionResolved = false;
 
   bool get isAuthenticated =>
       isDemoMode.value || Supabase.instance.client.auth.currentUser != null;
@@ -72,6 +78,17 @@ class AuthService extends GetxService {
     return user?.email?.split('@').first ?? 'Admin';
   }
 
+  /// Called by SplashController once it has finished processing the
+  /// initial session. After this, the auth listener is allowed to
+  /// perform auto-redirects (e.g. redirect to login on sign-out).
+  void markInitialSessionResolved() {
+    _initialSessionResolved = true;
+    AppLogger.debug(
+      'AUTH_SERVICE',
+      'Initial session resolution complete — auth redirects enabled.',
+    );
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -83,11 +100,42 @@ class AuthService extends GetxService {
 
   void _initAuthListener() {
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
       final session = data.session;
+
+      AppLogger.debug(
+        'AUTH_SERVICE',
+        'onAuthStateChange: event=$event, hasSession=${session != null}',
+      );
+
+      if (event == AuthChangeEvent.initialSession) {
+        // Handled by SplashController — do not redirect here
+        if (session != null) {
+          loadProfile();
+        }
+        return;
+      }
+
       if (session != null) {
         loadProfile();
       } else {
         currentProfile.value = null;
+      }
+
+      // Only redirect after the splash screen has finished its work
+      if (!_initialSessionResolved) return;
+
+      if (event == AuthChangeEvent.signedOut) {
+        // Session expired or user signed out — redirect to login
+        final currentRoute = Get.currentRoute;
+        if (currentRoute != AppRoutes.LOGIN &&
+            currentRoute != AppRoutes.SPLASH) {
+          AppLogger.info(
+            'AUTH_SERVICE',
+            'Session lost — redirecting to login.',
+          );
+          Get.offAllNamed(AppRoutes.LOGIN);
+        }
       }
     });
   }

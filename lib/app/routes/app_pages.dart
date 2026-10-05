@@ -5,6 +5,8 @@ import 'package:kt_prod_kt_docs/app/modules/appliance_vault/bindings/appliance_v
 import 'package:kt_prod_kt_docs/app/modules/appliance_vault/views/appliance_vault_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/auth/bindings/auth_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/auth/views/auth_view.dart';
+import 'package:kt_prod_kt_docs/app/modules/splash/bindings/splash_binding.dart';
+import 'package:kt_prod_kt_docs/app/modules/splash/views/splash_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/dashboard/bindings/dashboard_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/dashboard/views/dashboard_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/document_upload/bindings/document_upload_binding.dart';
@@ -34,7 +36,7 @@ import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 class AppPages {
   AppPages._();
 
-  static const initial = AppRoutes.DASHBOARD;
+  static const initial = AppRoutes.SPLASH;
 
   static final unknownRoute = GetPage(
     name: '/notfound',
@@ -43,6 +45,11 @@ class AppPages {
   );
 
   static final routes = [
+    GetPage(
+      name: AppRoutes.SPLASH,
+      page: () => const SplashView(),
+      binding: SplashBinding(),
+    ),
     GetPage(
       name: AppRoutes.LOGIN,
       page: () => const AuthView(),

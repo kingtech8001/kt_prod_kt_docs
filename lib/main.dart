@@ -3,7 +3,6 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/bindings/initial_binding.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_pages.dart';
-import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/theme/app_theme.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -23,18 +22,14 @@ void main() async {
     ),
   );
 
-  // Check if session exists
-  final initialRoute = Supabase.instance.client.auth.currentUser != null
-      ? AppRoutes.DASHBOARD
-      : AppRoutes.LOGIN;
-
-  runApp(KTVaultApp(initialRoute: initialRoute));
+  // Always start at SplashView — it asynchronously waits for Supabase
+  // to finish restoring the persisted session from browser storage
+  // before routing to Dashboard (authenticated) or Login (unauthenticated).
+  runApp(const KTVaultApp());
 }
 
 class KTVaultApp extends StatelessWidget {
-  final String initialRoute;
-
-  const KTVaultApp({super.key, required this.initialRoute});
+  const KTVaultApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +39,7 @@ class KTVaultApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       scrollBehavior: AppScrollBehavior(),
       initialBinding: InitialBinding(),
-      initialRoute: initialRoute,
+      initialRoute: AppPages.initial,
       getPages: AppPages.routes,
       unknownRoute: AppPages.unknownRoute,
       defaultTransition: Transition.fadeIn,
