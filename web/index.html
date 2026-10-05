@@ -159,6 +159,15 @@
 
     // Safety fallback: ensure loader is always dismissed even on slow networks or unexpected delays
     setTimeout(removeLoader, 2000);
+
+    // Auto-update service worker to discard stale cached JS bundles
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (var registration of registrations) {
+          registration.update();
+        }
+      });
+    }
   </script>
 
   <script src="flutter_bootstrap.js" async></script>
