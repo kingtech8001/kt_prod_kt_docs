@@ -133,7 +133,7 @@
   <script>
     function removeLoader() {
       var loader = document.getElementById('loading');
-      if (loader) {
+      if (loader && !loader.classList.contains('loaded')) {
         loader.classList.add('loaded');
         setTimeout(function() {
           if (loader && loader.parentNode) {
@@ -142,11 +142,23 @@
         }, 360);
       }
     }
+
+    // Modern Flutter Web: detect Flutter canvas / flutter-view injection immediately
+    var observer = new MutationObserver(function (mutations, obs) {
+      if (document.querySelector('flutter-view') || document.querySelector('flt-glass-pane') || document.querySelector('flt-scene-host')) {
+        removeLoader();
+        obs.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Legacy event listener fallback
     window.addEventListener('flutter-first-frame', function () {
       removeLoader();
     });
-    // Safety fallback: ensure loader is removed even if first-frame event is missed
-    setTimeout(removeLoader, 4500);
+
+    // Safety fallback: ensure loader is always dismissed even on slow networks or unexpected delays
+    setTimeout(removeLoader, 2000);
   </script>
 
   <script src="flutter_bootstrap.js" async></script>
