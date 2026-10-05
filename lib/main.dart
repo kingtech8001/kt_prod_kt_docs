@@ -7,6 +7,8 @@ import 'package:kt_prod_kt_docs/core/theme/app_theme.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'dart:async';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -14,7 +16,6 @@ void main() async {
   usePathUrlStrategy();
 
   // Initialize Supabase Backend
-
   await Supabase.initialize(
     url: AppConstants.supabaseUrl,
     anonKey: AppConstants.supabaseAnonKey,
@@ -23,9 +24,32 @@ void main() async {
     ),
   );
 
-  // Always start at SplashView — it asynchronously waits for Supabase
-  // to finish restoring the persisted session from browser storage
-  // before routing to Dashboard (authenticated) or Login (unauthenticated).
+  // Asynchronously await Supabase session restoration from browser storage
+  // so any direct web URL refresh (/dashboard, /vehicle-docs, etc.)
+  // already has the authenticated user and token available BEFORE
+  // controllers and views mount, eliminating the blank screen race condition.
+  if (Supabase.instance.client.auth.currentUser == null) {
+    try {
+      final completer = Completer<void>();
+      late final StreamSubscription<AuthState> sub;
+      sub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        if (!completer.isCompleted) {
+          if (data.event == AuthChangeEvent.initialSession ||
+              data.event == AuthChangeEvent.signedIn ||
+              data.event == AuthChangeEvent.signedOut ||
+              data.event == AuthChangeEvent.tokenRefreshed) {
+            completer.complete();
+            sub.cancel();
+          }
+        }
+      });
+      await completer.future.timeout(
+        const Duration(milliseconds: 1500),
+        onTimeout: () => sub.cancel(),
+      );
+    } catch (_) {}
+  }
+
   runApp(const KTVaultApp());
 }
 

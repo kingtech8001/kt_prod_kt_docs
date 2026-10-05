@@ -29,12 +29,13 @@ class SplashController extends GetxController {
     try {
       AppLogger.debug(_tag, 'Waiting for Supabase session restoration...');
 
-      // Check if session is already available synchronously (fast path)
+      // Check if session or demo mode is already available synchronously (fast path)
       final immediateUser = Supabase.instance.client.auth.currentUser;
-      if (immediateUser != null) {
+      final isDemo = Get.isRegistered<AuthService>() && AuthService.to.isDemoMode.value;
+      if (immediateUser != null || isDemo) {
         AppLogger.info(
           _tag,
-          'Session already available for: ${immediateUser.email}',
+          'Session or Demo mode already available, navigating to dashboard.',
         );
         _navigateToApp(authenticated: true);
         return;

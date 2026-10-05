@@ -157,14 +157,14 @@
       removeLoader();
     });
 
-    // Safety fallback: ensure loader is always dismissed even on slow networks or unexpected delays
-    setTimeout(removeLoader, 2000);
+    // Safety fallback: ensure loader is dismissed if rendering takes abnormally long (15s)
+    setTimeout(removeLoader, 15000);
 
-    // Auto-update service worker to discard stale cached JS bundles
+    // Unregister legacy service workers to prevent infinite client.navigate reload loops and Error Code 5 crashes
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (registrations) {
         for (var registration of registrations) {
-          registration.update();
+          registration.unregister();
         }
       });
     }

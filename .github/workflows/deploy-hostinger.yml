@@ -5,6 +5,11 @@ on:
     branches:
       - main
       - master
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+concurrency:
+  group: deploy-hostinger
+  cancel-in-progress: true
 
 jobs:
   build_and_deploy:
@@ -23,32 +28,29 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Enable Flutter Web
-        run: flutter config --enable-web
-
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Verify Flutter Setup
-        run: flutter doctor -v
-
-      - name: Build Flutter Web
+      - name: Build Flutter Web Release
         run: flutter build web --release
 
       - name: Ensure .htaccess is included in build output
         run: |
           if [ -f web/.htaccess ]; then
             cp web/.htaccess build/web/.htaccess
+            echo ".htaccess copied successfully to build/web/"
           fi
+          ls -la build/web/
 
-      - name: Upload to Hostinger via FTP
+      - name: Upload to Hostinger via FTP/FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          port: 21
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftp' }}
+          port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: build/web/
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          server-dir: ${{ secrets.FTP_SERVER_DIR || 'public_html/' }}
+          dangerous-clean-slate: false
           log-level: verbose

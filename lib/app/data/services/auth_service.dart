@@ -3,6 +3,7 @@ import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService extends GetxService {
@@ -16,10 +17,9 @@ class AuthService extends GetxService {
   final isLoadingProfile = false.obs;
   final isDemoMode = false.obs;
 
-  /// Flag to track whether the splash screen has finished resolving
-  /// the initial session. Prevents the auth listener from firing
-  /// premature redirects during startup.
-  bool _initialSessionResolved = false;
+  /// Flag to track whether initial session resolution is complete.
+  /// Set to true because main() awaits initial session restoration before runApp().
+  bool _initialSessionResolved = true;
 
   bool get isAuthenticated =>
       isDemoMode.value || Supabase.instance.client.auth.currentUser != null;
@@ -39,7 +39,7 @@ class AuthService extends GetxService {
     return currentProfile.value?.role.toLowerCase() == 'super_admin';
   }
 
-  void enterDemoMode() {
+  void enterDemoMode({bool persist = true}) {
     isDemoMode.value = true;
     currentProfile.value = ProfileModel(
       id: 'demo-admin-id',
@@ -50,12 +50,16 @@ class AuthService extends GetxService {
       isActive: true,
       createdAt: DateTime.now(),
     );
+    if (persist) {
+      SharedPreferences.getInstance().then((p) => p.setBool('kt_demo_mode', true)).catchError((_) {});
+    }
     AppLogger.info('AUTH_SERVICE', 'Entered Demo Mode with in-memory Profile.');
   }
 
   void exitDemoMode() {
     isDemoMode.value = false;
     currentProfile.value = null;
+    SharedPreferences.getInstance().then((p) => p.remove('kt_demo_mode')).catchError((_) {});
     AppLogger.info('AUTH_SERVICE', 'Exited Demo Mode.');
   }
 
@@ -78,9 +82,7 @@ class AuthService extends GetxService {
     return user?.email?.split('@').first ?? 'Admin';
   }
 
-  /// Called by SplashController once it has finished processing the
-  /// initial session. After this, the auth listener is allowed to
-  /// perform auto-redirects (e.g. redirect to login on sign-out).
+  /// Mark initial session resolution complete.
   void markInitialSessionResolved() {
     _initialSessionResolved = true;
     AppLogger.debug(
@@ -92,10 +94,20 @@ class AuthService extends GetxService {
   @override
   void onInit() {
     super.onInit();
+    _checkPersistedDemoMode();
     _initAuthListener();
     if (isAuthenticated) {
       loadProfile();
     }
+  }
+
+  Future<void> _checkPersistedDemoMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('kt_demo_mode') == true && !isDemoMode.value) {
+        enterDemoMode(persist: false);
+      }
+    } catch (_) {}
   }
 
   void _initAuthListener() {
@@ -109,7 +121,6 @@ class AuthService extends GetxService {
       );
 
       if (event == AuthChangeEvent.initialSession) {
-        // Handled by SplashController — do not redirect here
         if (session != null) {
           loadProfile();
         }
@@ -122,19 +133,18 @@ class AuthService extends GetxService {
         currentProfile.value = null;
       }
 
-      // Only redirect after the splash screen has finished its work
       if (!_initialSessionResolved) return;
 
       if (event == AuthChangeEvent.signedOut) {
-        // Session expired or user signed out — redirect to login
-        final currentRoute = Get.currentRoute;
-        if (currentRoute != AppRoutes.LOGIN &&
-            currentRoute != AppRoutes.SPLASH) {
-          AppLogger.info(
-            'AUTH_SERVICE',
-            'Session lost — redirecting to login.',
-          );
-          Get.offAllNamed(AppRoutes.LOGIN);
+        if (!isDemoMode.value) {
+          final currentRoute = Get.currentRoute;
+          if (currentRoute != AppRoutes.LOGIN) {
+            AppLogger.info(
+              'AUTH_SERVICE',
+              'Session lost — redirecting to login.',
+            );
+            Get.offAllNamed(AppRoutes.LOGIN);
+          }
         }
       }
     });
