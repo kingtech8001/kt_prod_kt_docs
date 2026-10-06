@@ -14,6 +14,9 @@
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
+  # Explicitly return HTTP 404 for service worker requests so browsers immediately unregister it
+  RewriteRule ^flutter_service_worker\.js$ - [R=404,L]
+
   # Rewrite all other URLs to /index.html for Flutter Web SPA routing
   RewriteRule ^.*$ /index.html [L]
 </IfModule>

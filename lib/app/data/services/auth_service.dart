@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
@@ -8,30 +9,42 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService extends GetxService {
   final AuthRepository _authRepository;
+  final bool _initialDemoMode;
 
-  AuthService(this._authRepository);
+  AuthService(this._authRepository, {bool initialDemoMode = false})
+      : _initialDemoMode = initialDemoMode;
 
   static AuthService get to => Get.find<AuthService>();
 
   final currentProfile = Rxn<ProfileModel>();
   final isLoadingProfile = false.obs;
-  final isDemoMode = false.obs;
+  late final isDemoMode = _initialDemoMode.obs;
 
   /// Flag to track whether initial session resolution is complete.
-  /// Set to true because main() awaits initial session restoration before runApp().
-  bool _initialSessionResolved = true;
+  /// Starts false to avoid hijacking route resolution during initial app mount.
+  bool _initialSessionResolved = false;
 
-  bool get isAuthenticated =>
-      isDemoMode.value || Supabase.instance.client.auth.currentUser != null;
+  bool get isAuthenticated {
+    if (isDemoMode.value) return true;
+    try {
+      return Supabase.instance.client.auth.currentUser != null;
+    } catch (_) {
+      return false;
+    }
+  }
 
   bool get isAdmin {
     if (isDemoMode.value) return true;
     final role = currentProfile.value?.role.toLowerCase();
     if (role == 'admin' || role == 'super_admin') return true;
     // Check fallback user metadata if database profile is still loading
-    final user = Supabase.instance.client.auth.currentUser;
-    final metaRole = user?.userMetadata?['role']?.toString().toLowerCase();
-    return metaRole == 'admin' || metaRole == 'super_admin';
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final metaRole = user?.userMetadata?['role']?.toString().toLowerCase();
+      return metaRole == 'admin' || metaRole == 'super_admin';
+    } catch (_) {
+      return false;
+    }
   }
 
   bool get isSuperAdmin {
@@ -67,19 +80,27 @@ class AuthService extends GetxService {
     if (currentProfile.value != null) {
       return currentProfile.value!.role.toUpperCase();
     }
-    final user = Supabase.instance.client.auth.currentUser;
-    final metaRole = user?.userMetadata?['role']?.toString().toUpperCase();
-    return metaRole ?? 'ADMIN';
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final metaRole = user?.userMetadata?['role']?.toString().toUpperCase();
+      return metaRole ?? 'ADMIN';
+    } catch (_) {
+      return 'ADMIN';
+    }
   }
 
   String get userName {
     if (currentProfile.value != null && currentProfile.value!.fullName.isNotEmpty) {
       return currentProfile.value!.fullName;
     }
-    final user = Supabase.instance.client.auth.currentUser;
-    final metaName = user?.userMetadata?['full_name']?.toString();
-    if (metaName != null && metaName.isNotEmpty) return metaName;
-    return user?.email?.split('@').first ?? 'Admin';
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final metaName = user?.userMetadata?['full_name']?.toString();
+      if (metaName != null && metaName.isNotEmpty) return metaName;
+      return user?.email?.split('@').first ?? 'Admin';
+    } catch (_) {
+      return 'Admin';
+    }
   }
 
   /// Mark initial session resolution complete.
@@ -94,60 +115,64 @@ class AuthService extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    _checkPersistedDemoMode();
+    if (_initialDemoMode) {
+      enterDemoMode(persist: false);
+    }
     _initAuthListener();
-    if (isAuthenticated) {
+    if (isAuthenticated && !isDemoMode.value) {
       loadProfile();
     }
   }
 
-  Future<void> _checkPersistedDemoMode() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool('kt_demo_mode') == true && !isDemoMode.value) {
-        enterDemoMode(persist: false);
-      }
-    } catch (_) {}
-  }
-
   void _initAuthListener() {
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final event = data.event;
-      final session = data.session;
+    // Only allow sign-out redirects AFTER initial frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialSessionResolved = true;
+    });
 
-      AppLogger.debug(
-        'AUTH_SERVICE',
-        'onAuthStateChange: event=$event, hasSession=${session != null}',
-      );
+    try {
+      Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        final event = data.event;
+        final session = data.session;
 
-      if (event == AuthChangeEvent.initialSession) {
-        if (session != null) {
-          loadProfile();
+        AppLogger.debug(
+          'AUTH_SERVICE',
+          'onAuthStateChange: event=$event, hasSession=${session != null}',
+        );
+
+        if (event == AuthChangeEvent.initialSession) {
+          if (session != null && !isDemoMode.value) {
+            loadProfile();
+          }
+          return;
         }
-        return;
-      }
 
-      if (session != null) {
-        loadProfile();
-      } else {
-        currentProfile.value = null;
-      }
-
-      if (!_initialSessionResolved) return;
-
-      if (event == AuthChangeEvent.signedOut) {
-        if (!isDemoMode.value) {
-          final currentRoute = Get.currentRoute;
-          if (currentRoute != AppRoutes.LOGIN) {
-            AppLogger.info(
-              'AUTH_SERVICE',
-              'Session lost — redirecting to login.',
-            );
-            Get.offAllNamed(AppRoutes.LOGIN);
+        if (session != null) {
+          if (!isDemoMode.value) {
+            loadProfile();
+          }
+        } else {
+          if (!isDemoMode.value) {
+            currentProfile.value = null;
           }
         }
-      }
-    });
+
+        if (!_initialSessionResolved) return;
+
+        if (event == AuthChangeEvent.signedOut) {
+          if (!isDemoMode.value) {
+            final currentRoute = Get.currentRoute;
+            if (currentRoute != AppRoutes.LOGIN) {
+              AppLogger.info(
+                'AUTH_SERVICE',
+                'Session lost — redirecting to login.',
+              );
+              Get.offAllNamed(AppRoutes.LOGIN);
+            }
+          }
+        }
+      });
+    } catch (_) {}
   }
 
   Future<void> loadProfile() async {

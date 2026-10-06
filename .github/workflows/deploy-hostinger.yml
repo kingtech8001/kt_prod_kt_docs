@@ -32,7 +32,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web Release
-        run: flutter build web --release
+        run: flutter build web --release --pwa-strategy=none --base-href=/
 
       - name: Ensure .htaccess is included in build output
         run: |
@@ -40,6 +40,8 @@ jobs:
             cp web/.htaccess build/web/.htaccess
             echo ".htaccess copied successfully to build/web/"
           fi
+          # Ensure no service worker file is deployed
+          rm -f build/web/flutter_service_worker.js
           ls -la build/web/
 
       - name: Upload to Hostinger via FTP/FTPS

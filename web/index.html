@@ -16,6 +16,24 @@
   -->
   <base href="$FLUTTER_BASE_HREF">
 
+  <!-- Immediately eradicate all registered service workers and caches to prevent reload loops and RESULT_CODE_HUNG crashes -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          registrations[i].unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function (names) {
+        for (var i = 0; i < names.length; i++) {
+          caches.delete(names[i]);
+        }
+      });
+    }
+  </script>
+
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="DocHolder - Document Vault & Management Platform">
@@ -159,15 +177,6 @@
 
     // Safety fallback: ensure loader is dismissed if rendering takes abnormally long (15s)
     setTimeout(removeLoader, 15000);
-
-    // Unregister legacy service workers to prevent infinite client.navigate reload loops and Error Code 5 crashes
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function (registrations) {
-        for (var registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
   </script>
 
   <script src="flutter_bootstrap.js" async></script>

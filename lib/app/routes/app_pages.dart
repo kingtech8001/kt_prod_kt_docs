@@ -51,13 +51,11 @@ class AppPages {
       name: AppRoutes.SPLASH,
       page: () => const SplashView(),
       binding: SplashBinding(),
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: AppRoutes.LOGIN,
       page: () => const AuthView(),
       binding: AuthBinding(),
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: AppRoutes.DASHBOARD,

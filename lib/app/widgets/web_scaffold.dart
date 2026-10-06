@@ -107,6 +107,7 @@ class _WebScaffoldState extends State<WebScaffold> {
                         Get.back();
                         if (isDemo) {
                           AuthService.to.exitDemoMode();
+                          Get.offAllNamed(AppRoutes.LOGIN);
                         } else {
                           final authRepo = Get.find<AuthRepository>();
                           await authRepo.signOut();

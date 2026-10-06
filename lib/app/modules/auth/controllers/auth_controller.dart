@@ -22,6 +22,16 @@ class AuthController extends GetxController {
   final obscurePassword = true.obs;
   final lastErrorMessage = ''.obs;
 
+  @override
+  void onInit() {
+    super.onInit();
+    if (Get.isRegistered<AuthService>() && AuthService.to.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.offAllNamed(AppRoutes.DASHBOARD);
+      });
+    }
+  }
+
   void togglePasswordVisibility() {
     obscurePassword.value = !obscurePassword.value;
   }
