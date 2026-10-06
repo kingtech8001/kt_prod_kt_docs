@@ -4,7 +4,7 @@ class AppConstants {
   // App Metadata
   static const String appName = 'DocHolder';
   static const String appTagline = 'King Technology Document Holder & Vault';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.0.1';
 
   // Supabase Configuration
   static const String supabaseUrl = 'https://db.docholder.kingtechnology.in';
