@@ -8,7 +8,7 @@ import Foundation
 import app_links
 import desktop_drop
 import device_info_plus
-import file_picker
+import file_picker_darwin
 import shared_preferences_foundation
 import syncfusion_pdfviewer_macos
 import url_launcher_macos

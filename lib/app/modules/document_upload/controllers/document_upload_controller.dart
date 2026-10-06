@@ -21,6 +21,7 @@ import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
+import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:mime/mime.dart';
 import 'package:uuid/uuid.dart';

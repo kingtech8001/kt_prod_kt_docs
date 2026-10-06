@@ -1,10 +1,50 @@
+import 'dart:typed_data';
+
+import 'package:cross_file/cross_file.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
+import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 
 import 'package:get/get.dart';
+
+/// A concrete [PlatformFile] implementation wrapping drag-and-dropped files.
+base class DroppedPlatformFile extends PlatformFile {
+  @override
+  final String name;
+  final Uint8List _bytes;
+  final int _size;
+  final Uri _uri;
+
+  DroppedPlatformFile({
+    required this.name,
+    required Uint8List bytes,
+    int? size,
+    Uri? uri,
+  })  : _bytes = bytes,
+        _size = size ?? bytes.lengthInBytes,
+        _uri = uri ?? Uri.dataFromBytes(bytes);
+
+  @override
+  Uri get uri => _uri;
+
+  @override
+  XFile get xFile => XFile.fromData(_bytes, name: name);
+
+  @override
+  int? lengthSync() => _size;
+
+  @override
+  Future<int?> length() async => _size;
+
+  @override
+  Future<Uint8List> readAsBytes() async => _bytes;
+
+  @override
+  Stream<Uint8List> readAsByteStream() => Stream.value(_bytes);
+}
 
 class WebDropzone extends StatelessWidget {
   final ValueChanged<PlatformFile> onFileSelected;
@@ -19,14 +59,16 @@ class WebDropzone extends StatelessWidget {
   final RxBool _isDragging = false.obs;
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'docx', 'xlsx'],
-      withData: true,
     );
 
-    if (result != null && result.files.isNotEmpty) {
-      onFileSelected(result.files.first);
+    if (files.isNotEmpty) {
+      final picked = files.first;
+      // Pre-cache bytes for synchronous access in upload controller & preview
+      await picked.loadBytes();
+      onFileSelected(picked);
     }
   }
 
@@ -37,11 +79,13 @@ class WebDropzone extends StatelessWidget {
         if (detail.files.isNotEmpty) {
           final file = detail.files.first;
           final bytes = await file.readAsBytes();
-          final platformFile = PlatformFile(
+          final platformFile = DroppedPlatformFile(
             name: file.name,
             size: bytes.lengthInBytes,
             bytes: bytes,
+            uri: file.path.isNotEmpty ? Uri.tryParse(file.path) : null,
           );
+          platformFile.bytes = bytes;
           onFileSelected(platformFile);
         }
       },
@@ -106,7 +150,7 @@ class WebDropzone extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${CompressionResult.formatFileSize(currentFile!.size)} • Ready to upload',
+                        '${CompressionResult.formatFileSize(currentFile!.lengthSync() ?? 0)} • Ready to upload',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.success,

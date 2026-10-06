@@ -64,7 +64,7 @@ class AuthService extends GetxService {
       createdAt: DateTime.now(),
     );
     if (persist) {
-      SharedPreferences.getInstance().then((p) => p.setBool('kt_demo_mode', true)).catchError((_) {});
+      SharedPreferences.getInstance().then((p) => p.setBool('kt_demo_mode', true)).catchError((_) => false);
     }
     AppLogger.info('AUTH_SERVICE', 'Entered Demo Mode with in-memory Profile.');
   }
@@ -72,7 +72,7 @@ class AuthService extends GetxService {
   void exitDemoMode() {
     isDemoMode.value = false;
     currentProfile.value = null;
-    SharedPreferences.getInstance().then((p) => p.remove('kt_demo_mode')).catchError((_) {});
+    SharedPreferences.getInstance().then((p) => p.remove('kt_demo_mode')).catchError((_) => false);
     AppLogger.info('AUTH_SERVICE', 'Exited Demo Mode.');
   }
 

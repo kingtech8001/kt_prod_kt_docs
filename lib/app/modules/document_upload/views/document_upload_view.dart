@@ -9,6 +9,7 @@ import 'package:kt_prod_kt_docs/app/widgets/web_dropzone.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
+import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 
