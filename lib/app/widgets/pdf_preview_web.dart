@@ -1,8 +1,9 @@
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
 
 import 'package:flutter/material.dart';
+import 'package:web/web.dart' as web;
 
 class PdfPreview extends StatelessWidget {
   final Uint8List bytes;
@@ -26,16 +27,23 @@ class PdfPreview extends StatelessWidget {
     if (_registeredViewTypes.contains(_viewType)) return;
 
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
-      final blob = html.Blob([bytes], 'application/pdf');
-      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
-      final iframe = html.IFrameElement()
+      final blob = web.Blob(
+        [bytes.toJS].toJS,
+        web.BlobPropertyBag(type: 'application/pdf'),
+      );
+      final blobUrl = web.URL.createObjectURL(blob);
+      final iframe = web.document.createElement('iframe') as web.HTMLIFrameElement
         ..src = blobUrl
         ..style.border = '0'
         ..style.width = '100%'
         ..style.height = '100%'
         ..setAttribute('title', 'KT Docs PDF preview');
-      iframe.onLoad.listen((_) => onDocumentLoaded());
-      iframe.onError.listen((_) => onDocumentLoadFailed('Browser PDF iframe failed to load.'));
+      iframe.onload = (web.Event _) {
+        onDocumentLoaded();
+      }.toJS;
+      iframe.onerror = (web.Event _) {
+        onDocumentLoadFailed('Browser PDF iframe failed to load.');
+      }.toJS;
       return iframe;
     });
     _registeredViewTypes.add(_viewType);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
@@ -112,6 +113,9 @@ class AuthService extends GetxService {
     );
   }
 
+  StreamSubscription<AuthState>? _authSubscription;
+  bool _isHydrating = false;
+
   @override
   void onInit() {
     super.onInit();
@@ -119,9 +123,15 @@ class AuthService extends GetxService {
       enterDemoMode(persist: false);
     }
     _initAuthListener();
-    if (isAuthenticated && !isDemoMode.value) {
+    if (isAuthenticated && !isDemoMode.value && currentProfile.value == null) {
       loadProfile();
     }
+  }
+
+  @override
+  void onClose() {
+    _authSubscription?.cancel();
+    super.onClose();
   }
 
   void _initAuthListener() {
@@ -130,8 +140,9 @@ class AuthService extends GetxService {
       _initialSessionResolved = true;
     });
 
+    _authSubscription?.cancel();
     try {
-      Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
         final event = data.event;
         final session = data.session;
 
@@ -140,18 +151,26 @@ class AuthService extends GetxService {
           'onAuthStateChange: event=$event, hasSession=${session != null}',
         );
 
+        // Background JWT / session token refreshes must not trigger database re-hydration
+        if (event == AuthChangeEvent.tokenRefreshed) {
+          return;
+        }
+
         if (event == AuthChangeEvent.initialSession) {
-          if (session != null && !isDemoMode.value) {
+          if (session != null && !isDemoMode.value && currentProfile.value == null) {
             loadProfile();
           }
           return;
         }
 
-        if (session != null) {
-          if (!isDemoMode.value) {
-            loadProfile();
+        if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.userUpdated) {
+          if (session != null && !isDemoMode.value) {
+            loadProfile(force: true);
           }
-        } else {
+          return;
+        }
+
+        if (session == null) {
           if (!isDemoMode.value) {
             currentProfile.value = null;
           }
@@ -175,9 +194,13 @@ class AuthService extends GetxService {
     } catch (_) {}
   }
 
-  Future<void> loadProfile() async {
+  Future<void> loadProfile({bool force = false}) async {
     if (isDemoMode.value) return;
     if (!isAuthenticated) return;
+    if (_isHydrating || isLoadingProfile.value) return;
+    if (!force && currentProfile.value != null) return;
+
+    _isHydrating = true;
     isLoadingProfile.value = true;
     try {
       AppLogger.debug('AUTH_SERVICE', 'Hydrating current user profile from database...');
@@ -192,6 +215,7 @@ class AuthService extends GetxService {
     } catch (e, st) {
       AppLogger.error('AUTH_SERVICE', 'Error hydrating profile: $e', error: e, stackTrace: st);
     } finally {
+      _isHydrating = false;
       isLoadingProfile.value = false;
     }
   }

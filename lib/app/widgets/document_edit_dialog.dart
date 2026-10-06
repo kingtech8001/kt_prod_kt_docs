@@ -845,7 +845,7 @@ class DocumentEditDialog extends StatelessWidget {
                                           child: Obx(
                                             () =>
                                                 DropdownButtonFormField<String>(
-                                              value: AppConstants.popularBrands
+                                              initialValue: AppConstants.popularBrands
                                                       .contains(item
                                                           .selectedBrand.value)
                                                   ? item.selectedBrand.value
@@ -908,7 +908,7 @@ class DocumentEditDialog extends StatelessWidget {
                                         Expanded(
                                           child: Obx(
                                             () => DropdownButtonFormField<int>(
-                                              value: item.warrantyMonths.value,
+                                              initialValue: item.warrantyMonths.value,
                                               decoration: const InputDecoration(
                                                 labelText: 'Warranty Period',
                                               ),

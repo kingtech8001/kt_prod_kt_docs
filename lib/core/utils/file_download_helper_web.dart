@@ -1,5 +1,6 @@
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:typed_data';
+import 'package:web/web.dart' as web;
 
 /// Browser-native file download implementation for Flutter Web using Blob URLs.
 void triggerFileDownload({
@@ -7,13 +8,18 @@ void triggerFileDownload({
   required String fileName,
   String? mimeType,
 }) {
-  final blob = html.Blob([bytes], mimeType ?? 'application/octet-stream');
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  final anchor = html.AnchorElement(href: url)
+  final blob = web.Blob(
+    [bytes.toJS].toJS,
+    web.BlobPropertyBag(type: mimeType ?? 'application/octet-stream'),
+  );
+  final url = web.URL.createObjectURL(blob);
+  final anchor = web.document.createElement('a') as web.HTMLAnchorElement
+    ..href = url
     ..setAttribute('download', fileName)
     ..style.display = 'none';
-  html.document.body?.children.add(anchor);
+  web.document.body?.append(anchor);
   anchor.click();
   anchor.remove();
-  html.Url.revokeObjectUrl(url);
+  web.URL.revokeObjectURL(url);
 }
+

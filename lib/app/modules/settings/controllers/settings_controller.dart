@@ -360,7 +360,7 @@ class SettingsController extends GetxController {
             ),
             const SizedBox(height: 6),
             Obx(() => DropdownButtonFormField<String>(
-                  value: brandCategoryType.value,
+                  initialValue: brandCategoryType.value,
                   items: const [
                     DropdownMenuItem(value: 'appliance', child: Text('Home Appliance')),
                     DropdownMenuItem(value: 'electronics', child: Text('Electronics & Gadgets')),
@@ -587,7 +587,7 @@ class SettingsController extends GetxController {
             ),
             const SizedBox(height: 6),
             Obx(() => DropdownButtonFormField<String>(
-                  value: utilityTypeSelection.value,
+                  initialValue: utilityTypeSelection.value,
                   items: const [
                     DropdownMenuItem(value: 'Light / Electricity Bill', child: Text('Light / Electricity')),
                     DropdownMenuItem(value: 'Gas Bill (PNG / Piped)', child: Text('Gas (PNG / Piped)')),
@@ -705,7 +705,7 @@ class SettingsController extends GetxController {
             ),
             const SizedBox(height: 6),
             Obx(() => DropdownButtonFormField<String>(
-                  value: personRelationship.value,
+                  initialValue: personRelationship.value,
                   items: const [
                     DropdownMenuItem(value: 'Self', child: Text('Self')),
                     DropdownMenuItem(value: 'Spouse', child: Text('Spouse / Partner')),

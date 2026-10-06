@@ -1357,7 +1357,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     Obx(
                       () => Switch(
                         value: item.hasWarrantyCoverage.value,
-                        activeColor: AppColors.warrantyEmerald,
+                        activeThumbColor: AppColors.warrantyEmerald,
                         onChanged: (val) => controller
                             .toggleItemWarrantyCoverage(index, val),
                       ),
@@ -1651,8 +1651,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         firstDate: DateTime(1950),
                         lastDate: DateTime(2050),
                       );
-                      if (picked != null)
+                      if (picked != null) {
                         controller.personalIssueDate.value = picked;
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -1718,8 +1719,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       firstDate: DateTime(1950),
                       lastDate: DateTime(2060),
                     );
-                    if (picked != null)
+                    if (picked != null) {
                       controller.personalExpiryDate.value = picked;
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -2237,8 +2239,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                 )
                                 .toList(),
                         onChanged: (val) {
-                          if (val != null)
+                          if (val != null) {
                             controller.selectedCity.value = val;
+                          }
                         },
                       ),
                     ),
@@ -2461,169 +2464,174 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             ),
             const SizedBox(height: 8),
 
-            // Option 1 (Default): Upload Original Quality
-            InkWell(
-              onTap: () => controller.setUploadCompressionMode(false),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: !isCompressedSelected
-                      ? AppColors.primarySurface
-                      : AppColors.background,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: !isCompressedSelected
-                        ? AppColors.primary
-                        : AppColors.border,
-                    width: !isCompressedSelected ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Radio<bool>(
-                      value: false,
-                      groupValue: controller.useCompressed.value,
-                      onChanged: (val) =>
-                          controller.setUploadCompressionMode(val ?? false),
-                      activeColor: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            // Upload options in RadioGroup
+            RadioGroup<bool>(
+              groupValue: controller.useCompressed.value,
+              onChanged: (val) =>
+                  controller.setUploadCompressionMode(val ?? false),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Option 1 (Default): Upload Original Quality
+                  InkWell(
+                    onTap: () => controller.setUploadCompressionMode(false),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: !isCompressedSelected
+                            ? AppColors.primarySurface
+                            : AppColors.background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: !isCompressedSelected
+                              ? AppColors.primary
+                              : AppColors.border,
+                          width: !isCompressedSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              const Text(
-                                'Upload Original Quality',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                          Radio<bool>(
+                            value: false,
+                            activeColor: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Upload Original Quality',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.textSecondary.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'Default',
+                                        style: TextStyle(
+                                          color: AppColors.textPrimary,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.textSecondary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'Default',
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Full original file (${CompressionResult.formatFileSize(file.size)}) without compression.',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Full original file (${CompressionResult.formatFileSize(file.size)}) without compression.',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Option 2: Upload Compressed File
-            InkWell(
-              onTap: () => controller.setUploadCompressionMode(true),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isCompressedSelected
-                      ? AppColors.primarySurface
-                      : AppColors.background,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isCompressedSelected
-                        ? AppColors.primary
-                        : AppColors.border,
-                    width: isCompressedSelected ? 1.5 : 1,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Radio<bool>(
-                      value: true,
-                      groupValue: controller.useCompressed.value,
-                      onChanged: (val) =>
-                          controller.setUploadCompressionMode(val ?? true),
-                      activeColor: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+
+                  const SizedBox(height: 8),
+
+                  // Option 2: Upload Compressed File
+                  InkWell(
+                    onTap: () => controller.setUploadCompressionMode(true),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isCompressedSelected
+                            ? AppColors.primarySurface
+                            : AppColors.background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isCompressedSelected
+                              ? AppColors.primary
+                              : AppColors.border,
+                          width: isCompressedSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              const Text(
-                                'Upload Compressed File',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                          Radio<bool>(
+                            value: true,
+                            activeColor: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Upload Compressed File',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.secondary,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'API Optimized',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.secondary,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'API Optimized',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
+                                const SizedBox(height: 2),
+                                Text(
+                                  result != null
+                                      ? 'Optimized size (${result.compressedSizeFormatted}). Saves cloud storage & loads faster.'
+                                      : 'Compresses via King Technology Media Engine API before saving to vault.',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            result != null
-                                ? 'Optimized size (${result.compressedSizeFormatted}). Saves cloud storage & loads faster.'
-                                : 'Compresses via King Technology Media Engine API before saving to vault.',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
 

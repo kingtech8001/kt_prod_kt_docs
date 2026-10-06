@@ -73,8 +73,8 @@ class SettingsDataset {
     try {
       await _client.from('profiles').update({
         'full_name': fullName,
-        if (department != null) 'department': department,
-        if (phoneNumber != null) 'phone_number': phoneNumber,
+        'department': ?department,
+        'phone_number': ?phoneNumber,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', user.id);
     } catch (e, st) {
