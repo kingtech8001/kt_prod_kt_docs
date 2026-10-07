@@ -1,3 +1,4 @@
+import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'address_model.dart';
 import 'appliance_warranty_model.dart';
 import 'personal_document_models.dart';
@@ -84,6 +85,84 @@ class DocumentModel {
   bool get isImage =>
       ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].contains(fileType.toLowerCase()) ||
       mimeType.startsWith('image/');
+  String get fileSizeFormatted => AppFormatters.formatFileSize(fileSize);
+
+  /// Identifies whether the attachment URL/path originates from Google Drive or Google services.
+  bool get isGoogleAttachment {
+    final path = filePath.toLowerCase().trim();
+    if (path.contains('drive.google.com') ||
+        path.contains('docs.google.com') ||
+        path.contains('storage.googleapis.com') ||
+        path.contains('google.com') ||
+        path.contains('goo.gl')) {
+      return true;
+    }
+    final fType = fileType.toLowerCase().trim();
+    if (fType == 'gdrive' ||
+        fType == 'google' ||
+        fType == 'googledrive' ||
+        fType == 'google_drive') {
+      return true;
+    }
+    final mType = mimeType.toLowerCase().trim();
+    if (mType.contains('google') || mType.contains('gdrive')) {
+      return true;
+    }
+    final fName = fileName.toLowerCase().trim();
+    if (fName.contains('google drive') || fName.contains('gdrive')) {
+      return true;
+    }
+    final tName = title.toLowerCase().trim();
+    if (tName.contains('google drive') || tName.contains('(google drive)')) {
+      return true;
+    }
+    for (final key in extraAttributes.keys) {
+      if (key.toLowerCase().contains('google') ||
+          key.toLowerCase().contains('drive')) {
+        return true;
+      }
+    }
+    for (final val in extraAttributes.values) {
+      if (val is String) {
+        final s = val.toLowerCase().trim();
+        if (s.contains('drive.google.com') ||
+            s.contains('docs.google.com') ||
+            s.contains('google.com') ||
+            s.contains('goo.gl')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Returns the resolved Google Drive or Google Docs URL if present.
+  String? get googleAttachmentUrl {
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      if (isGoogleAttachment ||
+          filePath.toLowerCase().contains('google') ||
+          filePath.toLowerCase().contains('drive')) {
+        return filePath;
+      }
+    }
+    for (final entry in extraAttributes.entries) {
+      final k = entry.key.toLowerCase();
+      final v = entry.value;
+      if (v is String &&
+          (v.startsWith('http://') || v.startsWith('https://'))) {
+        if (k.contains('url') ||
+            k.contains('link') ||
+            k.contains('drive') ||
+            k.contains('google')) {
+          return v.trim();
+        }
+      }
+    }
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    return null;
+  }
 
   String get city => address?.city ?? 'All Cities';
   String get brand => applianceWarranty?.brand ?? 'Unknown';
@@ -184,9 +263,16 @@ class DocumentModel {
   DocumentModel copyWith({
     String? title,
     String? description,
+    String? documentNumber,
     String? subCategory,
     String? status,
     bool? isFavorite,
+    String? fileName,
+    String? filePath,
+    String? fileType,
+    String? mimeType,
+    int? fileSize,
+    Map<String, dynamic>? extraAttributes,
     AddressModel? address,
     UtilityMetadataModel? utilityMetadata,
     ApplianceWarrantyModel? applianceWarranty,
@@ -203,17 +289,17 @@ class DocumentModel {
       subCategory: subCategory ?? this.subCategory,
       folderId: folderId,
       folderName: folderName,
-      fileName: fileName,
-      filePath: filePath,
-      fileType: fileType,
-      mimeType: mimeType,
-      fileSize: fileSize,
+      fileName: fileName ?? this.fileName,
+      filePath: filePath ?? this.filePath,
+      fileType: fileType ?? this.fileType,
+      mimeType: mimeType ?? this.mimeType,
+      fileSize: fileSize ?? this.fileSize,
       thumbnailPath: thumbnailPath,
-      documentNumber: documentNumber,
+      documentNumber: documentNumber ?? this.documentNumber,
       status: status ?? this.status,
       uploadedBy: uploadedBy,
       uploaderName: uploaderName,
-      extraAttributes: extraAttributes,
+      extraAttributes: extraAttributes ?? this.extraAttributes,
       deletedAt: deletedAt,
       deletedBy: deletedBy,
       createdAt: createdAt,

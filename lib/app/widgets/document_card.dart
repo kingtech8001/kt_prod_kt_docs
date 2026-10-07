@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/status_badge.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
@@ -73,10 +74,14 @@ class DocumentCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: fileColor.withValues(alpha: 0.1),
+                        color: doc.isGoogleAttachment
+                            ? const Color(0xFFF0FDF4)
+                            : fileColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(fileIcon, color: fileColor, size: 24),
+                      child: doc.isGoogleAttachment
+                          ? const GoogleDriveLogo(size: 24)
+                          : Icon(fileIcon, color: fileColor, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -126,6 +131,8 @@ class DocumentCard extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
+                    if (doc.isGoogleAttachment)
+                      const GoogleDriveBadge(compact: true),
                     if (hasAddress)
                       StatusBadge.city(cityName: doc.address!.city),
                     if (hasUtility) ...[

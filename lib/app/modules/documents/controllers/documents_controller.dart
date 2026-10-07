@@ -156,6 +156,14 @@ class DocumentsController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
+      if (doc.isGoogleAttachment) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
         PdfViewerDialog.show(
@@ -190,6 +198,14 @@ class DocumentsController extends GetxController {
 
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
+      if (doc.isGoogleAttachment) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
@@ -289,6 +305,10 @@ class DocumentsController extends GetxController {
         documentNumber,
         applianceWarranty,
         vehicleMetadata,
+        newFileName,
+        newFileBytes,
+        newMimeType,
+        attachmentUrl,
       }) async {
         try {
           await _dataset.updateDocumentDetails(
@@ -298,6 +318,12 @@ class DocumentsController extends GetxController {
             documentNumber: documentNumber,
             applianceWarranty: applianceWarranty,
             vehicleMetadata: vehicleMetadata,
+            newFileName: newFileName,
+            newFileBytes: newFileBytes,
+            newMimeType: newMimeType,
+            categoryCode: doc.categoryCode,
+            subCategory: doc.subCategory,
+            attachmentUrl: attachmentUrl,
           );
           await fetchFilteredDocuments();
         } catch (e, st) {

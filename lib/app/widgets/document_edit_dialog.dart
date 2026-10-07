@@ -1,14 +1,36 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
+import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
+import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
+import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
+import 'package:mime/mime.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+
+/// Callback typedef for saving document changes with optional payload re-upload.
+typedef DocumentEditSaveCallback = Future<void> Function({
+  required String title,
+  String? description,
+  String? documentNumber,
+  ApplianceWarrantyModel? applianceWarranty,
+  VehicleDocumentMetadataModel? vehicleMetadata,
+  String? newFileName,
+  Uint8List? newFileBytes,
+  String? newMimeType,
+  String? attachmentUrl,
+});
 
 /// Reactive state container for an individual appliance item being edited.
 /// 100% GetX reactive, zero setState.
@@ -82,13 +104,7 @@ class EditApplianceItemState {
 /// Zero setState, responsive fluid constraints, inline error banner, compact AppSnackbar on success.
 class DocumentEditDialog extends StatelessWidget {
   final DocumentModel document;
-  final Future<void> Function({
-    required String title,
-    String? description,
-    String? documentNumber,
-    ApplianceWarrantyModel? applianceWarranty,
-    VehicleDocumentMetadataModel? vehicleMetadata,
-  }) onSave;
+  final DocumentEditSaveCallback onSave;
 
   final TextEditingController _titleController;
   final TextEditingController _descriptionController;
@@ -106,6 +122,23 @@ class DocumentEditDialog extends StatelessWidget {
   final TextEditingController _premiumAmountController;
   final Rx<DateTime?> _issueDate;
   final Rx<DateTime?> _expiryDate;
+
+  // Re-upload & Attachment Configuration
+  final Rx<PlatformFile?> _selectedNewFile = Rx<PlatformFile?>(null);
+  final TextEditingController _attachmentUrlController;
+  final RxBool _showUrlField = false.obs;
+  final RxBool _useCompressed = true.obs;
+  final RxString _compressionPreset = 'recommended'.obs;
+  final RxInt _pdfQuality = 72.obs;
+  final RxInt _pdfDpi = 150.obs;
+  final RxInt _imageQuality = 75.obs;
+  final RxBool _isGrayscale = false.obs;
+  final RxBool _stripMetadata = true.obs;
+  final RxBool _isCompressing = false.obs;
+  final RxDouble _compressionProgress = 0.0.obs;
+  final RxString _compressionProgressText = ''.obs;
+  final Rx<CompressionResult?> _compressionResult = Rx<CompressionResult?>(null);
+  final RxString _compressionError = ''.obs;
 
   final RxBool _isSaving = false.obs;
   final RxString _errorMessage = ''.obs;
@@ -151,7 +184,15 @@ class DocumentEditDialog extends StatelessWidget {
               : '',
         ),
         _issueDate = Rx<DateTime?>(document.vehicleMetadata?.issueDate),
-        _expiryDate = Rx<DateTime?>(document.vehicleMetadata?.expiryDate) {
+        _expiryDate = Rx<DateTime?>(document.vehicleMetadata?.expiryDate),
+        _attachmentUrlController = TextEditingController(
+          text: document.isGoogleAttachment
+              ? (document.googleAttachmentUrl ?? document.filePath)
+              : '',
+        ) {
+    if (document.isGoogleAttachment) {
+      _showUrlField.value = true;
+    }
     _initializeItems();
   }
 
@@ -162,6 +203,14 @@ class DocumentEditDialog extends StatelessWidget {
   bool get _isVehicle =>
       document.vehicleMetadata != null ||
       document.categoryCode == 'vehicle_docs';
+
+  bool get _isCompressible =>
+      _selectedNewFile.value != null &&
+      FileCompressor.isCompressible(_selectedNewFile.value!.name);
+
+  bool get _isNewPdf =>
+      _selectedNewFile.value != null &&
+      FileCompressor.isPdf(_selectedNewFile.value!.name);
 
   void _initializeItems() {
     final w = document.applianceWarranty;
@@ -201,18 +250,123 @@ class DocumentEditDialog extends StatelessWidget {
 
   static Future<bool?> show({
     required DocumentModel document,
-    required Future<void> Function({
-      required String title,
-      String? description,
-      String? documentNumber,
-      ApplianceWarrantyModel? applianceWarranty,
-      VehicleDocumentMetadataModel? vehicleMetadata,
-    }) onSave,
+    required DocumentEditSaveCallback onSave,
   }) {
     return AppDialog.show<bool>(
       DocumentEditDialog(document: document, onSave: onSave),
       barrierDismissible: false,
     );
+  }
+
+  Future<void> _pickFile(BuildContext context) async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'docx', 'xlsx'],
+      );
+      if (result.isNotEmpty) {
+        final file = result.first;
+        await file.loadBytes();
+        _selectedNewFile.value = file;
+        _compressionResult.value = null;
+        _compressionError.value = '';
+        _errorMessage.value = '';
+        if (FileCompressor.isCompressible(file.name) && _useCompressed.value) {
+          _compressSelectedFile();
+        }
+      }
+    } catch (e) {
+      _errorMessage.value = 'Failed to pick file: $e';
+    }
+  }
+
+  Future<void> _compressSelectedFile() async {
+    final file = _selectedNewFile.value;
+    if (file == null) return;
+    final bytes = file.bytes ?? await file.loadBytes();
+    if (bytes.isEmpty) return;
+
+    if (!FileCompressor.isCompressible(file.name)) {
+      _compressionResult.value = null;
+      _compressionError.value = '';
+      return;
+    }
+
+    _isCompressing.value = true;
+    _compressionError.value = '';
+    _compressionProgress.value = 0.15;
+    _compressionProgressText.value =
+        'Connecting to King Technology Media Engine...';
+
+    try {
+      final isPdf = FileCompressor.isPdf(file.name);
+      final result = await FileCompressor.compressFile(
+        bytes: bytes,
+        fileName: file.name,
+        level: _compressionPreset.value,
+        quality: isPdf ? _pdfQuality.value : _imageQuality.value,
+        dpi: isPdf ? _pdfDpi.value : null,
+        grayscale: _isGrayscale.value,
+        stripMetadata: _stripMetadata.value,
+        onProgress: (progress, message) {
+          _compressionProgress.value = progress;
+          _compressionProgressText.value = message;
+        },
+      );
+
+      if (result != null) {
+        _compressionResult.value = result;
+        _compressionProgress.value = 1.0;
+        _compressionProgressText.value = 'Compression complete!';
+      } else {
+        _compressionError.value =
+            'Compression engine did not return a valid result.';
+      }
+    } catch (e) {
+      _compressionError.value =
+          e.toString().replaceAll('Exception:', '').trim();
+    } finally {
+      _isCompressing.value = false;
+    }
+  }
+
+  void _setCompressionPreset(String preset) {
+    if (_compressionPreset.value == preset && _compressionResult.value != null) {
+      return;
+    }
+    _compressionPreset.value = preset;
+    final isPdf = _isNewPdf;
+    if (isPdf) {
+      switch (preset) {
+        case 'recommended':
+          _pdfQuality.value = 72;
+          _pdfDpi.value = 150;
+          break;
+        case 'extreme':
+          _pdfQuality.value = 45;
+          _pdfDpi.value = 96;
+          break;
+        case 'high':
+          _pdfQuality.value = 85;
+          _pdfDpi.value = 200;
+          break;
+      }
+    } else {
+      switch (preset) {
+        case 'recommended':
+          _imageQuality.value = 75;
+          break;
+        case 'extreme':
+          _imageQuality.value = 40;
+          break;
+        case 'high':
+          _imageQuality.value = 90;
+          break;
+      }
+    }
+    if (_useCompressed.value) {
+      _compressSelectedFile();
+    }
   }
 
   void _addApplianceItem() {
@@ -336,6 +490,33 @@ class DocumentEditDialog extends StatelessWidget {
         );
       }
 
+      Uint8List? fileBytesToUpload;
+      String? fileNameToUpload;
+      String? mimeTypeToUpload;
+      String? attachmentUrlToUpload;
+
+      if (_selectedNewFile.value != null) {
+        final file = _selectedNewFile.value!;
+        if (_useCompressed.value && _compressionResult.value != null) {
+          fileBytesToUpload = _compressionResult.value!.compressedBytes;
+          fileNameToUpload = _compressionResult.value!.compressedFileName;
+          mimeTypeToUpload = _compressionResult.value!.mimeType;
+        } else {
+          fileBytesToUpload = file.bytes ?? await file.loadBytes();
+          fileNameToUpload = file.name;
+          mimeTypeToUpload = lookupMimeType(fileNameToUpload) ??
+              (FileCompressor.isPdf(fileNameToUpload)
+                  ? 'application/pdf'
+                  : 'application/octet-stream');
+        }
+      }
+
+      final urlText = _attachmentUrlController.text.trim();
+      if (urlText.isNotEmpty &&
+          urlText != (document.googleAttachmentUrl ?? '')) {
+        attachmentUrlToUpload = urlText;
+      }
+
       await onSave(
         title: title,
         description: _descriptionController.text.trim().isNotEmpty
@@ -346,6 +527,10 @@ class DocumentEditDialog extends StatelessWidget {
             : null,
         applianceWarranty: updatedAppliance,
         vehicleMetadata: updatedVehicle,
+        newFileName: fileNameToUpload,
+        newFileBytes: fileBytesToUpload,
+        newMimeType: mimeTypeToUpload,
+        attachmentUrl: attachmentUrlToUpload,
       );
 
       _disposeControllers();
@@ -372,6 +557,7 @@ class DocumentEditDialog extends StatelessWidget {
     _totalAmountController.dispose();
     _insuranceCompanyController.dispose();
     _premiumAmountController.dispose();
+    _attachmentUrlController.dispose();
     for (var item in _applianceItems) {
       item.dispose();
     }
@@ -386,7 +572,7 @@ class DocumentEditDialog extends StatelessWidget {
       backgroundColor: AppColors.surface,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: (_isAppliance || _isVehicle) ? 680 : 480,
+          maxWidth: (_isAppliance || _isVehicle) ? 720 : 580,
           maxHeight: MediaQuery.sizeOf(context).height * 0.90,
         ),
         child: Padding(
@@ -522,6 +708,8 @@ class DocumentEditDialog extends StatelessWidget {
                         minLines: 2,
                         maxLines: 4,
                       ),
+                      const SizedBox(height: 14),
+                      _buildAttachmentAndReuploadSection(context),
 
                       // Vehicle Document Section
                       if (_isVehicle) ...[
@@ -1003,6 +1191,790 @@ class DocumentEditDialog extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildAttachmentAndReuploadSection(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          const Row(
+            children: [
+              Icon(Icons.attachment_rounded, size: 16, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text(
+                'Attachment & Re-upload',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Current Document State Banner
+          if (document.isGoogleAttachment)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4285F4).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                border: Border.all(
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const GoogleDriveLogo(size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Text(
+                              'Current: Google Drive Link',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            GoogleDriveBadge(compact: true),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          document.googleAttachmentUrl ?? document.filePath,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Open in Google Drive',
+                    icon: const Icon(Icons.open_in_new,
+                        size: 16, color: Color(0xFF4285F4)),
+                    splashRadius: 16,
+                    onPressed: () {
+                      final url =
+                          document.googleAttachmentUrl ?? document.filePath;
+                      final uri = Uri.tryParse(url);
+                      if (uri != null) {
+                        launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    document.fileType == 'pdf'
+                        ? Icons.picture_as_pdf_outlined
+                        : Icons.description_outlined,
+                    size: 22,
+                    color: document.fileType == 'pdf'
+                        ? AppColors.error
+                        : AppColors.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current: ${document.fileName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${document.fileType.toUpperCase()} • ${document.fileSizeFormatted}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+
+          // Re-upload & Link Options Buttons
+          Obx(
+            () => Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickFile(context),
+                    icon: const Icon(Icons.upload_file_rounded, size: 16),
+                    label: Text(
+                      _selectedNewFile.value != null
+                          ? 'Change File (${_selectedNewFile.value!.name.length > 12 ? "${_selectedNewFile.value!.name.substring(0, 10)}..." : _selectedNewFile.value!.name})'
+                          : 'Re-upload / Replace File',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(
+                          color: AppColors.primary, width: 1.2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _showUrlField.toggle(),
+                  icon: const Icon(Icons.link_rounded, size: 16),
+                  label: Text(
+                    _showUrlField.value ? 'Hide Link' : 'Attach URL',
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Optional URL Input (Google Drive or Web URL)
+          Obx(() {
+            if (!_showUrlField.value) return const SizedBox.shrink();
+            final text = _attachmentUrlController.text.toLowerCase();
+            final isGoogle = text.contains('google');
+            return Container(
+              margin: const EdgeInsets.only(top: 10),
+              child: TextField(
+                controller: _attachmentUrlController,
+                decoration: InputDecoration(
+                  labelText: 'Google Drive or Web Document URL',
+                  hintText: 'https://drive.google.com/file/d/...',
+                  prefixIcon: isGoogle
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: GoogleDriveLogo(size: 16),
+                        )
+                      : const Icon(Icons.link,
+                          size: 18, color: AppColors.textSecondary),
+                  suffixIcon: _attachmentUrlController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16),
+                          onPressed: () {
+                            _attachmentUrlController.clear();
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            );
+          }),
+
+          // Selected New File Banner & Upload Configuration
+          Obx(() {
+            final file = _selectedNewFile.value;
+            if (file == null) return const SizedBox.shrink();
+
+            final isPdf = _isNewPdf;
+            final isCompressible = _isCompressible;
+            final isCompressing = _isCompressing.value;
+            final result = _compressionResult.value;
+            final error = _compressionError.value;
+            final isCompressedMode = _useCompressed.value;
+
+            return Container(
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // File Preview Bar
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isPdf
+                              ? AppColors.errorLight
+                              : AppColors.primarySurface,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          isPdf
+                              ? Icons.picture_as_pdf_outlined
+                              : Icons.insert_drive_file_outlined,
+                          size: 18,
+                          color: isPdf ? AppColors.error : AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              file.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Original: ${CompressionResult.formatFileSize(file.size)}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Remove',
+                        icon: const Icon(Icons.close, size: 18),
+                        splashRadius: 16,
+                        onPressed: () {
+                          _selectedNewFile.value = null;
+                          _compressionResult.value = null;
+                          _compressionError.value = '';
+                        },
+                      ),
+                    ],
+                  ),
+
+                  if (isCompressible) ...[
+                    const SizedBox(height: 12),
+                    const Divider(color: AppColors.border, height: 1),
+                    const SizedBox(height: 10),
+
+                    // Upload Version Choice (Original vs Compressed)
+                    Row(
+                      children: [
+                        const Text(
+                          'Upload Version:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        ChoiceChip(
+                          label: const Text('Original Quality',
+                              style: TextStyle(fontSize: 11)),
+                          selected: !_useCompressed.value,
+                          onSelected: (val) {
+                            if (val) _useCompressed.value = false;
+                          },
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.bolt,
+                                  size: 13, color: AppColors.primary),
+                              SizedBox(width: 4),
+                              Text('Compressed (Optimized)',
+                                  style: TextStyle(fontSize: 11)),
+                            ],
+                          ),
+                          selected: _useCompressed.value,
+                          onSelected: (val) {
+                            if (val) {
+                              _useCompressed.value = true;
+                              if (_compressionResult.value == null &&
+                                  !_isCompressing.value) {
+                                _compressSelectedFile();
+                              }
+                            }
+                          },
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+
+                    if (isCompressedMode) ...[
+                      const SizedBox(height: 12),
+
+                      // Presets row
+                      Row(
+                        children: [
+                          const Text(
+                            'Preset: ',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Wrap(
+                            spacing: 6,
+                            children: [
+                              _buildPresetChip('Recommended', 'recommended'),
+                              _buildPresetChip('Extreme', 'extreme'),
+                              _buildPresetChip('High Quality', 'high'),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Quality slider
+                      Row(
+                        children: [
+                          Text(
+                            isPdf
+                                ? 'PDF Quality: ${_pdfQuality.value}%'
+                                : 'Image Quality: ${_imageQuality.value}%',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: isCompressing
+                                ? null
+                                : () => _compressSelectedFile(),
+                            icon: isCompressing
+                                ? const SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.refresh, size: 14),
+                            label: Text(
+                              isCompressing ? 'Optimizing...' : 'Re-compress',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 7),
+                        ),
+                        child: Slider(
+                          value: (isPdf
+                                  ? _pdfQuality.value
+                                  : _imageQuality.value)
+                              .toDouble(),
+                          min: 20,
+                          max: 100,
+                          divisions: 16,
+                          onChanged: (val) {
+                            if (isPdf) {
+                              _pdfQuality.value = val.toInt();
+                            } else {
+                              _imageQuality.value = val.toInt();
+                            }
+                            _compressionPreset.value = 'custom';
+                          },
+                        ),
+                      ),
+
+                      // PDF options: DPI chips + Grayscale & Metadata
+                      if (isPdf) ...[
+                        Row(
+                          children: [
+                            const Text(
+                              'DPI: ',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            for (var dpi in [96, 150, 200, 300]) ...[
+                              InkWell(
+                                onTap: () {
+                                  _pdfDpi.value = dpi;
+                                  _compressSelectedFile();
+                                },
+                                borderRadius: BorderRadius.circular(4),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  margin: const EdgeInsets.only(right: 6),
+                                  decoration: BoxDecoration(
+                                    color: _pdfDpi.value == dpi
+                                        ? AppColors.primary
+                                        : AppColors.surface,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: _pdfDpi.value == dpi
+                                          ? AppColors.primary
+                                          : AppColors.border,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '$dpi DPI',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: _pdfDpi.value == dpi
+                                          ? Colors.white
+                                          : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: Checkbox(
+                                    value: _isGrayscale.value,
+                                    onChanged: (val) {
+                                      _isGrayscale.value = val ?? false;
+                                      _compressSelectedFile();
+                                    },
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text('Grayscale',
+                                    style: TextStyle(fontSize: 11)),
+                              ],
+                            ),
+                            const SizedBox(width: 14),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: Checkbox(
+                                    value: _stripMetadata.value,
+                                    onChanged: (val) {
+                                      _stripMetadata.value = val ?? true;
+                                      _compressSelectedFile();
+                                    },
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text('Strip Metadata',
+                                    style: TextStyle(fontSize: 11)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      // Progressive Progress Indicator
+                      if (isCompressing) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySurface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _compressionProgressText.value.isNotEmpty
+                                          ? _compressionProgressText.value
+                                          : 'Compressing via King Technology Media Engine...',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${(_compressionProgress.value * 100).toInt()}%',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: LinearProgressIndicator(
+                                  value: _compressionProgress.value
+                                      .clamp(0.05, 1.0),
+                                  minHeight: 4,
+                                  backgroundColor: AppColors.surface,
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                    AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // Compression Savings Results Banner
+                      if (result != null && !isCompressing) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.successLight,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.success.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                color: AppColors.success,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${result.originalSizeFormatted} ➔ ${result.compressedSizeFormatted}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.success,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            result.savingsFormatted,
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      'Optimized via King Technology Media Engine',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  if (isPdf) {
+                                    PdfViewerDialog.showBytes(
+                                      title:
+                                          'Preview: ${result.compressedFileName}',
+                                      bytes: result.compressedBytes,
+                                      fileName: result.compressedFileName,
+                                    );
+                                  } else {
+                                    ImageLightboxDialog.show(
+                                      title:
+                                          'Preview: ${result.compressedFileName}',
+                                      imageBytes: result.compressedBytes,
+                                      fileName: result.compressedFileName,
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.visibility_outlined,
+                                    size: 14),
+                                label: const Text('Preview',
+                                    style: TextStyle(fontSize: 11)),
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // Compression Error Notice
+                      if (error.isNotEmpty && !isCompressing) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningLight,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.warning.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: AppColors.warningDark,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Optimization Notice: $error (Original file will be used)',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.warningDark,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => _compressSelectedFile(),
+                                child: const Text('Retry',
+                                    style: TextStyle(fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPresetChip(String label, String value) {
+    return Obx(() {
+      final isSelected = _compressionPreset.value == value;
+      return InkWell(
+        onTap: () => _setCompressionPreset(value),
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : AppColors.surface,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: isSelected ? Colors.white : AppColors.textPrimary,
+            ),
+          ),
+        ),
+      );
+    });
   }
 }
 

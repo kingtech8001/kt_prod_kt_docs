@@ -275,9 +275,43 @@ class DemoDataService {
   }
 
   // --- Mock Documents ---
+  static List<DocumentModel>? _cachedMockDocuments;
+
   static List<DocumentModel> getAllDocuments() {
+    if (_cachedMockDocuments != null) return _cachedMockDocuments!;
     final now = DateTime.now();
-    return [
+    _cachedMockDocuments = [
+      // 0. Google Drive Document
+      DocumentModel(
+        id: 'doc-gdrive-1',
+        title: 'Office Lease Agreement & Floor Plan (Google Drive)',
+        description: 'Corporate commercial property lease contract stored in Google Drive',
+        categoryId: 'cat-utility',
+        categoryName: 'Corporate Vault',
+        categoryCode: 'corporate_docs',
+        subCategory: 'Contracts & Agreements',
+        folderId: 'fld-1',
+        folderName: 'Ahmedabad Headquarters',
+        fileName: 'Lease_Agreement_FloorPlan.pdf',
+        filePath: 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OIvE2up08/view',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 524288,
+        documentNumber: 'KT-GDRIVE-2026-01',
+        status: 'active',
+        isFavorite: true,
+        createdAt: now.subtract(const Duration(hours: 12)),
+        updatedAt: now.subtract(const Duration(hours: 12)),
+        address: AddressModel(
+          premiseName: 'King Technology Tower',
+          flatHouseNo: 'Level 4',
+          buildingName: 'Titanium Square',
+          areaLocality: 'SG Highway',
+          city: 'Ahmedabad',
+          state: 'Gujarat',
+          postalCode: '380054',
+        ),
+      ),
       // 1. Utility Bill - Torrent Power
       DocumentModel(
         id: 'doc-1',
@@ -585,6 +619,7 @@ class DemoDataService {
         ),
       ),
     ];
+    return _cachedMockDocuments!;
   }
 
   // --- Dashboard Bundle ---
@@ -651,5 +686,36 @@ class DemoDataService {
         createdAt: now.subtract(const Duration(days: 2)),
       ),
     ];
+  }
+
+  /// Updates an existing mock document in memory.
+  static void updateDocumentMock({
+    required String documentId,
+    required String title,
+    String? description,
+    String? documentNumber,
+    ApplianceWarrantyModel? applianceWarranty,
+    VehicleDocumentMetadataModel? vehicleMetadata,
+    String? newFileName,
+    int? newFileSize,
+    String? newMimeType,
+    String? attachmentUrl,
+  }) {
+    final docs = getAllDocuments();
+    final idx = docs.indexWhere((d) => d.id == documentId);
+    if (idx != -1) {
+      final old = docs[idx];
+      docs[idx] = old.copyWith(
+        title: title,
+        description: description,
+        documentNumber: documentNumber,
+        applianceWarranty: applianceWarranty,
+        vehicleMetadata: vehicleMetadata,
+        fileName: newFileName ?? (attachmentUrl != null ? 'Google Drive Document' : old.fileName),
+        fileSize: newFileSize ?? old.fileSize,
+        mimeType: newMimeType ?? (attachmentUrl != null ? 'application/vnd.google-apps.document' : old.mimeType),
+        filePath: attachmentUrl ?? old.filePath,
+      );
+    }
   }
 }

@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
 import 'package:kt_prod_kt_docs/app/widgets/city_filter_chips.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_card.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/status_badge.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
@@ -410,16 +411,23 @@ class DocumentsView extends GetView<DocumentsController> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: doc.isPdf
-                      ? AppColors.error.withValues(alpha: 0.1)
-                      : AppColors.primarySurface,
+                  color: doc.isGoogleAttachment
+                      ? const Color(0xFFF0FDF4)
+                      : (doc.isPdf
+                          ? AppColors.error.withValues(alpha: 0.1)
+                          : AppColors.primarySurface),
                   borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  border: doc.isGoogleAttachment
+                      ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                      : null,
                 ),
-                child: Icon(
-                  doc.isPdf ? Icons.picture_as_pdf : Icons.image,
-                  color: doc.isPdf ? AppColors.error : AppColors.primary,
-                  size: 20,
-                ),
+                child: doc.isGoogleAttachment
+                    ? const GoogleDriveLogo(size: 20)
+                    : Icon(
+                        doc.isPdf ? Icons.picture_as_pdf : Icons.image,
+                        color: doc.isPdf ? AppColors.error : AppColors.primary,
+                        size: 20,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -456,9 +464,18 @@ class DocumentsView extends GetView<DocumentsController> {
                   ],
                 ),
               ),
-              StatusBadge(
-                label: doc.categoryName ?? doc.subCategory,
-                type: StatusBadgeType.info,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  StatusBadge(
+                    label: doc.categoryName ?? doc.subCategory,
+                    type: StatusBadgeType.info,
+                  ),
+                  if (doc.isGoogleAttachment) ...[
+                    const SizedBox(height: 4),
+                    const GoogleDriveBadge(compact: true),
+                  ],
+                ],
               ),
             ],
           ),
@@ -530,16 +547,23 @@ class DocumentsView extends GetView<DocumentsController> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: doc.isPdf
-                  ? AppColors.error.withValues(alpha: 0.1)
-                  : AppColors.primarySurface,
+              color: doc.isGoogleAttachment
+                  ? const Color(0xFFF0FDF4)
+                  : (doc.isPdf
+                      ? AppColors.error.withValues(alpha: 0.1)
+                      : AppColors.primarySurface),
               borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+              border: doc.isGoogleAttachment
+                  ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                  : null,
             ),
-            child: Icon(
-              doc.isPdf ? Icons.picture_as_pdf : Icons.image,
-              color: doc.isPdf ? AppColors.error : AppColors.primary,
-              size: 22,
-            ),
+            child: doc.isGoogleAttachment
+                ? const GoogleDriveLogo(size: 22)
+                : Icon(
+                    doc.isPdf ? Icons.picture_as_pdf : Icons.image,
+                    color: doc.isPdf ? AppColors.error : AppColors.primary,
+                    size: 22,
+                  ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -568,7 +592,10 @@ class DocumentsView extends GetView<DocumentsController> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          if (doc.isGoogleAttachment) ...[
+            const GoogleDriveBadge(),
+            const SizedBox(width: 8),
+          ],
           StatusBadge(
             label: doc.categoryName ?? doc.subCategory,
             type: StatusBadgeType.info,

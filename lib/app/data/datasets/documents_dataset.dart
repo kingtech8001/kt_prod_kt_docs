@@ -190,8 +190,11 @@ class DocumentsDataset {
     }
   }
 
-  /// Obtains signed preview URL from Supabase storage.
+  /// Obtains signed preview URL from Supabase storage or passes through external URLs.
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
     if (DemoDataService.isDemoMode) {
       return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
     }
@@ -339,7 +342,7 @@ class DocumentsDataset {
     }
   }
 
-  /// Updates document metadata.
+  /// Updates document metadata and optionally re-uploads / replaces document payload or attachment URL.
   Future<void> updateDocumentDetails({
     required String documentId,
     required String title,
@@ -347,9 +350,27 @@ class DocumentsDataset {
     String? documentNumber,
     ApplianceWarrantyModel? applianceWarranty,
     VehicleDocumentMetadataModel? vehicleMetadata,
+    String? newFileName,
+    Uint8List? newFileBytes,
+    String? newMimeType,
+    String? categoryCode,
+    String? subCategory,
+    String? attachmentUrl,
   }) async {
     if (DemoDataService.isDemoMode) {
       AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: updated document details for $documentId');
+      DemoDataService.updateDocumentMock(
+        documentId: documentId,
+        title: title,
+        description: description,
+        documentNumber: documentNumber,
+        applianceWarranty: applianceWarranty,
+        vehicleMetadata: vehicleMetadata,
+        newFileName: newFileName,
+        newFileSize: newFileBytes?.lengthInBytes,
+        newMimeType: newMimeType,
+        attachmentUrl: attachmentUrl,
+      );
       return;
     }
     final user = _provider.currentUser;
@@ -359,12 +380,46 @@ class DocumentsDataset {
     );
 
     try {
-      await _client.from('documents').update({
+      final docUpdates = <String, dynamic>{
         'title': title,
         'description': description,
         'document_number': documentNumber,
         'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', documentId);
+      };
+
+      if (newFileBytes != null && newFileName != null) {
+        final sanitizedFileName = newFileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+        final catFolder = categoryCode?.isNotEmpty == true ? categoryCode! : 'documents';
+        final subCatFolder = (subCategory ?? '').trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_').toLowerCase();
+        final storagePath = subCatFolder.isNotEmpty
+            ? '$catFolder/$subCatFolder/$documentId-$sanitizedFileName'
+            : '$catFolder/$documentId-$sanitizedFileName';
+
+        await _provider.uploadDocumentFile(
+          storagePath: storagePath,
+          fileBytes: newFileBytes,
+          mimeType: newMimeType ?? 'application/pdf',
+        );
+
+        final fileType = newFileName.contains('.')
+            ? newFileName.split('.').last.toLowerCase()
+            : 'pdf';
+
+        docUpdates['file_name'] = newFileName;
+        docUpdates['file_path'] = storagePath;
+        docUpdates['file_size'] = newFileBytes.lengthInBytes;
+        docUpdates['file_type'] = fileType;
+        docUpdates['mime_type'] = newMimeType ?? 'application/pdf';
+      } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
+        docUpdates['file_path'] = attachmentUrl;
+        final uri = Uri.tryParse(attachmentUrl);
+        final lastSeg = uri != null && uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'Google Drive Document';
+        docUpdates['file_name'] = lastSeg.isNotEmpty ? lastSeg : 'Google Drive Document';
+        docUpdates['file_type'] = 'gdrive';
+        docUpdates['mime_type'] = 'application/vnd.google-apps.document';
+      }
+
+      await _client.from('documents').update(docUpdates).eq('id', documentId);
 
       if (applianceWarranty != null) {
         final warrantyMap = applianceWarranty.toJson();
