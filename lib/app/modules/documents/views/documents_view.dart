@@ -434,14 +434,24 @@ class DocumentsView extends GetView<DocumentsController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      doc.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        if (doc.isGoogleAttachment) ...[
+                          const GoogleDriveLogo(size: 16),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(
+                            doc.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -486,6 +496,17 @@ class DocumentsView extends GetView<DocumentsController> {
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              if (doc.isGoogleAttachment)
+                IconButton(
+                  icon: const GoogleDriveLogo(size: 18),
+                  tooltip: 'Open in Google Drive',
+                  onPressed: () => controller.previewDocument(doc),
+                ),
+              IconButton(
+                icon: const Icon(Icons.upload_file_outlined, size: 20),
+                tooltip: 'Re-upload / Replace file',
+                onPressed: () => controller.openEditDocumentDialog(doc),
+              ),
               IconButton(
                 icon: Icon(
                   doc.isFavorite ? Icons.star : Icons.star_border,
@@ -497,11 +518,12 @@ class DocumentsView extends GetView<DocumentsController> {
                 tooltip: 'Favorite',
                 onPressed: () => controller.toggleFavorite(doc),
               ),
-              IconButton(
-                icon: const Icon(Icons.visibility_outlined, size: 20),
-                tooltip: 'Preview',
-                onPressed: () => controller.previewDocument(doc),
-              ),
+              if (!doc.isGoogleAttachment)
+                IconButton(
+                  icon: const Icon(Icons.visibility_outlined, size: 20),
+                  tooltip: 'Preview',
+                  onPressed: () => controller.previewDocument(doc),
+                ),
               IconButton(
                 icon: const Icon(Icons.download_outlined, size: 20),
                 tooltip: 'Download',
@@ -570,14 +592,28 @@ class DocumentsView extends GetView<DocumentsController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  doc.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    if (doc.isGoogleAttachment) ...[
+                      const GoogleDriveLogo(size: 18),
+                      const SizedBox(width: 8),
+                    ],
+                    Flexible(
+                      child: Text(
+                        doc.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (doc.isGoogleAttachment) ...[
+                      const SizedBox(width: 8),
+                      const GoogleDriveBadge(compact: true),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -601,6 +637,17 @@ class DocumentsView extends GetView<DocumentsController> {
             type: StatusBadgeType.info,
           ),
           const SizedBox(width: 8),
+          if (doc.isGoogleAttachment)
+            IconButton(
+              icon: const GoogleDriveLogo(size: 18),
+              tooltip: 'Open in Google Drive',
+              onPressed: () => controller.previewDocument(doc),
+            ),
+          IconButton(
+            icon: const Icon(Icons.upload_file_outlined, size: 20),
+            tooltip: 'Re-upload / Replace file',
+            onPressed: () => controller.openEditDocumentDialog(doc),
+          ),
           IconButton(
             icon: Icon(
               doc.isFavorite ? Icons.star : Icons.star_border,

@@ -5,6 +5,7 @@ import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/controllers/vehicle_docs_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/metric_card.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
@@ -1681,15 +1682,29 @@ class _VehicleDocumentCard extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 // Document Title & Subcategory
-                Text(
-                  doc.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    if (doc.isGoogleAttachment) ...[
+                      const GoogleDriveLogo(size: 16),
+                      const SizedBox(width: 6),
+                    ],
+                    Expanded(
+                      child: Text(
+                        doc.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (doc.isGoogleAttachment) ...[
+                      const SizedBox(width: 6),
+                      const GoogleDriveBadge(compact: true),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 4),
 
@@ -1896,6 +1911,22 @@ class _VehicleDocumentCard extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (doc.isGoogleAttachment)
+                          IconButton(
+                            icon: const GoogleDriveLogo(size: 16),
+                            onPressed: () => controller.previewDocument(doc),
+                            tooltip: 'Open in Google Drive',
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        if (controller.canEdit)
+                          IconButton(
+                            icon: const Icon(Icons.upload_file_outlined, size: 18),
+                            onPressed: () =>
+                                controller.openEditDocumentDialog(doc),
+                            tooltip: 'Re-upload / Replace file',
+                            color: AppColors.textSecondary,
+                            visualDensity: VisualDensity.compact,
+                          ),
                         IconButton(
                           icon: const Icon(Icons.download_outlined, size: 18),
                           onPressed: () => controller.downloadDocument(doc),

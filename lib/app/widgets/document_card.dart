@@ -78,6 +78,9 @@ class DocumentCard extends StatelessWidget {
                             ? const Color(0xFFF0FDF4)
                             : fileColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
+                        border: doc.isGoogleAttachment
+                            ? Border.all(color: const Color(0xFF86EFAC), width: 1.2)
+                            : null,
                       ),
                       child: doc.isGoogleAttachment
                           ? const GoogleDriveLogo(size: 24)
@@ -88,15 +91,25 @@ class DocumentCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            doc.title,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              if (doc.isGoogleAttachment) ...[
+                                const GoogleDriveLogo(size: 16),
+                                const SizedBox(width: 6),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  doc.title,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -291,7 +304,22 @@ class DocumentCard extends StatelessWidget {
                     Row(
                       children: [
                         if (!isTrash) ...[
-                          if (onPreview != null)
+                          if (doc.isGoogleAttachment)
+                            IconButton(
+                              icon: const GoogleDriveLogo(size: 18),
+                              tooltip: 'Open in Google Drive',
+                              onPressed: onPreview,
+                            ),
+                          if (onEdit != null)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.upload_file_outlined,
+                                size: 18,
+                              ),
+                              tooltip: 'Re-upload / Replace file',
+                              onPressed: onEdit,
+                            ),
+                          if (onPreview != null && !doc.isGoogleAttachment)
                             IconButton(
                               icon: const Icon(
                                 Icons.visibility_outlined,

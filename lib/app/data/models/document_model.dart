@@ -116,6 +116,12 @@ class DocumentModel {
     if (tName.contains('google drive') || tName.contains('(google drive)')) {
       return true;
     }
+    final desc = (description ?? '').toLowerCase().trim();
+    if (desc.contains('drive.google.com') ||
+        desc.contains('docs.google.com') ||
+        desc.contains('google drive')) {
+      return true;
+    }
     for (final key in extraAttributes.keys) {
       if (key.toLowerCase().contains('google') ||
           key.toLowerCase().contains('drive')) {
@@ -128,7 +134,8 @@ class DocumentModel {
         if (s.contains('drive.google.com') ||
             s.contains('docs.google.com') ||
             s.contains('google.com') ||
-            s.contains('goo.gl')) {
+            s.contains('goo.gl') ||
+            s.contains('drive')) {
           return true;
         }
       }

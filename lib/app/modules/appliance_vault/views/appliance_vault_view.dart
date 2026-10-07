@@ -4,6 +4,7 @@ import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/modules/appliance_vault/controllers/appliance_vault_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/metric_card.dart';
 import 'package:kt_prod_kt_docs/app/widgets/status_badge.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
@@ -505,6 +506,10 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                           children: [
                             Row(
                               children: [
+                                if (doc.isGoogleAttachment) ...[
+                                  const GoogleDriveLogo(size: 16),
+                                  const SizedBox(width: 6),
+                                ],
                                 Expanded(
                                   child: Text(
                                     doc.title,
@@ -515,6 +520,10 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                                     ),
                                   ),
                                 ),
+                                if (doc.isGoogleAttachment) ...[
+                                  const SizedBox(width: 6),
+                                  const GoogleDriveBadge(compact: true),
+                                ],
                                 if (isMulti) ...[
                                   const SizedBox(width: 6),
                                   Container(
@@ -664,6 +673,23 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                       ),
                       Row(
                         children: [
+                          if (doc.isGoogleAttachment)
+                            IconButton(
+                              icon: const GoogleDriveLogo(size: 18),
+                              tooltip: 'Open in Google Drive',
+                              onPressed: () =>
+                                  controller.previewDocument(doc),
+                            ),
+                          if (controller.canEdit)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.upload_file_outlined,
+                                size: 18,
+                              ),
+                              tooltip: 'Re-upload / Replace file',
+                              onPressed: () =>
+                                  controller.openEditDocumentDialog(doc),
+                            ),
                           IconButton(
                             icon: const Icon(
                               Icons.visibility_outlined,
@@ -730,6 +756,10 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                         children: [
                           Row(
                             children: [
+                              if (doc.isGoogleAttachment) ...[
+                                const GoogleDriveLogo(size: 16),
+                                const SizedBox(width: 6),
+                              ],
                               Flexible(
                                 child: Text(
                                   doc.title,
@@ -742,6 +772,10 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              if (doc.isGoogleAttachment) ...[
+                                const SizedBox(width: 6),
+                                const GoogleDriveBadge(compact: true),
+                              ],
                               if (isMulti) ...[
                                 const SizedBox(width: 8),
                                 Container(
@@ -883,6 +917,22 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (doc.isGoogleAttachment)
+                          IconButton(
+                            icon: const GoogleDriveLogo(size: 18),
+                            tooltip: 'Open in Google Drive',
+                            onPressed: () => controller.previewDocument(doc),
+                          ),
+                        if (controller.canEdit)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.upload_file_outlined,
+                              size: 20,
+                            ),
+                            tooltip: 'Re-upload / Replace file',
+                            onPressed: () =>
+                                controller.openEditDocumentDialog(doc),
+                          ),
                         IconButton(
                           icon: const Icon(Icons.visibility_outlined, size: 20),
                           tooltip: 'Preview Invoice',

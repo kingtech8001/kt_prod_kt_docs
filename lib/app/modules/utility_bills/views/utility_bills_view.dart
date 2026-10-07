@@ -5,6 +5,7 @@ import 'package:kt_prod_kt_docs/app/modules/utility_bills/controllers/utility_bi
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
 import 'package:kt_prod_kt_docs/app/widgets/city_filter_chips.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/metric_card.dart';
 import 'package:kt_prod_kt_docs/app/widgets/status_badge.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
@@ -658,13 +659,27 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    doc.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
+                  Row(
+                    children: [
+                      if (doc.isGoogleAttachment) ...[
+                        const GoogleDriveLogo(size: 16),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          doc.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      if (doc.isGoogleAttachment) ...[
+                        const SizedBox(width: 6),
+                        const GoogleDriveBadge(compact: true),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -734,13 +749,29 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                doc.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ),
+              Row(
+                children: [
+                  if (doc.isGoogleAttachment) ...[
+                    const GoogleDriveLogo(size: 16),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(
+                      doc.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (doc.isGoogleAttachment) ...[
+                    const SizedBox(width: 6),
+                    const GoogleDriveBadge(compact: true),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -841,6 +872,17 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (doc.isGoogleAttachment)
+          IconButton(
+            icon: const GoogleDriveLogo(size: 18),
+            tooltip: 'Open in Google Drive',
+            onPressed: () => controller.previewDocument(doc),
+          ),
+        IconButton(
+          icon: const Icon(Icons.upload_file_outlined, size: 20),
+          tooltip: 'Re-upload / Replace file',
+          onPressed: () => controller.openEditDocumentDialog(doc),
+        ),
         IconButton(
           icon: Icon(
             u?.isPaid == true
