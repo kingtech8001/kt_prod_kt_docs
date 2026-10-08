@@ -90,15 +90,27 @@ class DocumentModel {
   /// Identifies whether the attachment URL/path originates from Google Drive or Google services.
   /// If a file was re-uploaded to VPS storage, it returns false.
   bool get isGoogleAttachment {
-    // 1. VPS Storage Override: If explicitly re-uploaded or stored in VPS storage, it is NOT a Google Drive doc.
+    // 1. VPS / Supabase Storage Override: If explicitly re-uploaded or stored in VPS/Supabase storage, it is NOT a Google Drive doc.
     final storageProvider = extraAttributes['storage_provider']?.toString().toLowerCase().trim();
-    if (storageProvider == 'vps' || storageProvider == 'local' || storageProvider == 'server') {
+    if (storageProvider == 'supabase' ||
+        storageProvider == 'vps' ||
+        storageProvider == 'local' ||
+        storageProvider == 'server' ||
+        storageProvider == 'storage') {
+      return false;
+    }
+    if (extraAttributes['is_google_attachment'] == false ||
+        extraAttributes['is_google_attachment'] == 'false') {
       return false;
     }
     final path = filePath.toLowerCase().trim();
     if (path.startsWith('vps_storage/') ||
         path.contains('/vps_storage/') ||
         path.startsWith('vps/')) {
+      return false;
+    }
+    // Any document with a real storage path that isn't a web URL is a stored file in VPS/Supabase
+    if (path.isNotEmpty && !path.startsWith('http://') && !path.startsWith('https://')) {
       return false;
     }
 

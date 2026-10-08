@@ -47,12 +47,13 @@ class SupabaseProvider {
     int expiresInSeconds = 3600,
     bool download = false,
   }) async {
-    AppLogger.debug('SUPABASE_STORAGE', 'Creating signed URL for: $storagePath (expires in: ${expiresInSeconds}s)');
+    final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+    AppLogger.debug('SUPABASE_STORAGE', 'Creating signed URL for: $cleanPath (expires in: ${expiresInSeconds}s)');
     try {
       final response = await client.storage
           .from(AppConstants.storageBucket)
           .createSignedUrl(
-            storagePath,
+            cleanPath,
             expiresInSeconds,
             transform: null,
           );
@@ -65,10 +66,17 @@ class SupabaseProvider {
     } catch (e, st) {
       AppLogger.error(
         'SUPABASE_STORAGE',
-        'Failed to create signed URL for: $storagePath',
+        'Failed to create signed URL for: $cleanPath',
         error: e,
         stackTrace: st,
       );
+      try {
+        final publicUrl = client.storage.from(AppConstants.storageBucket).getPublicUrl(cleanPath);
+        if (publicUrl.isNotEmpty) {
+          final sep = publicUrl.contains('?') ? '&' : '?';
+          return download ? '$publicUrl${sep}download=true' : publicUrl;
+        }
+      } catch (_) {}
       rethrow;
     }
   }

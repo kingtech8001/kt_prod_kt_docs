@@ -198,8 +198,9 @@ class DocumentsDataset {
     if (DemoDataService.isDemoMode) {
       return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
     }
+    final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
     return await _provider.createSignedUrl(
-      storagePath: storagePath,
+      storagePath: cleanPath,
       expiresInSeconds: 3600,
       download: download,
     );
@@ -403,8 +404,12 @@ class DocumentsDataset {
             ? '$catFolder/$subCatFolder/$documentId-$sanitizedFileName'
             : '$catFolder/$documentId-$sanitizedFileName';
 
+        final cleanStoragePath = storagePath.startsWith('/')
+            ? storagePath.substring(1)
+            : storagePath;
+
         await _provider.uploadDocumentFile(
-          storagePath: storagePath,
+          storagePath: cleanStoragePath,
           fileBytes: newFileBytes,
           mimeType: newMimeType ?? 'application/pdf',
         );
@@ -414,12 +419,12 @@ class DocumentsDataset {
             : 'pdf';
 
         docUpdates['file_name'] = newFileName;
-        docUpdates['file_path'] = storagePath;
+        docUpdates['file_path'] = cleanStoragePath;
         docUpdates['file_size'] = newFileBytes.lengthInBytes;
         docUpdates['file_type'] = fileType;
         docUpdates['mime_type'] = newMimeType ?? 'application/pdf';
 
-        // Clean any legacy google drive extra attributes so it points to VPS/Supabase storage
+        // Purge ALL legacy Google Drive attributes so it points cleanly to storage
         try {
           final currentDoc = await _client
               .from('documents')
@@ -429,10 +434,15 @@ class DocumentsDataset {
           final extras = currentDoc?['extra_attributes'] != null
               ? Map<String, dynamic>.from(currentDoc!['extra_attributes'] as Map)
               : <String, dynamic>{};
-          extras.remove('google_drive_url');
-          extras.remove('attachment_url');
-          extras.remove('is_google_attachment');
+          extras.removeWhere((k, v) {
+            final lk = k.toLowerCase();
+            return lk.contains('google') ||
+                lk.contains('drive') ||
+                lk.contains('attachment_url') ||
+                lk.contains('gdrive');
+          });
           extras['storage_provider'] = 'supabase';
+          extras['is_google_attachment'] = false;
           docUpdates['extra_attributes'] = extras;
         } catch (_) {}
       } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
@@ -442,6 +452,20 @@ class DocumentsDataset {
         docUpdates['file_name'] = lastSeg.isNotEmpty ? lastSeg : 'Google Drive Document';
         docUpdates['file_type'] = 'gdrive';
         docUpdates['mime_type'] = 'application/vnd.google-apps.document';
+        try {
+          final currentDoc = await _client
+              .from('documents')
+              .select('extra_attributes')
+              .eq('id', documentId)
+              .maybeSingle();
+          final extras = currentDoc?['extra_attributes'] != null
+              ? Map<String, dynamic>.from(currentDoc!['extra_attributes'] as Map)
+              : <String, dynamic>{};
+          extras['is_google_attachment'] = true;
+          extras['google_drive_url'] = attachmentUrl;
+          extras.remove('storage_provider');
+          docUpdates['extra_attributes'] = extras;
+        } catch (_) {}
       }
 
       await _client.from('documents').update(docUpdates).eq('id', documentId);

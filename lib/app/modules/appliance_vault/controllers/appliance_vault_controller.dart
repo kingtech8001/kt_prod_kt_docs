@@ -236,6 +236,15 @@ class ApplianceVaultController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
+      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
         PdfViewerDialog.show(
@@ -254,7 +263,7 @@ class ApplianceVaultController extends GetxController {
       } else {
         final uri = Uri.parse(signedUrl);
         if (await canLaunchUrl(uri)) {
-          await launchUrl(uri);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       }
     } catch (e, st) {
@@ -270,6 +279,15 @@ class ApplianceVaultController extends GetxController {
 
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
+      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
@@ -288,7 +306,7 @@ class ApplianceVaultController extends GetxController {
         final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
         final uri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(uri)) {
-          await launchUrl(uri);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       } catch (_) {
         AppSnackbar.showError('Download Error', e.toString());

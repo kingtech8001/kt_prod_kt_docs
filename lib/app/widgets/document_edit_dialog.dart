@@ -406,6 +406,12 @@ class DocumentEditDialog extends StatelessWidget {
       return;
     }
 
+    if (_isCompressing.value) {
+      _errorMessage.value =
+          'File optimization is in progress. Please wait a moment for completion before saving.';
+      return;
+    }
+
     _isSaving.value = true;
     _errorMessage.value = '';
 
@@ -1244,7 +1250,7 @@ class DocumentEditDialog extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
-                    onPressed: _isSaving.value ? null : _handleSave,
+                    onPressed: (_isSaving.value || _isCompressing.value) ? null : _handleSave,
                     child: _isSaving.value
                         ? const Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1261,7 +1267,23 @@ class DocumentEditDialog extends StatelessWidget {
                               Text('Uploading & Saving...'),
                             ],
                           )
-                        : const Text('Save Changes'),
+                        : _isCompressing.value
+                            ? const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Optimizing File...'),
+                                ],
+                              )
+                            : const Text('Save Changes'),
                   ),
                 ],
               ),

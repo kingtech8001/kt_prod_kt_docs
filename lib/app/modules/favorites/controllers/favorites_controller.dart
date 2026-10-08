@@ -217,6 +217,15 @@ class FavoritesController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
+      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
       if (doc.isPdf) {
         PdfViewerDialog.show(
@@ -251,6 +260,15 @@ class FavoritesController extends GetxController {
 
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
+      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,

@@ -392,6 +392,15 @@ class VehicleDocsController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     try {
       AppLogger.info('VEHICLE_DOCS_CTRL', 'Opening preview for doc: ${doc.id}');
+      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
       final url = await _dataset.getSignedPreviewUrl(doc.filePath);
 
       final mime = doc.mimeType.toLowerCase();
@@ -439,6 +448,15 @@ class VehicleDocsController extends GetxController {
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
       AppLogger.info('VEHICLE_DOCS_CTRL', 'Downloading doc: ${doc.id}');
+      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
       final bytes = await _dataset.downloadFileBytes(doc.filePath);
       FileDownloadHelper.download(
         bytes: bytes,

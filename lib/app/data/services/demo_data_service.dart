@@ -770,15 +770,22 @@ class DemoDataService {
             ? newFileName.split('.').last.toLowerCase()
             : 'pdf';
         updatedFilePath = 'vps_storage/documents/$documentId-$newFileName';
-        updatedExtraAttributes.remove('google_drive_url');
-        updatedExtraAttributes.remove('attachment_url');
-        updatedExtraAttributes.remove('is_google_attachment');
+        updatedExtraAttributes.removeWhere((k, v) {
+          final lk = k.toLowerCase();
+          return lk.contains('google') ||
+              lk.contains('drive') ||
+              lk.contains('attachment_url') ||
+              lk.contains('gdrive');
+        });
         updatedExtraAttributes['storage_provider'] = 'vps';
+        updatedExtraAttributes['is_google_attachment'] = false;
       } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
         updatedFileName = 'Google Drive Document';
         updatedFileType = 'gdrive';
         updatedFilePath = attachmentUrl;
+        updatedExtraAttributes['is_google_attachment'] = true;
         updatedExtraAttributes['google_drive_url'] = attachmentUrl;
+        updatedExtraAttributes.remove('storage_provider');
       } else {
         updatedFileName = old.fileName;
         updatedFileType = old.fileType;
