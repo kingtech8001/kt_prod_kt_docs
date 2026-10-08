@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../values/app_colors.dart';
 
 class AppTheme {
@@ -11,13 +10,10 @@ class AppTheme {
   static final ThemeData lightTheme = _buildLightTheme();
 
   static ThemeData _buildLightTheme() {
-    final baseTextTheme = GoogleFonts.interTextTheme(
-      ThemeData(brightness: Brightness.light).textTheme,
-    );
+    final baseTextTheme = ThemeData(brightness: Brightness.light).textTheme;
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      fontFamily: GoogleFonts.inter().fontFamily,
       fontFamilyFallback: const [
         '-apple-system',
         'BlinkMacSystemFont',

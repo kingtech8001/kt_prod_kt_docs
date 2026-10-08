@@ -195,14 +195,16 @@ class AuthView extends GetView<AuthController> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Center(
-                          child: Text(
-                            '${AppConstants.appName} v${AppConstants.appVersion}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.3,
+                        Center(
+                          child: Obx(
+                            () => Text(
+                              '${AppConstants.appName} v${AppConstants.appVersion}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ),

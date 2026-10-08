@@ -349,13 +349,15 @@ class WebSidebar extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text(
-                      'v${AppConstants.appVersion}',
-                      style: TextStyle(
-                        color: AppColors.primaryLight,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                    child: Obx(
+                      () => Text(
+                        'v${AppConstants.appVersion}',
+                        style: const TextStyle(
+                          color: AppColors.primaryLight,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ),

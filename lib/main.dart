@@ -28,6 +28,9 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final isDemoMode = prefs.getBool('kt_demo_mode') ?? false;
 
+  // Initialize dynamic app version from pubspec.yaml
+  await AppConstants.loadVersion();
+
   runApp(KTVaultApp(isDemoMode: isDemoMode));
 }
 

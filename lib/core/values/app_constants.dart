@@ -1,10 +1,28 @@
+import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
 class AppConstants {
   AppConstants._();
 
   // App Metadata
   static const String appName = 'DocHolder';
   static const String appTagline = 'King Technology Document Holder & Vault';
-  static const String appVersion = '1.0.1';
+  static final RxString _appVersion = '1.0.3'.obs;
+  static String get appVersion => _appVersion.value;
+  static set appVersion(String value) => _appVersion.value = value;
+
+  /// Loads dynamic app version from pubspec.yaml via PackageInfo
+  static Future<void> loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty) {
+        appVersion = info.version;
+      }
+    } catch (e) {
+      debugPrint('Failed to load package version: $e');
+    }
+  }
 
   // Supabase Configuration
   static const String supabaseUrl = 'https://db.docholder.kingtechnology.in';
