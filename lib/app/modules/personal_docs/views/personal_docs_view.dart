@@ -706,11 +706,6 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                     label:
                         const Text('Download', style: TextStyle(fontSize: 11)),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.share_outlined, size: 16),
-                    onPressed: () => controller.shareDocument(doc),
-                    tooltip: 'Share Link',
-                  ),
                   if (controller.canDelete)
                     IconButton(
                       icon: const Icon(
@@ -839,11 +834,6 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
               icon: const Icon(Icons.download_outlined, size: 20),
               onPressed: () => controller.downloadDocument(doc),
               tooltip: 'Download',
-            ),
-            IconButton(
-              icon: const Icon(Icons.share_outlined, size: 20),
-              onPressed: () => controller.shareDocument(doc),
-              tooltip: 'Share',
             ),
             if (controller.canDelete)
               IconButton(

@@ -577,6 +577,13 @@ class DocumentRepository {
   }
 
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
+    if (storagePath.startsWith('gdrive://')) {
+      final fileId = storagePath.replaceFirst('gdrive://', '').trim();
+      return 'https://drive.google.com/file/d/$fileId/view?usp=sharing';
+    }
     return await _provider.createSignedUrl(
       storagePath: storagePath,
       expiresInSeconds: 3600,

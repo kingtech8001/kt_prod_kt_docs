@@ -9,7 +9,6 @@ import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// GetX-compliant interactive Image Lightbox Dialog loading bytes via API.
 /// Provides zoom, rotation, realistic skeleton loading, inline retry, and direct downloads.
@@ -301,17 +300,6 @@ class ImageLightboxDialog extends StatelessWidget {
                     ),
                     onPressed: _loadImageBytesViaApi,
                   ),
-                  if (imageUrl != null && imageUrl!.isNotEmpty)
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.open_in_new, size: 16),
-                      label: const Text('Open External URL'),
-                      onPressed: () async {
-                        final uri = Uri.parse(imageUrl!);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        }
-                      },
-                    ),
                   TextButton(
                     onPressed: Get.back,
                     child: const Text('Dismiss'),

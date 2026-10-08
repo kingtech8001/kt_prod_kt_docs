@@ -87,107 +87,52 @@ class DocumentModel {
       mimeType.startsWith('image/');
   String get fileSizeFormatted => AppFormatters.formatFileSize(fileSize);
 
-  /// Identifies whether the attachment URL/path originates from Google Drive or Google services.
-  /// If a file was re-uploaded to VPS storage, it returns false.
+  /// Identifies whether the document's link is genuinely a Google Drive link.
+  /// Displays the Google Drive icon ONLY if the link is a Google Drive link; otherwise false.
   bool get isGoogleAttachment {
-    // 1. VPS / Supabase Storage Override: If explicitly re-uploaded or stored in VPS/Supabase storage, it is NOT a Google Drive doc.
-    final storageProvider = extraAttributes['storage_provider']?.toString().toLowerCase().trim();
-    if (storageProvider == 'supabase' ||
-        storageProvider == 'vps' ||
-        storageProvider == 'local' ||
-        storageProvider == 'server' ||
-        storageProvider == 'storage') {
+    final provider = (extraAttributes['storage_provider'] ?? '')
+        .toString()
+        .toLowerCase()
+        .trim();
+
+    // If storage is Supabase or VPS, it is stored in storage, NOT Google Drive.
+    if (provider == 'supabase' || provider == 'vps') {
       return false;
     }
     if (extraAttributes['is_google_attachment'] == false ||
         extraAttributes['is_google_attachment'] == 'false') {
       return false;
     }
+
     final path = filePath.toLowerCase().trim();
+
+    // Exclude any storage path
     if (path.startsWith('vps_storage/') ||
         path.contains('/vps_storage/') ||
-        path.startsWith('vps/')) {
-      return false;
-    }
-    // Any document with a real storage path that isn't a web URL is a stored file in VPS/Supabase
-    if (path.isNotEmpty && !path.startsWith('http://') && !path.startsWith('https://')) {
+        path.startsWith('vps/') ||
+        path.contains('supabase.co/storage')) {
       return false;
     }
 
-    // 2. Google file type or MIME type
-    final fType = fileType.toLowerCase().trim();
-    if (fType == 'gdrive' ||
-        fType == 'google' ||
-        fType == 'googledrive' ||
-        fType == 'google_drive') {
-      return true;
-    }
-    final mType = mimeType.toLowerCase().trim();
-    if (mType.contains('vnd.google-apps') ||
-        mType.contains('google') ||
-        mType.contains('gdrive')) {
+    // ONLY display if the link is genuinely a Google Drive link
+    if (path.startsWith('gdrive://') ||
+        path.contains('drive.google.com') ||
+        path.contains('docs.google.com')) {
       return true;
     }
 
-    // 3. File path / URL checks
-    if (path.contains('drive.google.com') ||
-        path.contains('docs.google.com') ||
-        path.contains('storage.googleapis.com') ||
-        path.contains('google.com') ||
-        path.contains('goo.gl') ||
-        path.contains('gdrive')) {
-      return true;
-    }
-
-    // 4. File name / Title indicators (e.g. legacy imports or drive tagged files)
-    final fName = fileName.toLowerCase().trim();
-    if (fName.contains('google drive') ||
-        fName.contains('gdrive') ||
-        fName.contains('googledrive')) {
-      return true;
-    }
-    final tName = title.toLowerCase().trim();
-    if (tName.contains('google drive') ||
-        tName.contains('(google drive)') ||
-        tName.contains('gdrive')) {
-      return true;
-    }
-
-    // 5. Description indicator
-    if (description != null) {
-      final desc = description!.toLowerCase();
-      if (desc.contains('drive.google.com') ||
-          desc.contains('docs.google.com') ||
-          desc.contains('google drive') ||
-          desc.contains('gdrive')) {
+    // Fallback: check if an explicit google drive link is stored in extra_attributes,
+    // but only if filePath is NOT an uploaded storage file path (which contains directory slashes)
+    if (!path.contains('/')) {
+      final gUrl = (extraAttributes['google_drive_url'] ??
+              extraAttributes['web_view_link'] ??
+              extraAttributes['web_content_link'])
+          ?.toString()
+          .toLowerCase()
+          .trim();
+      if (gUrl != null &&
+          (gUrl.contains('drive.google.com') || gUrl.contains('docs.google.com'))) {
         return true;
-      }
-    }
-
-    // 6. Extra attributes inspection
-    if (extraAttributes['is_google_attachment'] == true ||
-        extraAttributes['is_google_attachment'] == 'true' ||
-        storageProvider == 'gdrive' ||
-        storageProvider == 'google_drive' ||
-        storageProvider == 'google') {
-      return true;
-    }
-    for (final key in extraAttributes.keys) {
-      final k = key.toLowerCase();
-      if (k.contains('google') || k.contains('drive') || k.contains('gdrive')) {
-        return true;
-      }
-    }
-    for (final val in extraAttributes.values) {
-      if (val is String) {
-        final s = val.toLowerCase().trim();
-        if (s.contains('drive.google.com') ||
-            s.contains('docs.google.com') ||
-            s.contains('google.com') ||
-            s.contains('goo.gl') ||
-            s.contains('gdrive')) {
-          return true;
-        }
       }
     }
 
@@ -199,61 +144,25 @@ class DocumentModel {
     if (!isGoogleAttachment) return null;
 
     final path = filePath.trim();
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      if (path.toLowerCase().contains('google') ||
-          path.toLowerCase().contains('drive') ||
-          path.toLowerCase().contains('goo.gl')) {
-        return path;
+    if (path.startsWith('gdrive://')) {
+      final fileId = path.replaceFirst('gdrive://', '').trim();
+      if (fileId.isNotEmpty) {
+        return 'https://drive.google.com/file/d/$fileId/view?usp=sharing';
       }
     }
 
-    // Check specific known extraAttributes keys
-    final knownKeys = [
-      'google_drive_url',
-      'google_url',
-      'drive_url',
-      'attachment_url',
-      'url',
-      'link',
-      'gdrive_url',
-    ];
-    for (final k in knownKeys) {
-      final val = extraAttributes[k];
-      if (val is String && val.trim().startsWith('http')) {
-        return val.trim();
-      }
-    }
-
-    // Check all extraAttributes entries
-    for (final entry in extraAttributes.entries) {
-      final k = entry.key.toLowerCase();
-      final v = entry.value;
-      if (v is String && (v.startsWith('http://') || v.startsWith('https://'))) {
-        final lowerV = v.toLowerCase();
-        if (k.contains('google') ||
-            k.contains('drive') ||
-            lowerV.contains('drive.google.com') ||
-            lowerV.contains('docs.google.com') ||
-            lowerV.contains('google.com') ||
-            lowerV.contains('goo.gl')) {
-          return v.trim();
-        }
-      }
-    }
-
-    // Check description for an embedded Google Drive URL
-    if (description != null) {
-      final urlMatch = RegExp(r'https?://[^\s]+').firstMatch(description!);
-      if (urlMatch != null) {
-        final found = urlMatch.group(0)!;
-        if (found.toLowerCase().contains('google') || found.toLowerCase().contains('drive')) {
-          return found;
-        }
-      }
-    }
-
-    if (path.startsWith('http://') || path.startsWith('https://')) {
+    if (path.contains('drive.google.com') || path.contains('docs.google.com')) {
       return path;
+    }
+
+    final gUrl = (extraAttributes['google_drive_url'] ??
+            extraAttributes['web_view_link'] ??
+            extraAttributes['web_content_link'])
+        ?.toString()
+        .trim();
+    if (gUrl != null &&
+        (gUrl.contains('drive.google.com') || gUrl.contains('docs.google.com'))) {
+      return gUrl;
     }
 
     return null;

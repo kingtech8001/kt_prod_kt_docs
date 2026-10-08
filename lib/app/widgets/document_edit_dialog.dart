@@ -16,7 +16,6 @@ import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:mime/mime.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 /// Callback typedef for saving document changes with optional payload re-upload.
@@ -106,6 +105,11 @@ class DocumentEditDialog extends StatelessWidget {
   final DocumentModel document;
   final DocumentEditSaveCallback onSave;
 
+  late final Rx<DocumentModel> _currentDoc;
+  final RxBool _isUploadingReplacement = false.obs;
+  final RxBool _hasSavedChanges = false.obs;
+  final RxString _replacementSuccessMessage = ''.obs;
+
   final TextEditingController _titleController;
   final TextEditingController _descriptionController;
   final TextEditingController _documentNumberController;
@@ -147,7 +151,8 @@ class DocumentEditDialog extends StatelessWidget {
     super.key,
     required this.document,
     required this.onSave,
-  })  : _titleController = TextEditingController(text: document.title),
+  })  : _currentDoc = document.obs,
+        _titleController = TextEditingController(text: document.title),
         _descriptionController =
             TextEditingController(text: document.description ?? ''),
         _documentNumberController = TextEditingController(
@@ -197,12 +202,12 @@ class DocumentEditDialog extends StatelessWidget {
   }
 
   bool get _isAppliance =>
-      document.applianceWarranty != null ||
-      document.categoryCode == 'appliance_warranty';
+      _currentDoc.value.applianceWarranty != null ||
+      _currentDoc.value.categoryCode == 'appliance_warranty';
 
   bool get _isVehicle =>
-      document.vehicleMetadata != null ||
-      document.categoryCode == 'vehicle_docs';
+      _currentDoc.value.vehicleMetadata != null ||
+      _currentDoc.value.categoryCode == 'vehicle_docs';
 
   bool get _isCompressible =>
       _selectedNewFile.value != null &&
@@ -416,93 +421,8 @@ class DocumentEditDialog extends StatelessWidget {
     _errorMessage.value = '';
 
     try {
-      ApplianceWarrantyModel? updatedAppliance;
-      if (_isAppliance && _applianceItems.isNotEmpty) {
-        final List<ApplianceItemModel> items = [];
-        double computedTotal = 0.0;
-
-        for (var item in _applianceItems) {
-          final brand = item.selectedBrand.value == 'Other' &&
-                  item.customBrandController.text.isNotEmpty
-              ? item.customBrandController.text.trim()
-              : item.selectedBrand.value;
-          final amount =
-              double.tryParse(item.amountController.text.trim()) ?? 0.0;
-          computedTotal += amount;
-          final name = item.nameController.text.trim().isNotEmpty
-              ? item.nameController.text.trim()
-              : '$brand ${item.selectedCategory.value}';
-
-          items.add(
-            ApplianceItemModel(
-              id: item.id,
-              productName: name,
-              productCategory: item.selectedCategory.value,
-              brand: brand,
-              modelNumber: item.modelController.text.trim().isNotEmpty
-                  ? item.modelController.text.trim()
-                  : null,
-              serialNumber: item.serialController.text.trim().isNotEmpty
-                  ? item.serialController.text.trim()
-                  : null,
-              purchaseAmount: amount,
-              warrantyPeriodMonths:
-                  item.hasWarranty.value ? item.warrantyMonths.value : 0,
-              warrantyValidUpto: item.hasWarranty.value
-                  ? item.warrantyValidUpto.value
-                  : _purchaseDate.value,
-              customerCareNumber:
-                  item.careNumberController.text.trim().isNotEmpty
-                      ? item.careNumberController.text.trim()
-                      : null,
-              warrantyStatus: item.hasWarranty.value ? 'active' : 'no_warranty',
-            ),
-          );
-        }
-
-        final explicitTotal =
-            double.tryParse(_totalAmountController.text.trim());
-        final totalAmount =
-            (explicitTotal != null && explicitTotal > 0)
-                ? explicitTotal
-                : computedTotal;
-
-        updatedAppliance = ApplianceWarrantyModel(
-          id: document.applianceWarranty?.id,
-          documentId: document.id,
-          items: items,
-          billingName: _billingNameController.text.trim().isNotEmpty
-              ? _billingNameController.text.trim()
-              : 'King Technology',
-          storeVendorName: _storeVendorController.text.trim().isNotEmpty
-              ? _storeVendorController.text.trim()
-              : 'Authorized Vendor',
-          invoiceNumber: _documentNumberController.text.trim().isNotEmpty
-              ? _documentNumberController.text.trim()
-              : 'INV-${DateTime.now().millisecondsSinceEpoch}',
-          purchaseDate: _purchaseDate.value,
-          purchaseAmount: totalAmount,
-        );
-      }
-
-      VehicleDocumentMetadataModel? updatedVehicle;
-      if (_isVehicle && document.vehicleMetadata != null) {
-        final premium = double.tryParse(_premiumAmountController.text.trim());
-        updatedVehicle = document.vehicleMetadata!.copyWith(
-          policyOrCertNumber: _documentNumberController.text.trim().isNotEmpty
-              ? _documentNumberController.text.trim()
-              : null,
-          insuranceCompany: _insuranceCompanyController.text.trim().isNotEmpty
-              ? _insuranceCompanyController.text.trim()
-              : null,
-          premiumAmount: premium,
-          issueDate: _issueDate.value,
-          expiryDate: _expiryDate.value,
-          notes: _descriptionController.text.trim().isNotEmpty
-              ? _descriptionController.text.trim()
-              : null,
-        );
-      }
+      final updatedAppliance = _buildUpdatedAppliance();
+      final updatedVehicle = _buildUpdatedVehicle();
 
       Uint8List? fileBytesToUpload;
       String? fileNameToUpload;
@@ -531,7 +451,7 @@ class DocumentEditDialog extends StatelessWidget {
       } else {
         final urlText = _attachmentUrlController.text.trim();
         if (urlText.isNotEmpty &&
-            urlText != (document.googleAttachmentUrl ?? '')) {
+            urlText != (_currentDoc.value.googleAttachmentUrl ?? '')) {
           attachmentUrlToUpload = urlText;
         }
       }
@@ -567,6 +487,217 @@ class DocumentEditDialog extends StatelessWidget {
     }
   }
 
+  ApplianceWarrantyModel? _buildUpdatedAppliance() {
+    if (!_isAppliance || _applianceItems.isEmpty) return null;
+    final List<ApplianceItemModel> items = [];
+    double computedTotal = 0.0;
+
+    for (var item in _applianceItems) {
+      final brand = item.selectedBrand.value == 'Other' &&
+              item.customBrandController.text.isNotEmpty
+          ? item.customBrandController.text.trim()
+          : item.selectedBrand.value;
+      final amount =
+          double.tryParse(item.amountController.text.trim()) ?? 0.0;
+      computedTotal += amount;
+      final name = item.nameController.text.trim().isNotEmpty
+          ? item.nameController.text.trim()
+          : '$brand ${item.selectedCategory.value}';
+
+      items.add(
+        ApplianceItemModel(
+          id: item.id,
+          productName: name,
+          productCategory: item.selectedCategory.value,
+          brand: brand,
+          modelNumber: item.modelController.text.trim().isNotEmpty
+              ? item.modelController.text.trim()
+              : null,
+          serialNumber: item.serialController.text.trim().isNotEmpty
+              ? item.serialController.text.trim()
+              : null,
+          purchaseAmount: amount,
+          warrantyPeriodMonths:
+              item.hasWarranty.value ? item.warrantyMonths.value : 0,
+          warrantyValidUpto: item.hasWarranty.value
+              ? item.warrantyValidUpto.value
+              : _purchaseDate.value,
+          customerCareNumber:
+              item.careNumberController.text.trim().isNotEmpty
+                  ? item.careNumberController.text.trim()
+                  : null,
+          warrantyStatus: item.hasWarranty.value ? 'active' : 'no_warranty',
+        ),
+      );
+    }
+
+    final explicitTotal =
+        double.tryParse(_totalAmountController.text.trim());
+    final totalAmount =
+        (explicitTotal != null && explicitTotal > 0)
+            ? explicitTotal
+            : computedTotal;
+
+    return ApplianceWarrantyModel(
+      id: _currentDoc.value.applianceWarranty?.id,
+      documentId: _currentDoc.value.id,
+      items: items,
+      billingName: _billingNameController.text.trim().isNotEmpty
+          ? _billingNameController.text.trim()
+          : 'King Technology',
+      storeVendorName: _storeVendorController.text.trim().isNotEmpty
+          ? _storeVendorController.text.trim()
+          : 'Authorized Vendor',
+      invoiceNumber: _documentNumberController.text.trim().isNotEmpty
+          ? _documentNumberController.text.trim()
+          : 'INV-${DateTime.now().millisecondsSinceEpoch}',
+      purchaseDate: _purchaseDate.value,
+      purchaseAmount: totalAmount,
+    );
+  }
+
+  VehicleDocumentMetadataModel? _buildUpdatedVehicle() {
+    if (!_isVehicle || _currentDoc.value.vehicleMetadata == null) return null;
+    final premium = double.tryParse(_premiumAmountController.text.trim());
+    return _currentDoc.value.vehicleMetadata!.copyWith(
+      policyOrCertNumber: _documentNumberController.text.trim().isNotEmpty
+          ? _documentNumberController.text.trim()
+          : null,
+      insuranceCompany: _insuranceCompanyController.text.trim().isNotEmpty
+          ? _insuranceCompanyController.text.trim()
+          : null,
+      premiumAmount: premium,
+      issueDate: _issueDate.value,
+      expiryDate: _expiryDate.value,
+      notes: _descriptionController.text.trim().isNotEmpty
+          ? _descriptionController.text.trim()
+          : null,
+    );
+  }
+
+  Future<void> _handleInstantReupload() async {
+    final file = _selectedNewFile.value;
+    if (file == null) return;
+    if (_isSaving.value || _isUploadingReplacement.value) return;
+
+    if (_isCompressing.value) {
+      _errorMessage.value =
+          'File optimization is in progress. Please wait a moment for completion before uploading.';
+      return;
+    }
+
+    _isUploadingReplacement.value = true;
+    _errorMessage.value = '';
+    _replacementSuccessMessage.value = '';
+
+    try {
+      Uint8List? fileBytesToUpload;
+      String fileNameToUpload;
+      String mimeTypeToUpload;
+
+      if (_useCompressed.value && _compressionResult.value != null) {
+        fileBytesToUpload = _compressionResult.value!.compressedBytes;
+        fileNameToUpload = _compressionResult.value!.compressedFileName;
+        mimeTypeToUpload = _compressionResult.value!.mimeType;
+      } else {
+        fileBytesToUpload = file.bytes ?? await file.loadBytes();
+        fileNameToUpload = file.name;
+        mimeTypeToUpload = lookupMimeType(fileNameToUpload) ??
+            (FileCompressor.isPdf(fileNameToUpload)
+                ? 'application/pdf'
+                : 'application/octet-stream');
+      }
+
+      if (fileBytesToUpload.isEmpty) {
+        throw Exception('The selected file data is empty.');
+      }
+
+      String title = _titleController.text.trim().isNotEmpty
+          ? _titleController.text.trim()
+          : _currentDoc.value.title;
+      if (title.contains('(Google Drive)')) {
+        title = title
+            .replaceAll('(Google Drive)', '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+        _titleController.text = title;
+      }
+
+      final updatedAppliance = _buildUpdatedAppliance();
+      final updatedVehicle = _buildUpdatedVehicle();
+
+      await onSave(
+        title: title,
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
+        documentNumber: _documentNumberController.text.trim().isNotEmpty
+            ? _documentNumberController.text.trim()
+            : null,
+        applianceWarranty: updatedAppliance,
+        vehicleMetadata: updatedVehicle,
+        newFileName: fileNameToUpload,
+        newFileBytes: fileBytesToUpload,
+        newMimeType: mimeTypeToUpload,
+        attachmentUrl: null, // Purge old Google Drive link
+      );
+
+      final ext = fileNameToUpload.split('.').last.toLowerCase();
+      final updatedExtras =
+          Map<String, dynamic>.from(_currentDoc.value.extraAttributes);
+      updatedExtras.removeWhere((key, _) =>
+          key.toLowerCase().contains('google') ||
+          key.toLowerCase().contains('drive') ||
+          key.toLowerCase().contains('url') ||
+          key.toLowerCase().contains('link'));
+      updatedExtras['storage_provider'] = 'supabase';
+      updatedExtras['is_google_attachment'] = false;
+
+      final sanitizedFileName =
+          fileNameToUpload.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final catFolder =
+          _currentDoc.value.categoryCode?.isNotEmpty == true
+              ? _currentDoc.value.categoryCode!
+              : 'documents';
+      final subCatFolder = _currentDoc.value.subCategory
+          .trim()
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')
+          .toLowerCase();
+      final actualStoragePath = subCatFolder.isNotEmpty
+          ? '$catFolder/$subCatFolder/${_currentDoc.value.id}-$sanitizedFileName'
+          : '$catFolder/${_currentDoc.value.id}-$sanitizedFileName';
+
+      _currentDoc.value = _currentDoc.value.copyWith(
+        title: title,
+        fileName: fileNameToUpload,
+        filePath: actualStoragePath,
+        fileType: ext,
+        mimeType: mimeTypeToUpload,
+        fileSize: fileBytesToUpload.length,
+        extraAttributes: updatedExtras,
+      );
+
+      _selectedNewFile.value = null;
+      _compressionResult.value = null;
+      _compressionError.value = '';
+      _attachmentUrlController.clear();
+      _showUrlField.value = false;
+      _hasSavedChanges.value = true;
+      _replacementSuccessMessage.value =
+          'Document successfully replaced with "$fileNameToUpload" on VPS Storage!';
+
+      AppSnackbar.showSuccess(
+        'Document Re-uploaded',
+        'File "$fileNameToUpload" has been uploaded to VPS Storage and replaced successfully.',
+      );
+    } catch (e) {
+      _errorMessage.value = e.toString().replaceAll('Exception:', '').trim();
+      AppSnackbar.showError('Re-upload Failed', _errorMessage.value);
+    } finally {
+      _isUploadingReplacement.value = false;
+    }
+  }
+
   void _disposeControllers() {
     _titleController.dispose();
     _descriptionController.dispose();
@@ -586,7 +717,7 @@ class DocumentEditDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(
       () => PopScope(
-        canPop: !_isSaving.value,
+        canPop: !_isSaving.value && !_isUploadingReplacement.value,
         child: Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
@@ -645,11 +776,11 @@ class DocumentEditDialog extends StatelessWidget {
                         icon: const Icon(Icons.close, size: 20),
                         color: AppColors.textSecondary,
                         splashRadius: 18,
-                        onPressed: _isSaving.value
+                        onPressed: (_isSaving.value || _isUploadingReplacement.value)
                             ? null
                             : () {
                                 _disposeControllers();
-                                Get.back(result: false);
+                                Get.back(result: _hasSavedChanges.value);
                               },
                       ),
                     ],
@@ -1055,36 +1186,37 @@ class DocumentEditDialog extends StatelessWidget {
                                         Expanded(
                                           flex: 2,
                                           child: Obx(
-                                            () =>
-                                                DropdownButtonFormField<String>(
-                                              initialValue: AppConstants.popularBrands
-                                                      .contains(item
-                                                          .selectedBrand.value)
+                                            () {
+                                              final brandOptions = AppConstants.popularBrands.toSet().toList();
+                                              if (!brandOptions.contains('Other')) {
+                                                brandOptions.add('Other');
+                                              }
+                                              final activeBrand = brandOptions.contains(item.selectedBrand.value)
                                                   ? item.selectedBrand.value
-                                                  : 'Other',
-                                              decoration: const InputDecoration(
-                                                labelText: 'Brand',
-                                              ),
-                                              items: [
-                                                ...AppConstants.popularBrands,
-                                                'Other',
-                                              ].map((b) {
-                                                return DropdownMenuItem(
-                                                  value: b,
-                                                  child: Text(
-                                                    b,
-                                                    style: const TextStyle(
-                                                        fontSize: 12),
-                                                  ),
-                                                );
-                                              }).toList(),
-                                              onChanged: (val) {
-                                                if (val != null) {
-                                                  item.selectedBrand.value =
-                                                      val;
-                                                }
-                                              },
-                                            ),
+                                                  : 'Other';
+                                              return DropdownButtonFormField<String>(
+                                                value: activeBrand,
+                                                decoration: const InputDecoration(
+                                                  labelText: 'Brand',
+                                                ),
+                                                items: brandOptions.map((b) {
+                                                  return DropdownMenuItem(
+                                                    value: b,
+                                                    child: Text(
+                                                      b,
+                                                      style: const TextStyle(
+                                                          fontSize: 12),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                                onChanged: (val) {
+                                                  if (val != null) {
+                                                    item.selectedBrand.value =
+                                                        val;
+                                                  }
+                                                },
+                                              );
+                                            },
                                           ),
                                         ),
                                       ],
@@ -1240,11 +1372,11 @@ class DocumentEditDialog extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: _isSaving.value
+                    onPressed: (_isSaving.value || _isUploadingReplacement.value)
                         ? null
                         : () {
                             _disposeControllers();
-                            Get.back(result: false);
+                            Get.back(result: _hasSavedChanges.value);
                           },
                     child: const Text('Cancel'),
                   ),
@@ -1327,6 +1459,7 @@ class DocumentEditDialog extends StatelessWidget {
 
           // Current Document State Banner (or Selected New File Replacement Banner)
           Obx(() {
+            final doc = _currentDoc.value;
             if (_selectedNewFile.value != null) {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1349,7 +1482,7 @@ class DocumentEditDialog extends StatelessWidget {
                           Row(
                             children: [
                               Text(
-                                document.isGoogleAttachment
+                                doc.isGoogleAttachment
                                     ? 'Replaces Google Drive with VPS Storage'
                                     : 'New File Replaces Current File',
                                 style: const TextStyle(
@@ -1394,7 +1527,7 @@ class DocumentEditDialog extends StatelessWidget {
                 ),
               );
             }
-            if (document.isGoogleAttachment) {
+            if (doc.isGoogleAttachment) {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
@@ -1428,7 +1561,7 @@ class DocumentEditDialog extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            document.googleAttachmentUrl ?? document.filePath,
+                            doc.googleAttachmentUrl ?? doc.filePath,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -1440,16 +1573,25 @@ class DocumentEditDialog extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Open in Google Drive',
-                      icon: const Icon(Icons.open_in_new,
-                          size: 16, color: Color(0xFF4285F4)),
+                      tooltip: 'Preview Document',
+                      icon: const Icon(Icons.visibility_outlined,
+                          size: 18, color: Color(0xFF4285F4)),
                       splashRadius: 16,
                       onPressed: () {
                         final url =
-                            document.googleAttachmentUrl ?? document.filePath;
-                        final uri = Uri.tryParse(url);
-                        if (uri != null) {
-                          launchUrl(uri, mode: LaunchMode.externalApplication);
+                            doc.googleAttachmentUrl ?? doc.filePath;
+                        if (doc.isImage) {
+                          ImageLightboxDialog.show(
+                            title: doc.title,
+                            imageUrl: url,
+                            fileName: doc.fileName,
+                          );
+                        } else {
+                          PdfViewerDialog.show(
+                            title: doc.title,
+                            signedPdfUrl: url,
+                            fileName: doc.fileName,
+                          );
                         }
                       },
                     ),
@@ -1467,11 +1609,11 @@ class DocumentEditDialog extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    document.fileType == 'pdf'
+                    doc.fileType == 'pdf'
                         ? Icons.picture_as_pdf_outlined
                         : Icons.description_outlined,
                     size: 22,
-                    color: document.fileType == 'pdf'
+                    color: doc.fileType == 'pdf'
                         ? AppColors.error
                         : AppColors.primary,
                   ),
@@ -1480,19 +1622,45 @@ class DocumentEditDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Current: ${document.fileName}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Current: ${doc.fileName}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.successLight,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: AppColors.success.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: const Text(
+                                'VPS STORAGE',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.successDark,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${document.fileType.toUpperCase()} • ${document.fileSizeFormatted}',
+                          '${doc.fileType.toUpperCase()} • ${doc.fileSizeFormatted}',
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondary,
@@ -1501,87 +1669,101 @@ class DocumentEditDialog extends StatelessWidget {
                       ],
                     ),
                   ),
+                  IconButton(
+                    tooltip: 'Preview Document',
+                    icon: const Icon(Icons.visibility_outlined,
+                        size: 18, color: AppColors.primary),
+                    splashRadius: 16,
+                    onPressed: () {
+                      final url = doc.filePath;
+                      if (doc.isImage) {
+                        ImageLightboxDialog.show(
+                          title: doc.title,
+                          imageUrl: url,
+                          fileName: doc.fileName,
+                        );
+                      } else {
+                        PdfViewerDialog.show(
+                          title: doc.title,
+                          signedPdfUrl: url,
+                          fileName: doc.fileName,
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            );
+          }),
+
+          // Instant Re-upload Success Notice Banner
+          Obx(() {
+            if (_replacementSuccessMessage.value.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.successLight,
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      color: AppColors.successDark, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _replacementSuccessMessage.value,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.successDark,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 14),
+                    color: AppColors.textSecondary,
+                    splashRadius: 14,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => _replacementSuccessMessage.value = '',
+                  ),
                 ],
               ),
             );
           }),
           const SizedBox(height: 12),
 
-          // Re-upload & Link Options Buttons
+          // Re-upload File Button (Uploads directly to VPS / Supabase Storage)
           Obx(
-            () => Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _pickFile(context),
-                    icon: const Icon(Icons.upload_file_rounded, size: 16),
-                    label: Text(
-                      _selectedNewFile.value != null
-                          ? 'Change File (${_selectedNewFile.value!.name.length > 12 ? "${_selectedNewFile.value!.name.substring(0, 10)}..." : _selectedNewFile.value!.name})'
-                          : 'Re-upload / Replace File',
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(
-                          color: AppColors.primary, width: 1.2),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
-                    ),
-                  ),
+            () => SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _pickFile(context),
+                icon: const Icon(Icons.upload_file_rounded, size: 16),
+                label: Text(
+                  _selectedNewFile.value != null
+                      ? 'Change Selected File (${_selectedNewFile.value!.name.length > 20 ? "${_selectedNewFile.value!.name.substring(0, 18)}..." : _selectedNewFile.value!.name})'
+                      : 'Re-upload / Replace Document File',
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _showUrlField.toggle(),
-                  icon: const Icon(Icons.link_rounded, size: 16),
-                  label: Text(
-                    _showUrlField.value ? 'Hide Link' : 'Attach URL',
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Optional URL Input (Google Drive or Web URL)
-          Obx(() {
-            if (!_showUrlField.value) return const SizedBox.shrink();
-            final text = _attachmentUrlController.text.toLowerCase();
-            final isGoogle = text.contains('google');
-            return Container(
-              margin: const EdgeInsets.only(top: 10),
-              child: TextField(
-                controller: _attachmentUrlController,
-                decoration: InputDecoration(
-                  labelText: 'Google Drive or Web Document URL',
-                  hintText: 'https://drive.google.com/file/d/...',
-                  prefixIcon: isGoogle
-                      ? const Padding(
-                          padding: EdgeInsets.all(10),
-                          child: GoogleDriveLogo(size: 16),
-                        )
-                      : const Icon(Icons.link,
-                          size: 18, color: AppColors.textSecondary),
-                  suffixIcon: _attachmentUrlController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 16),
-                          onPressed: () {
-                            _attachmentUrlController.clear();
-                          },
-                        )
-                      : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(
+                      color: AppColors.primary, width: 1.2),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
                 ),
               ),
-            );
-          }),
+            ),
+          ),
 
           // Selected New File Banner & Upload Configuration
           Obx(() {
@@ -2111,6 +2293,74 @@ class DocumentEditDialog extends StatelessWidget {
                         ),
                       ],
                     ],
+
+                    // Instant In-Dialog Re-upload / Replacement Action
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.success,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10, horizontal: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusSmall),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: (_isSaving.value ||
+                                    _isUploadingReplacement.value ||
+                                    _isCompressing.value)
+                                ? null
+                                : () => _handleInstantReupload(),
+                            icon: _isUploadingReplacement.value
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.cloud_upload_rounded,
+                                    size: 16),
+                            label: Text(
+                              _isUploadingReplacement.value
+                                  ? 'Uploading to VPS & Replacing...'
+                                  : 'Upload & Replace Document Now',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  AppConstants.radiusSmall),
+                            ),
+                          ),
+                          onPressed: _isUploadingReplacement.value
+                              ? null
+                              : () {
+                                  _selectedNewFile.value = null;
+                                  _compressionResult.value = null;
+                                  _compressionError.value = '';
+                                },
+                          child: const Text('Cancel Pick',
+                              style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
                   ],
                 ],
               ),

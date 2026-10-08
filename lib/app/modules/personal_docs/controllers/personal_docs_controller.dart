@@ -7,11 +7,9 @@ import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
-import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
-import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PersonalDocsController extends GetxController {
@@ -234,26 +232,31 @@ class PersonalDocsController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
-      if (doc.isPdf) {
-        PdfViewerDialog.show(
-          title: doc.title,
-          signedPdfUrl: signedUrl,
-          fileName: doc.fileName,
-          onDownload: () => downloadDocument(doc),
-        );
-      } else if (doc.isImage) {
+      final resolvedUrl = (doc.isGoogleAttachment ||
+              doc.filePath.startsWith('gdrive://') ||
+              doc.filePath.startsWith('http://') ||
+              doc.filePath.startsWith('https://'))
+          ? (doc.googleAttachmentUrl ??
+              (doc.filePath.startsWith('gdrive://')
+                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                  : doc.filePath))
+          : await _dataset.getSignedPreviewUrl(doc.filePath);
+
+      if (doc.isImage) {
         ImageLightboxDialog.show(
           title: doc.title,
-          imageUrl: signedUrl,
+          imageUrl: resolvedUrl,
           fileName: doc.fileName,
           onDownload: () => downloadDocument(doc),
         );
       } else {
-        final uri = Uri.parse(signedUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri);
-        }
+        PdfViewerDialog.show(
+          title: doc.title,
+          filePath: doc.filePath,
+          signedPdfUrl: resolvedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       }
     } catch (e, st) {
       AppLogger.error(
@@ -268,6 +271,20 @@ class PersonalDocsController extends GetxController {
 
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
+      if (doc.isGoogleAttachment ||
+          doc.filePath.startsWith('gdrive://') ||
+          doc.filePath.startsWith('http://') ||
+          doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ??
+            (doc.filePath.startsWith('gdrive://')
+                ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
+                : doc.filePath);
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
@@ -296,26 +313,6 @@ class PersonalDocsController extends GetxController {
 
   void openDocument(DocumentModel doc) {
     previewDocument(doc);
-  }
-
-  void shareDocument(DocumentModel doc) {
-    openShareDialog(doc);
-  }
-
-  Future<void> openShareDialog(DocumentModel doc) async {
-    try {
-      final token = await _dataset.createShareLink(doc.id);
-      final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
-      ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
-    } catch (e, st) {
-      AppLogger.error(
-        'PERSONAL_DOCS_CTRL',
-        'Error creating share link: $e',
-        error: e,
-        stackTrace: st,
-      );
-      AppSnackbar.showError('Share Error', e.toString());
-    }
   }
 
   Future<void> toggleFavorite(DocumentModel doc) async {

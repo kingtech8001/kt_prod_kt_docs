@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class PdfPreview extends StatelessWidget {
-  final Uint8List bytes;
+  final Uint8List? bytes;
   final String sourceUrl;
   final VoidCallback onDocumentLoaded;
   final ValueChanged<String> onDocumentLoadFailed;
 
   const PdfPreview({
     super.key,
-    required this.bytes,
+    this.bytes,
     required this.sourceUrl,
     required this.onDocumentLoaded,
     required this.onDocumentLoadFailed,
@@ -19,8 +19,20 @@ class PdfPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SfPdfViewer.memory(
-      bytes,
+    if (bytes != null && bytes!.isNotEmpty) {
+      return SfPdfViewer.memory(
+        bytes!,
+        canShowScrollHead: true,
+        canShowScrollStatus: true,
+        enableDoubleTapZooming: true,
+        onDocumentLoaded: (_) => onDocumentLoaded(),
+        onDocumentLoadFailed: (details) {
+          onDocumentLoadFailed('${details.error}: ${details.description}');
+        },
+      );
+    }
+    return SfPdfViewer.network(
+      sourceUrl,
       canShowScrollHead: true,
       canShowScrollStatus: true,
       enableDoubleTapZooming: true,

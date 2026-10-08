@@ -10,7 +10,6 @@ import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// GetX-compliant interactive PDF Viewer Dialog loading binary bytes via API.
 /// Zero setState, realistic skeleton loader mirroring dialog geometry, inline error retry.
@@ -19,6 +18,7 @@ class PdfViewerDialog extends StatelessWidget {
   final String? signedPdfUrl;
   final Uint8List? pdfBytes;
   final String? fileName;
+  final String? filePath;
   final VoidCallback? onDownload;
 
   PdfViewerDialog({
@@ -27,6 +27,7 @@ class PdfViewerDialog extends StatelessWidget {
     this.signedPdfUrl,
     this.pdfBytes,
     this.fileName,
+    this.filePath,
     this.onDownload,
   }) {
     if (pdfBytes != null && pdfBytes!.isNotEmpty) {
@@ -42,12 +43,14 @@ class PdfViewerDialog extends StatelessWidget {
   final RxBool _isLoading = true.obs;
   final RxString _errorMessage = ''.obs;
   final Rxn<Uint8List> _pdfBytes = Rxn<Uint8List>();
+  final RxString _webPreviewUrl = ''.obs;
 
   static void show({
     required String title,
     String? signedPdfUrl,
     Uint8List? pdfBytes,
     String? fileName,
+    String? filePath,
     VoidCallback? onDownload,
   }) {
     AppDialog.show(
@@ -56,6 +59,7 @@ class PdfViewerDialog extends StatelessWidget {
         signedPdfUrl: signedPdfUrl,
         pdfBytes: pdfBytes,
         fileName: fileName,
+        filePath: filePath,
         onDownload: onDownload,
       ),
       barrierDismissible: false,
@@ -99,7 +103,21 @@ class PdfViewerDialog extends StatelessWidget {
       if (signedPdfUrl == null || signedPdfUrl!.trim().isEmpty) {
         throw Exception('No PDF URL or binary stream was provided.');
       }
-      final bytes = await FileApiHelper.fetchBytes(signedPdfUrl!);
+      final clean = signedPdfUrl!.trim();
+      if (clean.startsWith('gdrive://') ||
+          clean.contains('drive.google.com') ||
+          clean.contains('docs.google.com')) {
+        var resolvedGUrl = clean.startsWith('gdrive://')
+            ? 'https://drive.google.com/file/d/${clean.replaceFirst("gdrive://", "")}/preview'
+            : clean;
+        if (resolvedGUrl.contains('/view')) {
+          resolvedGUrl = resolvedGUrl.replaceAll('/view', '/preview');
+        }
+        _webPreviewUrl.value = resolvedGUrl;
+        _isLoading.value = false;
+        return;
+      }
+      final bytes = await FileApiHelper.fetchBytes(clean);
 
       // Validate PDF structure
       try {
@@ -229,15 +247,17 @@ class PdfViewerDialog extends StatelessWidget {
                   return _buildErrorView();
                 }
 
-                if (_pdfBytes.value != null) {
+                if (_pdfBytes.value != null || _webPreviewUrl.value.isNotEmpty) {
                   return ClipRRect(
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(AppConstants.radiusMedium),
                       bottomRight: Radius.circular(AppConstants.radiusMedium),
                     ),
                     child: PdfPreview(
-                      bytes: _pdfBytes.value!,
-                      sourceUrl: signedPdfUrl ?? '',
+                      bytes: _pdfBytes.value,
+                      sourceUrl: _webPreviewUrl.value.isNotEmpty
+                          ? _webPreviewUrl.value
+                          : (signedPdfUrl ?? ''),
                       onDocumentLoaded: () {
                         AppLogger.info('PDF_VIEWER', 'PDF document rendered successfully.');
                       },
@@ -306,17 +326,6 @@ class PdfViewerDialog extends StatelessWidget {
                     ),
                     onPressed: _loadPdfBytesViaApi,
                   ),
-                  if (signedPdfUrl != null && signedPdfUrl!.isNotEmpty)
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.open_in_new, size: 16),
-                      label: const Text('Open External URL'),
-                      onPressed: () async {
-                        final uri = Uri.parse(signedPdfUrl!);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        }
-                      },
-                    ),
                   TextButton(
                     onPressed: Get.back,
                     child: const Text('Dismiss'),

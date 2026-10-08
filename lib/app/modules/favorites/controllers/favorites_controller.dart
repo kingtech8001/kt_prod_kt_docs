@@ -8,7 +8,6 @@ import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
-import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
@@ -217,35 +216,31 @@ class FavoritesController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
-        final uri = Uri.tryParse(gUrl);
-        if (uri != null && await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          return;
-        }
-      }
+      final resolvedUrl = (doc.isGoogleAttachment ||
+              doc.filePath.startsWith('gdrive://') ||
+              doc.filePath.startsWith('http://') ||
+              doc.filePath.startsWith('https://'))
+          ? (doc.googleAttachmentUrl ??
+              (doc.filePath.startsWith('gdrive://')
+                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                  : doc.filePath))
+          : await _dataset.getSignedPreviewUrl(doc.filePath);
 
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
-      if (doc.isPdf) {
-        PdfViewerDialog.show(
-          title: doc.title,
-          signedPdfUrl: signedUrl,
-          fileName: doc.fileName,
-          onDownload: () => downloadDocument(doc),
-        );
-      } else if (doc.isImage) {
+      if (doc.isImage) {
         ImageLightboxDialog.show(
           title: doc.title,
-          imageUrl: signedUrl,
+          imageUrl: resolvedUrl,
           fileName: doc.fileName,
           onDownload: () => downloadDocument(doc),
         );
       } else {
-        final uri = Uri.parse(signedUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+        PdfViewerDialog.show(
+          title: doc.title,
+          filePath: doc.filePath,
+          signedPdfUrl: resolvedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       }
     } catch (e, st) {
       AppLogger.error(
@@ -260,8 +255,14 @@ class FavoritesController extends GetxController {
 
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
-      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+      if (doc.isGoogleAttachment ||
+          doc.filePath.startsWith('gdrive://') ||
+          doc.filePath.startsWith('http://') ||
+          doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ??
+            (doc.filePath.startsWith('gdrive://')
+                ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
+                : doc.filePath);
         final uri = Uri.tryParse(gUrl);
         if (uri != null && await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -297,22 +298,6 @@ class FavoritesController extends GetxController {
 
   void openDocument(DocumentModel doc) {
     previewDocument(doc);
-  }
-
-  Future<void> shareDocument(DocumentModel doc) async {
-    try {
-      final token = await _dataset.createShareLink(doc.id);
-      final shareUrl = '${doc.filePath}/share/$token';
-      ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: shareUrl);
-    } catch (e, st) {
-      AppLogger.error(
-        'FAVORITES_CTRL',
-        'Share error: $e',
-        error: e,
-        stackTrace: st,
-      );
-      AppSnackbar.showError('Share Failed', e.toString());
-    }
   }
 
   Future<void> moveToTrash(DocumentModel doc) async {
@@ -357,7 +342,7 @@ class FavoritesController extends GetxController {
     );
   }
 
-  void openEditDocumentDialog(DocumentModel doc) {
+  void openEditDocumentDialog(DocumentModel doc) async {
     if (!canEdit) {
       AppSnackbar.showWarning(
         'Permission Denied',
@@ -366,7 +351,7 @@ class FavoritesController extends GetxController {
       return;
     }
 
-    DocumentEditDialog.show(
+    final updated = await DocumentEditDialog.show(
       document: doc,
       onSave: ({
         required title,
@@ -398,7 +383,7 @@ class FavoritesController extends GetxController {
         } catch (e, st) {
           AppLogger.error(
             'FAVORITES_CTRL',
-            'Update error: $e',
+            'Error updating document: $e',
             error: e,
             stackTrace: st,
           );
@@ -406,5 +391,9 @@ class FavoritesController extends GetxController {
         }
       },
     );
+
+    if (updated == true) {
+      await loadFavorites(resetPage: true);
+    }
   }
 }

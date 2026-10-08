@@ -777,7 +777,7 @@ class DemoDataService {
               lk.contains('attachment_url') ||
               lk.contains('gdrive');
         });
-        updatedExtraAttributes['storage_provider'] = 'vps';
+        updatedExtraAttributes['storage_provider'] = 'supabase';
         updatedExtraAttributes['is_google_attachment'] = false;
       } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
         updatedFileName = 'Google Drive Document';

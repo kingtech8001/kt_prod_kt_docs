@@ -48,6 +48,13 @@ class SupabaseProvider {
     bool download = false,
   }) async {
     final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+      return cleanPath;
+    }
+    if (cleanPath.startsWith('gdrive://')) {
+      final fileId = cleanPath.replaceFirst('gdrive://', '').trim();
+      return 'https://drive.google.com/file/d/$fileId/view?usp=sharing';
+    }
     AppLogger.debug('SUPABASE_STORAGE', 'Creating signed URL for: $cleanPath (expires in: ${expiresInSeconds}s)');
     try {
       final response = await client.storage

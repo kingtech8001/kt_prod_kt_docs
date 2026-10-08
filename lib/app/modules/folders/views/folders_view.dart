@@ -701,7 +701,6 @@ class FoldersView extends GetView<FoldersController> {
                           document: doc,
                           onPreview: () => controller.previewDocument(doc),
                           onDownload: () => controller.downloadDocument(doc),
-                          onShare: () => controller.shareDocument(doc),
                           onToggleFavorite: () => controller.toggleFavorite(doc),
                           onDelete: () => controller.confirmMoveToTrash(doc),
                         ),

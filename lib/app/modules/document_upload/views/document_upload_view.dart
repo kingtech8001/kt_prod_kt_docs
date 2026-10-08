@@ -1048,8 +1048,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
         : AppConstants.applianceSubcategories;
 
     final brands = controller.dynamicBrands.isNotEmpty
-        ? [...controller.dynamicBrands, 'Other']
-        : [...AppConstants.popularBrands, 'Other'];
+        ? {...controller.dynamicBrands, 'Other'}.toList()
+        : AppConstants.popularBrands.toSet().toList();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),

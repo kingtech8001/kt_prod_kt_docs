@@ -708,14 +708,6 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                             onPressed: () =>
                                 controller.downloadDocument(doc),
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.share_outlined,
-                              size: 18,
-                            ),
-                            tooltip: 'Share Document',
-                            onPressed: () => controller.shareDocument(doc),
-                          ),
                           if (controller.canEdit)
                             IconButton(
                               icon: const Icon(Icons.edit_outlined, size: 18),
@@ -942,11 +934,6 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                           icon: const Icon(Icons.download_outlined, size: 20),
                           tooltip: 'Download Invoice',
                           onPressed: () => controller.downloadDocument(doc),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.share_outlined, size: 20),
-                          tooltip: 'Share Document',
-                          onPressed: () => controller.shareDocument(doc),
                         ),
                         if (controller.canEdit)
                           IconButton(

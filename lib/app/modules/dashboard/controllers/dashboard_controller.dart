@@ -5,7 +5,6 @@ import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
-import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
@@ -56,26 +55,31 @@ class DashboardController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Previewing document: ${doc.title}');
     try {
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
-      if (doc.isPdf) {
-        PdfViewerDialog.show(
-          title: doc.title,
-          signedPdfUrl: signedUrl,
-          fileName: doc.fileName,
-          onDownload: () => downloadDocument(doc),
-        );
-      } else if (doc.isImage) {
+      final resolvedUrl = (doc.isGoogleAttachment ||
+              doc.filePath.startsWith('gdrive://') ||
+              doc.filePath.startsWith('http://') ||
+              doc.filePath.startsWith('https://'))
+          ? (doc.googleAttachmentUrl ??
+              (doc.filePath.startsWith('gdrive://')
+                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                  : doc.filePath))
+          : await _dataset.getSignedPreviewUrl(doc.filePath);
+
+      if (doc.isImage) {
         ImageLightboxDialog.show(
           title: doc.title,
-          imageUrl: signedUrl,
+          imageUrl: resolvedUrl,
           fileName: doc.fileName,
           onDownload: () => downloadDocument(doc),
         );
       } else {
-        final uri = Uri.parse(signedUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+        PdfViewerDialog.show(
+          title: doc.title,
+          filePath: doc.filePath,
+          signedPdfUrl: resolvedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       }
     } catch (e, st) {
       AppLogger.error(
@@ -91,6 +95,20 @@ class DashboardController extends GetxController {
   Future<void> downloadDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Downloading document: ${doc.title}');
     try {
+      if (doc.isGoogleAttachment ||
+          doc.filePath.startsWith('gdrive://') ||
+          doc.filePath.startsWith('http://') ||
+          doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ??
+            (doc.filePath.startsWith('gdrive://')
+                ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
+                : doc.filePath);
+        final uri = Uri.tryParse(gUrl);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
       final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
@@ -114,22 +132,6 @@ class DashboardController extends GetxController {
       } catch (_) {
         AppSnackbar.showError('Download Failed', e.toString());
       }
-    }
-  }
-
-  Future<void> shareDocument(DocumentModel doc) async {
-    AppLogger.debug('DASHBOARD_CTRL', 'Sharing document: ${doc.title}');
-    try {
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath);
-      ShareDocumentDialog.show(documentTitle: doc.title, shareUrl: signedUrl);
-    } catch (e, st) {
-      AppLogger.error(
-        'DASHBOARD_CTRL',
-        'Share failed: $e',
-        error: e,
-        stackTrace: st,
-      );
-      AppSnackbar.showError('Share Failed', e.toString());
     }
   }
 
@@ -185,8 +187,8 @@ class DashboardController extends GetxController {
     );
   }
 
-  void openEditDocumentDialog(DocumentModel doc) {
-    DocumentEditDialog.show(
+  void openEditDocumentDialog(DocumentModel doc) async {
+    final updated = await DocumentEditDialog.show(
       document: doc,
       onSave: ({
         required title,
@@ -227,5 +229,9 @@ class DashboardController extends GetxController {
         }
       },
     );
+
+    if (updated == true) {
+      await loadDashboardData();
+    }
   }
 }

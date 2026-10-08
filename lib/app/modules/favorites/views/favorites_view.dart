@@ -92,7 +92,6 @@ class FavoritesView extends GetView<FavoritesController> {
                               controller.previewDocument(doc),
                           onDownload: () =>
                               controller.downloadDocument(doc),
-                          onShare: () => controller.shareDocument(doc),
                           onToggleFavorite: () =>
                               controller.toggleFavorite(doc),
                           onEdit: controller.canEdit

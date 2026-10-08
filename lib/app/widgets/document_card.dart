@@ -9,7 +9,6 @@ class DocumentCard extends StatelessWidget {
   final DocumentModel document;
   final VoidCallback? onPreview;
   final VoidCallback? onDownload;
-  final VoidCallback? onShare;
   final VoidCallback? onToggleFavorite;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -21,7 +20,6 @@ class DocumentCard extends StatelessWidget {
     required this.document,
     this.onPreview,
     this.onDownload,
-    this.onShare,
     this.onToggleFavorite,
     this.onEdit,
     this.onDelete,
@@ -336,12 +334,6 @@ class DocumentCard extends StatelessWidget {
                               ),
                               tooltip: 'Download',
                               onPressed: onDownload,
-                            ),
-                          if (onShare != null)
-                            IconButton(
-                              icon: const Icon(Icons.share_outlined, size: 18),
-                              tooltip: 'Share',
-                              onPressed: onShare,
                             ),
                           if (onEdit != null)
                             IconButton(

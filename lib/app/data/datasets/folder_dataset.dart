@@ -296,6 +296,13 @@ class FolderDataset {
 
   /// Obtains signed preview URL for viewing or downloading.
   Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
+    if (storagePath.startsWith('gdrive://')) {
+      final fileId = storagePath.replaceFirst('gdrive://', '').trim();
+      return 'https://drive.google.com/file/d/$fileId/view?usp=sharing';
+    }
     if (DemoDataService.isDemoMode) {
       return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
     }

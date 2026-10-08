@@ -362,7 +362,6 @@ class DocumentsView extends GetView<DocumentsController> {
               document: doc,
               onPreview: () => controller.previewDocument(doc),
               onDownload: () => controller.downloadDocument(doc),
-              onShare: () => controller.shareDocument(doc),
               onToggleFavorite: () => controller.toggleFavorite(doc),
               onEdit: () => controller.openEditDocumentDialog(doc),
               onDelete: () => controller.confirmMoveToTrash(doc),
@@ -530,11 +529,6 @@ class DocumentsView extends GetView<DocumentsController> {
                 onPressed: () => controller.downloadDocument(doc),
               ),
               IconButton(
-                icon: const Icon(Icons.share_outlined, size: 20),
-                tooltip: 'Share',
-                onPressed: () => controller.shareDocument(doc),
-              ),
-              IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 20),
                 tooltip: 'Edit details',
                 onPressed: () => controller.openEditDocumentDialog(doc),
@@ -668,11 +662,6 @@ class DocumentsView extends GetView<DocumentsController> {
             icon: const Icon(Icons.download_outlined, size: 20),
             tooltip: 'Download',
             onPressed: () => controller.downloadDocument(doc),
-          ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined, size: 20),
-            tooltip: 'Share',
-            onPressed: () => controller.shareDocument(doc),
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 20),

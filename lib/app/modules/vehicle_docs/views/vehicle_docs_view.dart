@@ -1935,13 +1935,6 @@ class _VehicleDocumentCard extends StatelessWidget {
                           visualDensity: VisualDensity.compact,
                         ),
                         IconButton(
-                          icon: const Icon(Icons.share_outlined, size: 18),
-                          onPressed: () => controller.shareDocument(doc),
-                          tooltip: 'Share',
-                          color: AppColors.textSecondary,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        IconButton(
                           icon: Icon(
                             doc.isFavorite
                                 ? Icons.favorite
@@ -2114,14 +2107,6 @@ class _VehicleDocumentListTile extends StatelessWidget {
                           padding: const EdgeInsets.all(6),
                           constraints: const BoxConstraints(),
                         ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          icon: const Icon(Icons.share_outlined, size: 18),
-                          onPressed: () => controller.shareDocument(doc),
-                          tooltip: 'Share',
-                          padding: const EdgeInsets.all(6),
-                          constraints: const BoxConstraints(),
-                        ),
                         if (controller.canEdit) ...[
                           const SizedBox(width: 6),
                           IconButton(
@@ -2255,11 +2240,6 @@ class _VehicleDocumentListTile extends StatelessWidget {
                   icon: const Icon(Icons.download_outlined, size: 18),
                   onPressed: () => controller.downloadDocument(doc),
                   tooltip: 'Download',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.share_outlined, size: 18),
-                  onPressed: () => controller.shareDocument(doc),
-                  tooltip: 'Share',
                 ),
                 if (controller.canEdit)
                   IconButton(

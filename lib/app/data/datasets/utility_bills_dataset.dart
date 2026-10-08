@@ -458,6 +458,13 @@ class UtilityBillsDataset {
 
   /// Obtains a signed preview URL for downloading or viewing.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    if (filePath.startsWith('gdrive://')) {
+      final fileId = filePath.replaceFirst('gdrive://', '').trim();
+      return 'https://drive.google.com/file/d/$fileId/view?usp=sharing';
+    }
     if (DemoDataService.isDemoMode) {
       return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
     }

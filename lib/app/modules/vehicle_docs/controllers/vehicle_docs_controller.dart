@@ -10,13 +10,11 @@ import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehic
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
-import 'package:kt_prod_kt_docs/app/widgets/share_document_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_download_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
-import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class VehicleDocsController extends GetxController {
@@ -392,44 +390,34 @@ class VehicleDocsController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     try {
       AppLogger.info('VEHICLE_DOCS_CTRL', 'Opening preview for doc: ${doc.id}');
-      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
-        final uri = Uri.tryParse(gUrl);
-        if (uri != null && await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          return;
-        }
-      }
-
-      final url = await _dataset.getSignedPreviewUrl(doc.filePath);
+      final resolvedUrl = (doc.isGoogleAttachment ||
+              doc.filePath.startsWith('gdrive://') ||
+              doc.filePath.startsWith('http://') ||
+              doc.filePath.startsWith('https://'))
+          ? (doc.googleAttachmentUrl ??
+              (doc.filePath.startsWith('gdrive://')
+                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                  : doc.filePath))
+          : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       final mime = doc.mimeType.toLowerCase();
       final fileType = doc.fileType.toLowerCase();
-      final isPdf = mime.contains('pdf') || fileType == 'pdf';
       final isImage = mime.contains('image') ||
           ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(fileType);
 
-      if (isPdf) {
-        PdfViewerDialog.show(
-          title: doc.title,
-          signedPdfUrl: url,
-          fileName: doc.fileName,
-        );
-      } else if (isImage) {
+      if (isImage) {
         ImageLightboxDialog.show(
           title: doc.title,
-          imageUrl: url,
+          imageUrl: resolvedUrl,
         );
       } else {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          AppSnackbar.showError(
-            'Preview Unavailable',
-            'Unable to open file type ($fileType).',
-          );
-        }
+        PdfViewerDialog.show(
+          title: doc.title,
+          filePath: doc.filePath,
+          signedPdfUrl: resolvedUrl,
+          fileName: doc.fileName,
+          onDownload: () => downloadDocument(doc),
+        );
       }
     } catch (e, st) {
       AppLogger.error(
@@ -448,8 +436,14 @@ class VehicleDocsController extends GetxController {
   Future<void> downloadDocument(DocumentModel doc) async {
     try {
       AppLogger.info('VEHICLE_DOCS_CTRL', 'Downloading doc: ${doc.id}');
-      if (doc.isGoogleAttachment || doc.filePath.startsWith('http://') || doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ?? doc.filePath;
+      if (doc.isGoogleAttachment ||
+          doc.filePath.startsWith('gdrive://') ||
+          doc.filePath.startsWith('http://') ||
+          doc.filePath.startsWith('https://')) {
+        final gUrl = doc.googleAttachmentUrl ??
+            (doc.filePath.startsWith('gdrive://')
+                ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
+                : doc.filePath);
         final uri = Uri.tryParse(gUrl);
         if (uri != null && await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -477,29 +471,6 @@ class VehicleDocsController extends GetxController {
       AppSnackbar.showError(
         'Download Failed',
         'Could not download ${doc.fileName}.',
-      );
-    }
-  }
-
-  Future<void> shareDocument(DocumentModel doc) async {
-    try {
-      final token = await _dataset.createShareLink(doc.id);
-      final shareUrl = '${AppConstants.webBaseUrl}/share/$token';
-
-      ShareDocumentDialog.show(
-        documentTitle: doc.title,
-        shareUrl: shareUrl,
-      );
-    } catch (e, st) {
-      AppLogger.error(
-        'VEHICLE_DOCS_CTRL',
-        'Error creating share link: $e',
-        error: e,
-        stackTrace: st,
-      );
-      AppSnackbar.showError(
-        'Share Failed',
-        'Could not create shareable link.',
       );
     }
   }
@@ -583,7 +554,7 @@ class VehicleDocsController extends GetxController {
     }
   }
 
-  void openEditDocumentDialog(DocumentModel doc) {
+  void openEditDocumentDialog(DocumentModel doc) async {
     if (!canEdit) {
       AppSnackbar.showError(
         'Permission Denied',
@@ -592,7 +563,7 @@ class VehicleDocsController extends GetxController {
       return;
     }
 
-    DocumentEditDialog.show(
+    final updated = await DocumentEditDialog.show(
       document: doc,
       onSave: ({
         required title,
@@ -632,5 +603,9 @@ class VehicleDocsController extends GetxController {
         }
       },
     );
+
+    if (updated == true) {
+      await loadVehicleDocuments();
+    }
   }
 }
