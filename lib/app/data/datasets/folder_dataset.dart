@@ -353,8 +353,7 @@ class FolderDataset {
     try {
       try {
         await _client.rpc('soft_delete_document', params: {
-          'p_document_id': documentId,
-          'p_user_id': user?.id,
+          'p_doc_id': documentId,
         });
       } catch (rpcErr) {
         AppLogger.warning('FOLDER_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
@@ -362,14 +361,15 @@ class FolderDataset {
           'deleted_at': DateTime.now().toIso8601String(),
           'deleted_by': user?.id,
         }).eq('id', documentId);
+
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': user?.id,
+          'action': 'moved_to_trash',
+          'details': {'reason': 'Soft deleted from folder view'},
+        });
       }
 
-      await _client.from('document_activity_logs').insert({
-        'document_id': documentId,
-        'user_id': user?.id,
-        'action': 'moved_to_trash',
-        'details': {'reason': 'Soft deleted from folder view'},
-      });
       AppLogger.info('FOLDER_DATASET', 'Document $documentId soft-deleted successfully.');
     } catch (e, st) {
       AppLogger.error('FOLDER_DATASET', 'Error in softDeleteDocument: $e', error: e, stackTrace: st);

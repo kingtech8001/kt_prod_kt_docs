@@ -4,6 +4,7 @@ import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/modules/personal_docs/controllers/personal_docs_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/metric_card.dart';
 import 'package:kt_prod_kt_docs/app/widgets/status_badge.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
@@ -526,29 +527,46 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primarySurface,
+                      color: doc.isGoogleAttachment
+                          ? const Color(0xFFF0FDF4)
+                          : AppColors.primarySurface,
                       borderRadius: BorderRadius.circular(8),
+                      border: doc.isGoogleAttachment
+                          ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                          : null,
                     ),
-                    child: Icon(
-                      doc.isPdf ? Icons.picture_as_pdf : Icons.badge_outlined,
-                      color: doc.isPdf ? AppColors.error : AppColors.primary,
-                      size: 20,
-                    ),
+                    child: doc.isGoogleAttachment
+                        ? const GoogleDriveLogo(size: 20)
+                        : Icon(
+                            doc.isPdf ? Icons.picture_as_pdf : Icons.badge_outlined,
+                            color: doc.isPdf ? AppColors.error : AppColors.primary,
+                            size: 20,
+                          ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          meta?.personName ?? 'General',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            if (doc.isGoogleAttachment) ...[
+                              const GoogleDriveLogo(size: 14),
+                              const SizedBox(width: 4),
+                            ],
+                            Expanded(
+                              child: Text(
+                                meta?.personName ?? 'General',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                         Text(
                           meta?.docTypeName ?? doc.subCategory,
@@ -586,14 +604,28 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          doc.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            if (doc.isGoogleAttachment) ...[
+                              const GoogleDriveLogo(size: 14),
+                              const SizedBox(width: 5),
+                            ],
+                            Expanded(
+                              child: Text(
+                                doc.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (doc.isGoogleAttachment) ...[
+                              const SizedBox(width: 6),
+                              const GoogleDriveBadge(compact: true),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 6),
                         if (meta?.idNumber != null &&
@@ -714,28 +746,51 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: doc.isPdf
-                    ? AppColors.error.withValues(alpha: 0.1)
-                    : AppColors.primarySurface,
+                color: doc.isGoogleAttachment
+                    ? const Color(0xFFF0FDF4)
+                    : (doc.isPdf
+                        ? AppColors.error.withValues(alpha: 0.1)
+                        : AppColors.primarySurface),
                 borderRadius: BorderRadius.circular(8),
+                border: doc.isGoogleAttachment
+                    ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                    : null,
               ),
-              child: Icon(
-                doc.isPdf ? Icons.picture_as_pdf : Icons.badge_outlined,
-                color: doc.isPdf ? AppColors.error : AppColors.primary,
-                size: 22,
-              ),
+              child: doc.isGoogleAttachment
+                  ? const GoogleDriveLogo(size: 22)
+                  : Icon(
+                      doc.isPdf ? Icons.picture_as_pdf : Icons.badge_outlined,
+                      color: doc.isPdf ? AppColors.error : AppColors.primary,
+                      size: 22,
+                    ),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    doc.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+                  Row(
+                    children: [
+                      if (doc.isGoogleAttachment) ...[
+                        const GoogleDriveLogo(size: 16),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          doc.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (doc.isGoogleAttachment) ...[
+                        const SizedBox(width: 6),
+                        const GoogleDriveBadge(compact: true),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(

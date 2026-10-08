@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -136,7 +138,7 @@ class ApplianceVaultDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-3' || d.applianceWarranty != null)
+          .where((d) => d.categoryId == 'cat-3' || d.categoryId == 'cat-appliance' || d.categoryCode == 'appliance_warranty' || d.applianceWarranty != null)
           .toList();
 
       if (brand != null && brand.isNotEmpty && brand != 'All Brands') {
@@ -400,13 +402,26 @@ class ApplianceVaultDataset {
     );
     try {
       final userId = _client.auth.currentUser?.id;
-      await _client.rpc(
-        'soft_delete_document',
-        params: {
-          'p_document_id': documentId,
-          'p_user_id': userId,
-        },
-      );
+      try {
+        await _client.rpc(
+          'soft_delete_document',
+          params: {
+            'p_doc_id': documentId,
+          },
+        );
+      } catch (rpcErr) {
+        AppLogger.warning('APPLIANCE_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
+        await _client.from('documents').update({
+          'deleted_at': DateTime.now().toIso8601String(),
+          'deleted_by': userId,
+        }).eq('id', documentId);
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': userId,
+          'action': 'moved_to_trash',
+          'details': {'reason': 'Soft deleted from appliance vault'},
+        });
+      }
     } catch (e, st) {
       AppLogger.error(
         'APPLIANCE_DATASET',
@@ -425,49 +440,29 @@ class ApplianceVaultDataset {
     String? description,
     String? documentNumber,
     ApplianceWarrantyModel? applianceWarranty,
+    VehicleDocumentMetadataModel? vehicleMetadata,
+    String? newFileName,
+    Uint8List? newFileBytes,
+    String? newMimeType,
+    String? categoryCode,
+    String? subCategory,
+    String? attachmentUrl,
   }) async {
-    if (DemoDataService.isDemoMode) {
-      AppLogger.info('APPLIANCE_DATASET', 'Demo Mode: Updated details for $documentId');
-      return;
-    }
-    AppLogger.info(
-      'APPLIANCE_DATASET',
-      'Updating details for appliance invoice: $documentId...',
+    final docsDataset = DocumentsDataset(_provider);
+    await docsDataset.updateDocumentDetails(
+      documentId: documentId,
+      title: title,
+      description: description,
+      documentNumber: documentNumber,
+      applianceWarranty: applianceWarranty,
+      vehicleMetadata: vehicleMetadata,
+      newFileName: newFileName,
+      newFileBytes: newFileBytes,
+      newMimeType: newMimeType,
+      categoryCode: categoryCode,
+      subCategory: subCategory,
+      attachmentUrl: attachmentUrl,
     );
-    try {
-      await _client
-          .from('documents')
-          .update({
-            'title': title,
-            'description': description,
-            'document_number': documentNumber,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', documentId);
-
-      if (applianceWarranty != null) {
-        final warrantyMap = applianceWarranty.toJson();
-        warrantyMap['document_id'] = documentId;
-        try {
-          await _client.from('appliance_warranty_metadata').upsert(warrantyMap);
-        } catch (tableErr) {
-          AppLogger.warning(
-            'APPLIANCE_DATASET',
-            'Non-fatal fallback upserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
-          );
-          final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
-          await _client.from('appliance_warranty_metadata').upsert(cleanMap);
-        }
-      }
-    } catch (e, st) {
-      AppLogger.error(
-        'APPLIANCE_DATASET',
-        'Error updating appliance invoice: $e',
-        error: e,
-        stackTrace: st,
-      );
-      rethrow;
-    }
   }
 
   /// Generates a signed preview URL for downloading or displaying.

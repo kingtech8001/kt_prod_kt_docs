@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
@@ -228,13 +230,26 @@ class FavoritesDataset {
     );
     try {
       final userId = _client.auth.currentUser?.id;
-      await _client.rpc(
-        'soft_delete_document',
-        params: {
-          'p_document_id': documentId,
-          'p_user_id': userId,
-        },
-      );
+      try {
+        await _client.rpc(
+          'soft_delete_document',
+          params: {
+            'p_doc_id': documentId,
+          },
+        );
+      } catch (rpcErr) {
+        AppLogger.warning('FAVORITES_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
+        await _client.from('documents').update({
+          'deleted_at': DateTime.now().toIso8601String(),
+          'deleted_by': userId,
+        }).eq('id', documentId);
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': userId,
+          'action': 'moved_to_trash',
+          'details': {'reason': 'Soft deleted from favorites'},
+        });
+      }
     } catch (e, st) {
       AppLogger.error(
         'FAVORITES_DATASET',
@@ -254,59 +269,30 @@ class FavoritesDataset {
     String? documentNumber,
     dynamic applianceWarranty,
     VehicleDocumentMetadataModel? vehicleMetadata,
+    String? newFileName,
+    Uint8List? newFileBytes,
+    String? newMimeType,
+    String? categoryCode,
+    String? subCategory,
+    String? attachmentUrl,
   }) async {
-    if (DemoDataService.isDemoMode) {
-      AppLogger.info('FAVORITES_DATASET', 'Demo Mode: Updated document details for $documentId');
-      return;
-    }
-    AppLogger.info(
-      'FAVORITES_DATASET',
-      'Updating details for document: $documentId...',
+    final docsDataset = DocumentsDataset(_provider);
+    await docsDataset.updateDocumentDetails(
+      documentId: documentId,
+      title: title,
+      description: description,
+      documentNumber: documentNumber,
+      applianceWarranty: applianceWarranty is ApplianceWarrantyModel
+          ? applianceWarranty
+          : null,
+      vehicleMetadata: vehicleMetadata,
+      newFileName: newFileName,
+      newFileBytes: newFileBytes,
+      newMimeType: newMimeType,
+      categoryCode: categoryCode,
+      subCategory: subCategory,
+      attachmentUrl: attachmentUrl,
     );
-    try {
-      await _client
-          .from('documents')
-          .update({
-            'title': title,
-            'description': description,
-            'document_number': documentNumber,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', documentId);
-
-      if (applianceWarranty != null) {
-        final warrantyMap = applianceWarranty.toJson();
-        warrantyMap['document_id'] = documentId;
-        try {
-          await _client.from('appliance_warranty_metadata').upsert(warrantyMap);
-        } catch (tableErr) {
-          AppLogger.warning(
-            'FAVORITES_DATASET',
-            'Non-fatal fallback upserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
-          );
-          final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
-          await _client.from('appliance_warranty_metadata').upsert(cleanMap);
-        }
-      }
-
-      if (vehicleMetadata != null) {
-        final payload = vehicleMetadata.toJson()
-          ..remove('id')
-          ..remove('document_id');
-        await _client
-            .from('vehicle_document_metadata')
-            .update(payload)
-            .eq('document_id', documentId);
-      }
-    } catch (e, st) {
-      AppLogger.error(
-        'FAVORITES_DATASET',
-        'Error updating document: $e',
-        error: e,
-        stackTrace: st,
-      );
-      rethrow;
-    }
   }
 
   /// Generates a signed preview URL for downloading or displaying.

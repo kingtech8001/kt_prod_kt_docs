@@ -268,6 +268,14 @@ class DocumentEditDialog extends StatelessWidget {
         final file = result.first;
         await file.loadBytes();
         _selectedNewFile.value = file;
+        _attachmentUrlController.clear();
+        _showUrlField.value = false;
+        if (_titleController.text.contains('(Google Drive)')) {
+          _titleController.text = _titleController.text
+              .replaceAll('(Google Drive)', '')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+        }
         _compressionResult.value = null;
         _compressionError.value = '';
         _errorMessage.value = '';
@@ -511,10 +519,15 @@ class DocumentEditDialog extends StatelessWidget {
         }
       }
 
-      final urlText = _attachmentUrlController.text.trim();
-      if (urlText.isNotEmpty &&
-          urlText != (document.googleAttachmentUrl ?? '')) {
-        attachmentUrlToUpload = urlText;
+      if (_selectedNewFile.value != null) {
+        // Replacing existing document (or Google Drive link) with a new VPS storage file
+        attachmentUrlToUpload = null;
+      } else {
+        final urlText = _attachmentUrlController.text.trim();
+        if (urlText.isNotEmpty &&
+            urlText != (document.googleAttachmentUrl ?? '')) {
+          attachmentUrlToUpload = urlText;
+        }
       }
 
       await onSave(
@@ -565,71 +578,76 @@ class DocumentEditDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-      ),
-      backgroundColor: AppColors.surface,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: (_isAppliance || _isVehicle) ? 720 : 580,
-          maxHeight: MediaQuery.sizeOf(context).height * 0.90,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.paddingLarge),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Dialog Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Obx(
+      () => PopScope(
+        canPop: !_isSaving.value,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+          ),
+          backgroundColor: AppColors.surface,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: (_isAppliance || _isVehicle) ? 720 : 580,
+              maxHeight: MediaQuery.sizeOf(context).height * 0.90,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.paddingLarge),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 1. Dialog Header
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primarySurface,
-                          borderRadius:
-                              BorderRadius.circular(AppConstants.radiusSmall),
-                        ),
-                        child: Icon(
-                          _isAppliance
-                              ? Icons.kitchen_outlined
-                              : _isVehicle
-                                  ? Icons.directions_car_outlined
-                                  : Icons.edit_document,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySurface,
+                              borderRadius:
+                                  BorderRadius.circular(AppConstants.radiusSmall),
+                            ),
+                            child: Icon(
+                              _isAppliance
+                                  ? Icons.kitchen_outlined
+                                  : _isVehicle
+                                      ? Icons.directions_car_outlined
+                                      : Icons.edit_document,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _isAppliance
+                                ? 'Edit Appliance Invoice'
+                                : _isVehicle
+                                    ? 'Edit Vehicle Document'
+                                    : 'Edit Document Details',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _isAppliance
-                            ? 'Edit Appliance Invoice'
-                            : _isVehicle
-                                ? 'Edit Vehicle Document'
-                                : 'Edit Document Details',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        color: AppColors.textSecondary,
+                        splashRadius: 18,
+                        onPressed: _isSaving.value
+                            ? null
+                            : () {
+                                _disposeControllers();
+                                Get.back(result: false);
+                              },
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    color: AppColors.textSecondary,
-                    splashRadius: 18,
-                    onPressed: () {
-                      _disposeControllers();
-                      Get.back(result: false);
-                    },
-                  ),
-                ],
-              ),
               const SizedBox(height: 12),
 
               // 2. Inline Error Banner (Rule 3.B)
@@ -1155,34 +1173,95 @@ class DocumentEditDialog extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              // Uploading / Saving Progress Indicator (Rule: wait until upload finishes before dialog closes)
+              if (_isSaving.value)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 14),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius:
+                        BorderRadius.circular(AppConstants.radiusSmall),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedNewFile.value != null
+                                  ? 'Uploading document to VPS Storage...'
+                                  : 'Saving document changes...',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Please wait, saving to server. Dialog will close upon completion.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 16),
 
               // 4. Action Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: () {
-                      _disposeControllers();
-                      Get.back(result: false);
-                    },
+                    onPressed: _isSaving.value
+                        ? null
+                        : () {
+                            _disposeControllers();
+                            Get.back(result: false);
+                          },
                     child: const Text('Cancel'),
                   ),
                   const SizedBox(width: 12),
-                  Obx(
-                    () => ElevatedButton(
-                      onPressed: _isSaving.value ? null : _handleSave,
-                      child: _isSaving.value
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
+                  ElevatedButton(
+                    onPressed: _isSaving.value ? null : _handleSave,
+                    child: _isSaving.value
+                        ? const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               ),
-                            )
-                          : const Text('Save Changes'),
-                    ),
+                              SizedBox(width: 8),
+                              Text('Uploading & Saving...'),
+                            ],
+                          )
+                        : const Text('Save Changes'),
                   ),
                 ],
               ),
@@ -1190,7 +1269,9 @@ class DocumentEditDialog extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildAttachmentAndReuploadSection(BuildContext context) {
@@ -1222,71 +1303,139 @@ class DocumentEditDialog extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // Current Document State Banner
-          if (document.isGoogleAttachment)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF4285F4).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                border: Border.all(
-                  color: const Color(0xFF4285F4).withValues(alpha: 0.3),
+          // Current Document State Banner (or Selected New File Replacement Banner)
+          Obx(() {
+            if (_selectedNewFile.value != null) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.successLight,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  const GoogleDriveLogo(size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Text(
-                              'Current: Google Drive Link',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud_upload_outlined,
+                        color: AppColors.success, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                document.isGoogleAttachment
+                                    ? 'Replaces Google Drive with VPS Storage'
+                                    : 'New File Replaces Current File',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                            SizedBox(width: 6),
-                            GoogleDriveBadge(compact: true),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          document.googleAttachmentUrl ?? document.filePath,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'VPS STORAGE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedNewFile.value!.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+              );
+            }
+            if (document.isGoogleAttachment) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  border: Border.all(
+                    color: const Color(0xFF4285F4).withValues(alpha: 0.3),
                   ),
-                  IconButton(
-                    tooltip: 'Open in Google Drive',
-                    icon: const Icon(Icons.open_in_new,
-                        size: 16, color: Color(0xFF4285F4)),
-                    splashRadius: 16,
-                    onPressed: () {
-                      final url =
-                          document.googleAttachmentUrl ?? document.filePath;
-                      final uri = Uri.tryParse(url);
-                      if (uri != null) {
-                        launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                  ),
-                ],
-              ),
-            )
-          else
-            Container(
+                ),
+                child: Row(
+                  children: [
+                    const GoogleDriveLogo(size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Text(
+                                'Current: Google Drive Link',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              GoogleDriveBadge(compact: true),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            document.googleAttachmentUrl ?? document.filePath,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Open in Google Drive',
+                      icon: const Icon(Icons.open_in_new,
+                          size: 16, color: Color(0xFF4285F4)),
+                      splashRadius: 16,
+                      onPressed: () {
+                        final url =
+                            document.googleAttachmentUrl ?? document.filePath;
+                        final uri = Uri.tryParse(url);
+                        if (uri != null) {
+                          launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }
+            return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -1332,7 +1481,8 @@ class DocumentEditDialog extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            );
+          }),
           const SizedBox(height: 12),
 
           // Re-upload & Link Options Buttons

@@ -594,6 +594,13 @@ class VehicleDocsController extends GetxController {
             description: description,
             documentNumber: documentNumber,
             vehicleMetadata: vehicleMetadata,
+            applianceWarranty: applianceWarranty,
+            newFileName: newFileName,
+            newFileBytes: newFileBytes,
+            newMimeType: newMimeType,
+            categoryCode: doc.categoryCode,
+            subCategory: doc.subCategory,
+            attachmentUrl: attachmentUrl,
           );
           await loadVehicleDocuments();
         } catch (e, st) {

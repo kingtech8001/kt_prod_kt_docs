@@ -307,8 +307,7 @@ class DocumentsDataset {
     try {
       try {
         await _client.rpc('soft_delete_document', params: {
-          'p_document_id': documentId,
-          'p_user_id': user?.id,
+          'p_doc_id': documentId,
         });
       } catch (rpcErr) {
         AppLogger.warning(
@@ -319,14 +318,15 @@ class DocumentsDataset {
           'deleted_at': DateTime.now().toIso8601String(),
           'deleted_by': user?.id,
         }).eq('id', documentId);
+
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': user?.id,
+          'action': 'moved_to_trash',
+          'details': {'reason': 'Soft deleted from explorer'},
+        });
       }
 
-      await _client.from('document_activity_logs').insert({
-        'document_id': documentId,
-        'user_id': user?.id,
-        'action': 'moved_to_trash',
-        'details': {'reason': 'Soft deleted from explorer'},
-      });
       AppLogger.info(
         'DOCUMENTS_DATASET',
         'Document $documentId soft-deleted successfully.',
@@ -380,8 +380,16 @@ class DocumentsDataset {
     );
 
     try {
+      String sanitizedTitle = title;
+      if (newFileBytes != null && newFileName != null && sanitizedTitle.contains('(Google Drive)')) {
+        sanitizedTitle = sanitizedTitle
+            .replaceAll('(Google Drive)', '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+      }
+
       final docUpdates = <String, dynamic>{
-        'title': title,
+        'title': sanitizedTitle,
         'description': description,
         'document_number': documentNumber,
         'updated_at': DateTime.now().toIso8601String(),
@@ -410,6 +418,23 @@ class DocumentsDataset {
         docUpdates['file_size'] = newFileBytes.lengthInBytes;
         docUpdates['file_type'] = fileType;
         docUpdates['mime_type'] = newMimeType ?? 'application/pdf';
+
+        // Clean any legacy google drive extra attributes so it points to VPS/Supabase storage
+        try {
+          final currentDoc = await _client
+              .from('documents')
+              .select('extra_attributes')
+              .eq('id', documentId)
+              .maybeSingle();
+          final extras = currentDoc?['extra_attributes'] != null
+              ? Map<String, dynamic>.from(currentDoc!['extra_attributes'] as Map)
+              : <String, dynamic>{};
+          extras.remove('google_drive_url');
+          extras.remove('attachment_url');
+          extras.remove('is_google_attachment');
+          extras['storage_provider'] = 'supabase';
+          docUpdates['extra_attributes'] = extras;
+        } catch (_) {}
       } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
         docUpdates['file_path'] = attachmentUrl;
         final uri = Uri.tryParse(attachmentUrl);

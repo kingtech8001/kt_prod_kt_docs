@@ -130,8 +130,7 @@ class TrashDataset {
     try {
       try {
         await _client.rpc('restore_document', params: {
-          'p_document_id': documentId,
-          'p_user_id': user?.id,
+          'p_doc_id': documentId,
         });
       } catch (rpcErr) {
         AppLogger.warning(
@@ -142,14 +141,14 @@ class TrashDataset {
           'deleted_at': null,
           'deleted_by': null,
         }).eq('id', documentId);
-      }
 
-      await _client.from('document_activity_logs').insert({
-        'document_id': documentId,
-        'user_id': user?.id,
-        'action': 'restored',
-        'details': {'reason': 'Restored from trash bin'},
-      });
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': user?.id,
+          'action': 'restored',
+          'details': {'reason': 'Restored from trash bin'},
+        });
+      }
 
       AppLogger.info(
         'TRASH_DATASET',
@@ -197,8 +196,7 @@ class TrashDataset {
       // 2. Database permanent delete
       try {
         await _client.rpc('permanent_delete_document', params: {
-          'p_document_id': documentId,
-          'p_user_id': user?.id,
+          'p_doc_id': documentId,
         });
       } catch (rpcErr) {
         AppLogger.warning(
@@ -206,15 +204,19 @@ class TrashDataset {
           'RPC permanent_delete_document fallback to direct delete: $rpcErr',
         );
         await _client.from('documents').delete().eq('id', documentId);
-      }
 
-      // 3. Activity audit trail
-      await _client.from('document_activity_logs').insert({
-        'document_id': null,
-        'user_id': user?.id,
-        'action': 'permanently_deleted',
-        'details': {'doc_id': documentId},
-      });
+        // Activity audit trail on fallback
+        await _client.from('document_activity_logs').insert({
+          'document_id': null,
+          'user_id': user?.id,
+          'action': 'permanently_deleted',
+          'details': {
+            'deleted_doc_id': documentId,
+            'file_path': filePath,
+            'fallback': true,
+          },
+        });
+      }
 
       AppLogger.info(
         'TRASH_DATASET',

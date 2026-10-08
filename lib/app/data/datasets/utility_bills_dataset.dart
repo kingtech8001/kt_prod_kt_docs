@@ -1,6 +1,9 @@
 import 'dart:typed_data';
+import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -135,7 +138,7 @@ class UtilityBillsDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-2' || d.utilityMetadata != null)
+          .where((d) => d.categoryId == 'cat-2' || d.categoryId == 'cat-utility' || d.categoryCode == 'utility_bills' || d.utilityMetadata != null)
           .toList();
 
       if (city != null && city.isNotEmpty && city != 'All Cities') {
@@ -422,46 +425,35 @@ class UtilityBillsDataset {
     }
   }
 
-  /// Updates editable document fields (title, description, documentNumber).
   Future<void> updateDocumentDetails({
     required String documentId,
     required String title,
     String? description,
     String? documentNumber,
+    ApplianceWarrantyModel? applianceWarranty,
+    VehicleDocumentMetadataModel? vehicleMetadata,
+    String? newFileName,
+    Uint8List? newFileBytes,
+    String? newMimeType,
+    String? categoryCode,
+    String? subCategory,
+    String? attachmentUrl,
   }) async {
-    if (DemoDataService.isDemoMode) {
-      AppLogger.info('UTILITY_DATASET', 'Demo Mode: Updated details for $documentId');
-      return;
-    }
-    final user = _provider.currentUser;
-    AppLogger.debug('UTILITY_DATASET', 'Updating document details: $documentId');
-    try {
-      await _client.from('documents').update({
-        'title': title,
-        'description': description,
-        'document_number': documentNumber,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', documentId);
-
-      await _client.from('document_activity_logs').insert({
-        'document_id': documentId,
-        'user_id': user?.id,
-        'action': 'edited',
-        'details': {
-          'updated_fields': ['title', 'description', 'document_number']
-        },
-      });
-
-      AppLogger.info('UTILITY_DATASET', 'Document details updated.');
-    } catch (e, st) {
-      AppLogger.error(
-        'UTILITY_DATASET',
-        'Error updating document details: $e',
-        error: e,
-        stackTrace: st,
-      );
-      rethrow;
-    }
+    final docsDataset = DocumentsDataset(_provider);
+    await docsDataset.updateDocumentDetails(
+      documentId: documentId,
+      title: title,
+      description: description,
+      documentNumber: documentNumber,
+      applianceWarranty: applianceWarranty,
+      vehicleMetadata: vehicleMetadata,
+      newFileName: newFileName,
+      newFileBytes: newFileBytes,
+      newMimeType: newMimeType,
+      categoryCode: categoryCode,
+      subCategory: subCategory,
+      attachmentUrl: attachmentUrl,
+    );
   }
 
   /// Obtains a signed preview URL for downloading or viewing.

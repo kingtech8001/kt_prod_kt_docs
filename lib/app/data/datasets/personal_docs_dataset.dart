@@ -134,7 +134,7 @@ class PersonalDocsDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-4' || d.personalMetadata != null)
+          .where((d) => d.categoryId == 'cat-4' || d.categoryId == 'cat-personal' || d.categoryCode == 'identity_docs' || d.personalMetadata != null)
           .toList();
 
       if (personName != null && personName.isNotEmpty && personName != 'All Persons') {
@@ -390,13 +390,26 @@ class PersonalDocsDataset {
     );
     try {
       final userId = _client.auth.currentUser?.id;
-      await _client.rpc(
-        'soft_delete_document',
-        params: {
-          'p_document_id': documentId,
-          'p_user_id': userId,
-        },
-      );
+      try {
+        await _client.rpc(
+          'soft_delete_document',
+          params: {
+            'p_doc_id': documentId,
+          },
+        );
+      } catch (rpcErr) {
+        AppLogger.warning('PERSONAL_DOCS_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
+        await _client.from('documents').update({
+          'deleted_at': DateTime.now().toIso8601String(),
+          'deleted_by': userId,
+        }).eq('id', documentId);
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': userId,
+          'action': 'moved_to_trash',
+          'details': {'reason': 'Soft deleted from personal docs'},
+        });
+      }
     } catch (e, st) {
       AppLogger.error(
         'PERSONAL_DOCS_DATASET',

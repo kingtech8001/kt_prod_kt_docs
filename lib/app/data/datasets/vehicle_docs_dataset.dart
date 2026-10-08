@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
@@ -192,7 +194,7 @@ class VehicleDocsDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-5' || d.vehicleMetadata != null)
+          .where((d) => d.categoryId == 'cat-5' || d.categoryId == 'cat-vehicle' || d.categoryCode == 'vehicle_docs' || d.vehicleMetadata != null)
           .toList();
 
       if (vehicleNumber != null && vehicleNumber.isNotEmpty && vehicleNumber != 'All Vehicles') {
@@ -632,60 +634,35 @@ class VehicleDocsDataset {
     }
   }
 
-  /// Updates document title, description, document_number, and vehicle metadata.
   Future<void> updateDocumentDetails({
     required String documentId,
     required String title,
     String? description,
     String? documentNumber,
     VehicleDocumentMetadataModel? vehicleMetadata,
+    ApplianceWarrantyModel? applianceWarranty,
+    String? newFileName,
+    Uint8List? newFileBytes,
+    String? newMimeType,
+    String? categoryCode,
+    String? subCategory,
+    String? attachmentUrl,
   }) async {
-    if (DemoDataService.isDemoMode) {
-      AppLogger.info('VEHICLE_DOCS_DATASET', '[DEMO] Simulated updateDocumentDetails');
-      return;
-    }
-    AppLogger.info(
-      'VEHICLE_DOCS_DATASET',
-      'Updating details for vehicle document: $documentId...',
+    final docsDataset = DocumentsDataset(_provider);
+    await docsDataset.updateDocumentDetails(
+      documentId: documentId,
+      title: title,
+      description: description,
+      documentNumber: documentNumber,
+      applianceWarranty: applianceWarranty,
+      vehicleMetadata: vehicleMetadata,
+      newFileName: newFileName,
+      newFileBytes: newFileBytes,
+      newMimeType: newMimeType,
+      categoryCode: categoryCode,
+      subCategory: subCategory,
+      attachmentUrl: attachmentUrl,
     );
-    try {
-      await _client
-          .from('documents')
-          .update({
-            'title': title,
-            'description': description,
-            'document_number': documentNumber,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', documentId);
-
-      if (vehicleMetadata != null) {
-        await updateVehicleDocumentMetadata(vehicleMetadata);
-      }
-
-      final user = _provider.currentUser;
-      await _client.from('document_activity_logs').insert({
-        'document_id': documentId,
-        'user_id': user?.id,
-        'action': 'updated',
-        'details': {
-          'title': title,
-          'document_number': documentNumber,
-        },
-      });
-      AppLogger.info(
-        'VEHICLE_DOCS_DATASET',
-        'Vehicle document $documentId updated successfully.',
-      );
-    } catch (e, st) {
-      AppLogger.error(
-        'VEHICLE_DOCS_DATASET',
-        'Error in updateDocumentDetails: $e',
-        error: e,
-        stackTrace: st,
-      );
-      rethrow;
-    }
   }
 
   /// Toggles favorite status for a document.
@@ -734,13 +711,26 @@ class VehicleDocsDataset {
     );
     try {
       final userId = _client.auth.currentUser?.id;
-      await _client.rpc(
-        'soft_delete_document',
-        params: {
-          'p_document_id': documentId,
-          'p_user_id': userId,
-        },
-      );
+      try {
+        await _client.rpc(
+          'soft_delete_document',
+          params: {
+            'p_doc_id': documentId,
+          },
+        );
+      } catch (rpcErr) {
+        AppLogger.warning('VEHICLE_DOCS_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
+        await _client.from('documents').update({
+          'deleted_at': DateTime.now().toIso8601String(),
+          'deleted_by': userId,
+        }).eq('id', documentId);
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': userId,
+          'action': 'moved_to_trash',
+          'details': {'reason': 'Soft deleted from vehicle docs'},
+        });
+      }
     } catch (e, st) {
       AppLogger.error(
         'VEHICLE_DOCS_DATASET',

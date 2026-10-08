@@ -284,12 +284,12 @@ class DemoDataService {
       // 0. Google Drive Document
       DocumentModel(
         id: 'doc-gdrive-1',
-        title: 'Office Lease Agreement & Floor Plan (Google Drive)',
+        title: 'Office Lease & Electricity Contract (Google Drive)',
         description: 'Corporate commercial property lease contract stored in Google Drive',
         categoryId: 'cat-utility',
-        categoryName: 'Corporate Vault',
-        categoryCode: 'corporate_docs',
-        subCategory: 'Contracts & Agreements',
+        categoryName: 'Utility Bills',
+        categoryCode: 'utility_bills',
+        subCategory: 'Electricity / Light',
         folderId: 'fld-1',
         folderName: 'Ahmedabad Headquarters',
         fileName: 'Lease_Agreement_FloorPlan.pdf',
@@ -310,6 +310,16 @@ class DemoDataService {
           city: 'Ahmedabad',
           state: 'Gujarat',
           postalCode: '380054',
+        ),
+        utilityMetadata: UtilityMetadataModel(
+          utilityType: 'Electricity / Light',
+          providerName: 'Torrent Power (Google Drive)',
+          consumerNumber: 'TP-GDRIVE-98421',
+          meterNumber: 'MTR-GDRIVE-11',
+          billAmount: 11200.00,
+          billDate: now.subtract(const Duration(days: 6)),
+          dueDate: now.add(const Duration(days: 8)),
+          paymentStatus: 'pending',
         ),
       ),
       // 1. Utility Bill - Torrent Power
@@ -618,6 +628,41 @@ class DemoDataService {
           notes: 'Includes 24x7 Roadside Assistance and Return-to-Invoice add-on cover',
         ),
       ),
+
+      // 9. Vehicle Vault - Google Drive Stored FASTag & Policy
+      DocumentModel(
+        id: 'doc-gdrive-vehicle',
+        title: 'ICICI FASTag Registration & Mandate (Google Drive)',
+        description: 'Electronic Toll Collection FASTag mandate and Barcode certificate stored on Google Drive',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'FASTag Pass',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'FASTag_Hycross_GoogleDrive.pdf',
+        filePath: 'https://drive.google.com/file/d/1FASTagGJ01AB1234GoogleDriveView/view',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 420000,
+        documentNumber: 'FTAG-ICICI-GJ01-8812',
+        status: 'active',
+        isFavorite: true,
+        createdAt: now.subtract(const Duration(days: 10)),
+        updatedAt: now.subtract(const Duration(days: 10)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-1',
+          vehicleNumber: 'GJ-01-AB-1234',
+          vehicleName: 'Toyota Innova Hycross ZX',
+          docTypeId: 'vdt-6',
+          docTypeName: 'FASTag Pass',
+          policyOrCertNumber: 'FTAG-ICICI-GJ01-8812',
+          insuranceCompany: 'ICICI Bank FASTag Ops',
+          premiumAmount: 500.00,
+          issueDate: DateTime(2025, 2, 1),
+          notes: 'Active wallet linked to ICICI corporate current account with auto-recharge',
+        ),
+      ),
     ];
     return _cachedMockDocuments!;
   }
@@ -705,16 +750,58 @@ class DemoDataService {
     final idx = docs.indexWhere((d) => d.id == documentId);
     if (idx != -1) {
       final old = docs[idx];
+      String updatedTitle = title;
+      String updatedFilePath;
+      String updatedFileType;
+      String updatedFileName;
+      Map<String, dynamic> updatedExtraAttributes =
+          Map<String, dynamic>.from(old.extraAttributes);
+
+      if (newFileName != null) {
+        // Replaced with VPS Storage file!
+        if (updatedTitle.contains('(Google Drive)')) {
+          updatedTitle = updatedTitle
+              .replaceAll('(Google Drive)', '')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+        }
+        updatedFileName = newFileName;
+        updatedFileType = newFileName.contains('.')
+            ? newFileName.split('.').last.toLowerCase()
+            : 'pdf';
+        updatedFilePath = 'vps_storage/documents/$documentId-$newFileName';
+        updatedExtraAttributes.remove('google_drive_url');
+        updatedExtraAttributes.remove('attachment_url');
+        updatedExtraAttributes.remove('is_google_attachment');
+        updatedExtraAttributes['storage_provider'] = 'vps';
+      } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
+        updatedFileName = 'Google Drive Document';
+        updatedFileType = 'gdrive';
+        updatedFilePath = attachmentUrl;
+        updatedExtraAttributes['google_drive_url'] = attachmentUrl;
+      } else {
+        updatedFileName = old.fileName;
+        updatedFileType = old.fileType;
+        updatedFilePath = old.filePath;
+      }
+
       docs[idx] = old.copyWith(
-        title: title,
+        title: updatedTitle,
         description: description,
         documentNumber: documentNumber,
         applianceWarranty: applianceWarranty,
         vehicleMetadata: vehicleMetadata,
-        fileName: newFileName ?? (attachmentUrl != null ? 'Google Drive Document' : old.fileName),
+        fileName: updatedFileName,
+        fileType: updatedFileType,
         fileSize: newFileSize ?? old.fileSize,
-        mimeType: newMimeType ?? (attachmentUrl != null ? 'application/vnd.google-apps.document' : old.mimeType),
-        filePath: attachmentUrl ?? old.filePath,
+        mimeType: newMimeType ??
+            (newFileName != null
+                ? (updatedFileType == 'pdf'
+                    ? 'application/pdf'
+                    : 'application/octet-stream')
+                : old.mimeType),
+        filePath: updatedFilePath,
+        extraAttributes: updatedExtraAttributes,
       );
     }
   }

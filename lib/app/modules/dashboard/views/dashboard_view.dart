@@ -5,6 +5,7 @@ import 'package:kt_prod_kt_docs/app/modules/dashboard/controllers/dashboard_cont
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_card.dart';
+import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/metric_card.dart';
 import 'package:kt_prod_kt_docs/app/widgets/status_badge.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
@@ -408,29 +409,50 @@ class DashboardView extends GetView<DashboardController> {
                     Container(
                       padding: const EdgeInsets.all(AppConstants.paddingSmall),
                       decoration: BoxDecoration(
-                        color: AppColors.warningLight.withValues(alpha: 0.2),
+                        color: doc.isGoogleAttachment
+                            ? const Color(0xFFF0FDF4)
+                            : AppColors.warningLight.withValues(alpha: 0.2),
                         borderRadius:
                             BorderRadius.circular(AppConstants.radiusSmall),
+                        border: doc.isGoogleAttachment
+                            ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                            : null,
                       ),
-                      child: const Icon(
-                        Icons.shield_outlined,
-                        color: AppColors.warning,
-                        size: 18,
-                      ),
+                      child: doc.isGoogleAttachment
+                          ? const GoogleDriveLogo(size: 18)
+                          : const Icon(
+                              Icons.shield_outlined,
+                              color: AppColors.warning,
+                              size: 18,
+                            ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            doc.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              if (doc.isGoogleAttachment) ...[
+                                const GoogleDriveLogo(size: 14),
+                                const SizedBox(width: 5),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  doc.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (doc.isGoogleAttachment) ...[
+                                const SizedBox(width: 6),
+                                const GoogleDriveBadge(compact: true),
+                              ],
+                            ],
                           ),
                           Text(
                             'Brand: ${w?.brand ?? "N/A"} • Valid: ${AppFormatters.formatDate(w?.warrantyValidUpto)}',
@@ -521,29 +543,50 @@ class DashboardView extends GetView<DashboardController> {
                     Container(
                       padding: const EdgeInsets.all(AppConstants.paddingSmall),
                       decoration: BoxDecoration(
-                        color: AppColors.primarySurface,
+                        color: doc.isGoogleAttachment
+                            ? const Color(0xFFF0FDF4)
+                            : AppColors.primarySurface,
                         borderRadius:
                             BorderRadius.circular(AppConstants.radiusSmall),
+                        border: doc.isGoogleAttachment
+                            ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                            : null,
                       ),
-                      child: const Icon(
-                        Icons.receipt_long_outlined,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
+                      child: doc.isGoogleAttachment
+                          ? const GoogleDriveLogo(size: 18)
+                          : const Icon(
+                              Icons.receipt_long_outlined,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            doc.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              if (doc.isGoogleAttachment) ...[
+                                const GoogleDriveLogo(size: 14),
+                                const SizedBox(width: 5),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  doc.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (doc.isGoogleAttachment) ...[
+                                const SizedBox(width: 6),
+                                const GoogleDriveBadge(compact: true),
+                              ],
+                            ],
                           ),
                           Text(
                             'Due: ${AppFormatters.formatDate(u?.dueDate)} • ${doc.city}',

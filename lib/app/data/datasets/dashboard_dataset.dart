@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/dashboard_metrics_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -388,8 +390,7 @@ class DashboardDataset {
     try {
       try {
         await _client.rpc('soft_delete_document', params: {
-          'p_document_id': documentId,
-          'p_user_id': user?.id,
+          'p_doc_id': documentId,
         });
       } catch (rpcErr) {
         AppLogger.warning(
@@ -400,14 +401,15 @@ class DashboardDataset {
           'deleted_at': DateTime.now().toIso8601String(),
           'deleted_by': user?.id,
         }).eq('id', documentId);
+
+        await _client.from('document_activity_logs').insert({
+          'document_id': documentId,
+          'user_id': user?.id,
+          'action': 'moved_to_trash',
+          'details': {'reason': 'Soft deleted from dashboard'},
+        });
       }
 
-      await _client.from('document_activity_logs').insert({
-        'document_id': documentId,
-        'user_id': user?.id,
-        'action': 'moved_to_trash',
-        'details': {'reason': 'Soft deleted from dashboard'},
-      });
       AppLogger.info(
         'DASHBOARD_DATASET',
         'Document $documentId soft-deleted successfully.',
@@ -430,60 +432,28 @@ class DashboardDataset {
     String? description,
     String? documentNumber,
     ApplianceWarrantyModel? applianceWarranty,
+    VehicleDocumentMetadataModel? vehicleMetadata,
+    String? newFileName,
+    Uint8List? newFileBytes,
+    String? newMimeType,
+    String? categoryCode,
+    String? subCategory,
+    String? attachmentUrl,
   }) async {
-    if (DemoDataService.isDemoMode) {
-      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Document update simulated in-memory');
-      return;
-    }
-    final user = _provider.currentUser;
-    AppLogger.debug(
-      'DASHBOARD_DATASET',
-      'updateDocumentDetails for ID: $documentId',
+    final docsDataset = DocumentsDataset(_provider);
+    await docsDataset.updateDocumentDetails(
+      documentId: documentId,
+      title: title,
+      description: description,
+      documentNumber: documentNumber,
+      applianceWarranty: applianceWarranty,
+      vehicleMetadata: vehicleMetadata,
+      newFileName: newFileName,
+      newFileBytes: newFileBytes,
+      newMimeType: newMimeType,
+      categoryCode: categoryCode,
+      subCategory: subCategory,
+      attachmentUrl: attachmentUrl,
     );
-    try {
-      await _client.from('documents').update({
-        'title': title,
-        'description': description,
-        'document_number': documentNumber,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', documentId);
-
-      if (applianceWarranty != null) {
-        final warrantyMap = applianceWarranty.toJson();
-        warrantyMap['document_id'] = documentId;
-        try {
-          await _client.from('appliance_warranty_metadata').upsert(warrantyMap);
-        } catch (tableErr) {
-          AppLogger.warning(
-            'DASHBOARD_DATASET',
-            'Non-fatal fallback upserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
-          );
-          final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
-          await _client.from('appliance_warranty_metadata').upsert(cleanMap);
-        }
-      }
-
-      await _client.from('document_activity_logs').insert({
-        'document_id': documentId,
-        'user_id': user?.id,
-        'action': 'updated',
-        'details': {
-          'title': title,
-          'document_number': documentNumber,
-        },
-      });
-      AppLogger.info(
-        'DASHBOARD_DATASET',
-        'Document $documentId updated successfully.',
-      );
-    } catch (e, st) {
-      AppLogger.error(
-        'DASHBOARD_DATASET',
-        'Error in updateDocumentDetails: $e',
-        error: e,
-        stackTrace: st,
-      );
-      rethrow;
-    }
   }
 }

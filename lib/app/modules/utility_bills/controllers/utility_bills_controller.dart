@@ -468,6 +468,14 @@ class UtilityBillsController extends GetxController {
             title: title,
             description: description,
             documentNumber: documentNumber,
+            applianceWarranty: applianceWarranty,
+            vehicleMetadata: vehicleMetadata,
+            newFileName: newFileName,
+            newFileBytes: newFileBytes,
+            newMimeType: newMimeType,
+            categoryCode: doc.categoryCode,
+            subCategory: doc.subCategory,
+            attachmentUrl: attachmentUrl,
           );
           await loadUtilityBills();
         } catch (e, st) {
