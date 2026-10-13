@@ -449,6 +449,12 @@ class DocumentsDataset {
           extras['is_google_attachment'] = false;
           docUpdates['extra_attributes'] = extras;
         } catch (_) {}
+      } else if (newFileName != null && newFileName.trim().isNotEmpty) {
+        final sanitizedFileName = newFileName.trim();
+        docUpdates['file_name'] = sanitizedFileName;
+        if (sanitizedFileName.contains('.')) {
+          docUpdates['file_type'] = sanitizedFileName.split('.').last.toLowerCase();
+        }
       } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
         docUpdates['file_path'] = attachmentUrl;
         final uri = Uri.tryParse(attachmentUrl);

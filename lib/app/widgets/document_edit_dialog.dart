@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
-import 'package:kt_prod_kt_docs/app/widgets/google_drive_logo.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
@@ -129,8 +128,7 @@ class DocumentEditDialog extends StatelessWidget {
 
   // Re-upload & Attachment Configuration
   final Rx<PlatformFile?> _selectedNewFile = Rx<PlatformFile?>(null);
-  final TextEditingController _attachmentUrlController;
-  final RxBool _showUrlField = false.obs;
+  final RxString _customFileName = ''.obs;
   final RxBool _useCompressed = true.obs;
   final RxString _compressionPreset = 'recommended'.obs;
   final RxInt _pdfQuality = 72.obs;
@@ -189,15 +187,8 @@ class DocumentEditDialog extends StatelessWidget {
               : '',
         ),
         _issueDate = Rx<DateTime?>(document.vehicleMetadata?.issueDate),
-        _expiryDate = Rx<DateTime?>(document.vehicleMetadata?.expiryDate),
-        _attachmentUrlController = TextEditingController(
-          text: document.isGoogleAttachment
-              ? (document.googleAttachmentUrl ?? document.filePath)
-              : '',
-        ) {
-    if (document.isGoogleAttachment) {
-      _showUrlField.value = true;
-    }
+        _expiryDate = Rx<DateTime?>(document.vehicleMetadata?.expiryDate) {
+    _customFileName.value = document.fileName;
     _initializeItems();
   }
 
@@ -308,6 +299,133 @@ class DocumentEditDialog extends StatelessWidget {
     }
   }
 
+  void _showRenameFileDialog(BuildContext context) {
+    final currentName = _customFileName.value.isNotEmpty
+        ? _customFileName.value
+        : _currentDoc.value.fileName;
+    final renameController = TextEditingController(text: currentName);
+    final renameError = ''.obs;
+
+    AppDialog.show<void>(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
+        backgroundColor: AppColors.surface,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingLarge),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.drive_file_rename_outline,
+                            size: 20, color: AppColors.primary),
+                        SizedBox(width: 8),
+                        Text(
+                          'Rename Document File',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      color: AppColors.textSecondary,
+                      splashRadius: 16,
+                      onPressed: () => Get.back(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Obx(() {
+                  if (renameError.value.isEmpty) return const SizedBox.shrink();
+                  return Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.errorLight,
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusSmall),
+                    ),
+                    child: Text(
+                      renameError.value,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.error),
+                    ),
+                  );
+                }),
+                TextField(
+                  controller: renameController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'File Name',
+                    hintText: 'e.g. Electricity_Bill_Oct_2026.pdf',
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Get.back(),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        var text = renameController.text.trim();
+                        if (text.isEmpty) {
+                          renameError.value = 'File name cannot be empty.';
+                          return;
+                        }
+                        final oldExt = _currentDoc.value.fileType.isNotEmpty
+                            ? _currentDoc.value.fileType.toLowerCase()
+                            : 'pdf';
+                        if (!text.contains('.') && oldExt.isNotEmpty) {
+                          text = '$text.$oldExt';
+                        }
+                        _customFileName.value = text;
+                        final ext = text.contains('.')
+                            ? text.split('.').last.toLowerCase()
+                            : oldExt;
+                        _currentDoc.value = _currentDoc.value.copyWith(
+                          fileName: text,
+                          fileType: ext,
+                        );
+                        Get.back();
+                        AppSnackbar.showSuccess(
+                          'File Renamed',
+                          'Document file name updated to "$text". Click "Save Changes" to apply.',
+                        );
+                      },
+                      child: const Text('Rename'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickFile(BuildContext context) async {
     try {
       final result = await FilePicker.pickFiles(
@@ -318,8 +436,7 @@ class DocumentEditDialog extends StatelessWidget {
         final file = result.first;
         await file.loadBytes();
         _selectedNewFile.value = file;
-        _attachmentUrlController.clear();
-        _showUrlField.value = false;
+        _customFileName.value = file.name;
         if (_titleController.text.contains('(Google Drive)')) {
           _titleController.text = _titleController.text
               .replaceAll('(Google Drive)', '')
@@ -472,7 +589,6 @@ class DocumentEditDialog extends StatelessWidget {
       Uint8List? fileBytesToUpload;
       String? fileNameToUpload;
       String? mimeTypeToUpload;
-      String? attachmentUrlToUpload;
 
       if (_selectedNewFile.value != null) {
         final file = _selectedNewFile.value!;
@@ -490,15 +606,10 @@ class DocumentEditDialog extends StatelessWidget {
         }
       }
 
-      if (_selectedNewFile.value != null) {
-        // Replacing existing document (or Google Drive link) with a new VPS storage file
-        attachmentUrlToUpload = null;
-      } else {
-        final urlText = _attachmentUrlController.text.trim();
-        if (urlText.isNotEmpty &&
-            urlText != (_currentDoc.value.googleAttachmentUrl ?? '')) {
-          attachmentUrlToUpload = urlText;
-        }
+      if (_selectedNewFile.value == null &&
+          _customFileName.value.isNotEmpty &&
+          _customFileName.value != document.fileName) {
+        fileNameToUpload = _customFileName.value;
       }
 
       await onSave(
@@ -514,7 +625,7 @@ class DocumentEditDialog extends StatelessWidget {
         newFileName: fileNameToUpload,
         newFileBytes: fileBytesToUpload,
         newMimeType: mimeTypeToUpload,
-        attachmentUrl: attachmentUrlToUpload,
+        attachmentUrl: null,
       );
 
       _disposeControllers();
@@ -722,11 +833,10 @@ class DocumentEditDialog extends StatelessWidget {
         extraAttributes: updatedExtras,
       );
 
+      _customFileName.value = fileNameToUpload;
       _selectedNewFile.value = null;
       _compressionResult.value = null;
       _compressionError.value = '';
-      _attachmentUrlController.clear();
-      _showUrlField.value = false;
       _hasSavedChanges.value = true;
       _replacementSuccessMessage.value =
           'Document successfully replaced with "$fileNameToUpload" on VPS Storage!';
@@ -752,7 +862,6 @@ class DocumentEditDialog extends StatelessWidget {
     _totalAmountController.dispose();
     _insuranceCompanyController.dispose();
     _premiumAmountController.dispose();
-    _attachmentUrlController.dispose();
     for (var item in _applianceItems) {
       item.dispose();
     }
@@ -1591,148 +1700,71 @@ class DocumentEditDialog extends StatelessWidget {
                 ),
               );
             }
-            if (doc.isGoogleAttachment) {
-              return InkWell(
-                onTap: () => _previewCurrentDocument(),
+            final currentFileName = _customFileName.value.isNotEmpty
+                ? _customFileName.value
+                : doc.fileName;
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4285F4).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                    border: Border.all(
-                      color: const Color(0xFF4285F4).withValues(alpha: 0.3),
-                    ),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    doc.fileType == 'pdf'
+                        ? Icons.picture_as_pdf_outlined
+                        : (doc.isImage
+                            ? Icons.image_outlined
+                            : Icons.description_outlined),
+                    size: 24,
+                    color: doc.fileType == 'pdf'
+                        ? AppColors.error
+                        : AppColors.primary,
                   ),
-                  child: Row(
-                    children: [
-                      const GoogleDriveLogo(size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Text(
-                                  'Current: Google Drive Link',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                SizedBox(width: 6),
-                                GoogleDriveBadge(compact: true),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              doc.googleAttachmentUrl ?? doc.filePath,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          currentFileName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: 'Preview Document',
-                        icon: const Icon(Icons.visibility_outlined,
-                            size: 20, color: Color(0xFF4285F4)),
-                        splashRadius: 18,
-                        onPressed: () => _previewCurrentDocument(),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          '${doc.fileType.toUpperCase()} • ${doc.fileSizeFormatted}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }
-            return InkWell(
-              onTap: () => _previewCurrentDocument(),
-              borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      doc.fileType == 'pdf'
-                          ? Icons.picture_as_pdf_outlined
-                          : Icons.description_outlined,
-                      size: 22,
-                      color: doc.fileType == 'pdf'
-                          ? AppColors.error
-                          : AppColors.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Current: ${doc.fileName}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.successLight,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: AppColors.success.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'VPS STORAGE',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.successDark,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${doc.fileType.toUpperCase()} • ${doc.fileSizeFormatted}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Preview Document',
-                      icon: const Icon(Icons.visibility_outlined,
-                          size: 20, color: AppColors.primary),
-                      splashRadius: 18,
-                      onPressed: () => _previewCurrentDocument(),
-                    ),
-                  ],
-                ),
+                  IconButton(
+                    tooltip: 'Rename Document File',
+                    icon: const Icon(Icons.drive_file_rename_outline,
+                        size: 20, color: AppColors.textSecondary),
+                    splashRadius: 18,
+                    onPressed: () => _showRenameFileDialog(context),
+                  ),
+                  IconButton(
+                    tooltip: 'Preview Document',
+                    icon: const Icon(Icons.visibility_outlined,
+                        size: 20, color: AppColors.primary),
+                    splashRadius: 18,
+                    onPressed: () => _previewCurrentDocument(),
+                  ),
+                ],
               ),
             );
           }),
