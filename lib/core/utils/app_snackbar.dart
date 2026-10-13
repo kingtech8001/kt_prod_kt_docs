@@ -83,9 +83,13 @@ class AppSnackbar {
     final screenWidth = Get.width;
     final isDesktopOrTablet = screenWidth >= AppConstants.tabletBreakpoint;
 
+    final cleanMessage = message.length > 250
+        ? '${message.substring(0, 250)}...'
+        : message;
+
     Get.snackbar(
       title,
-      message,
+      cleanMessage,
       snackPosition: SnackPosition.TOP,
       backgroundColor: backgroundColor,
       colorText: Colors.white,

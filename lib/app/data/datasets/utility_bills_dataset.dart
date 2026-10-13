@@ -223,82 +223,24 @@ class UtilityBillsDataset {
           .eq('category_id', categoryId)
           .isFilter('deleted_at', null);
 
-      var countQuery = _client
-          .from('documents')
-          .select('id')
-          .eq('category_id', categoryId)
-          .isFilter('deleted_at', null);
-
-      // 1. City filtering via address document IDs
-      if (city != null && city.isNotEmpty && city != 'All Cities') {
-        final addrRows = await _client
-            .from('document_addresses')
-            .select('document_id')
-            .ilike('city', '%$city%');
-        final ids = (addrRows as List)
-            .map((r) => r['document_id'] as String?)
-            .whereType<String>()
-            .toList();
-        if (ids.isEmpty) {
-          query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-          countQuery =
-              countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
-        } else {
-          query = query.inFilter('id', ids);
-          countQuery = countQuery.inFilter('id', ids);
-        }
-      }
-
       // 2. Subcategory filter
       if (subCategory != null &&
           subCategory.isNotEmpty &&
           subCategory != 'All Utilities') {
         query = query.eq('sub_category', subCategory);
-        countQuery = countQuery.eq('sub_category', subCategory);
       }
 
-      // 3. Payment status filter via utility_metadata document IDs
-      if (paymentStatus != null &&
-          paymentStatus.isNotEmpty &&
-          paymentStatus != 'all') {
-        var metaQuery = _client.from('utility_metadata').select('document_id');
-        if (paymentStatus == 'paid') {
-          metaQuery = metaQuery.eq('payment_status', 'paid');
-        } else if (paymentStatus == 'pending') {
-          metaQuery = metaQuery.neq('payment_status', 'paid');
-        } else if (paymentStatus == 'overdue') {
-          final today = DateTime.now().toIso8601String().split('T').first;
-          metaQuery =
-              metaQuery.neq('payment_status', 'paid').lt('due_date', today);
-        }
-        final metaRows = await metaQuery;
-        final ids = (metaRows as List)
-            .map((r) => r['document_id'] as String?)
-            .whereType<String>()
-            .toList();
-        if (ids.isEmpty) {
-          query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-          countQuery =
-              countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
-        } else {
-          query = query.inFilter('id', ids);
-          countQuery = countQuery.inFilter('id', ids);
-        }
-      }
-
-      // 4. Search query filter
+      // 3. Search query filter
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.trim();
         final searchFilter =
             'title.ilike.%$q%,document_number.ilike.%$q%,file_name.ilike.%$q%,sub_category.ilike.%$q%';
         query = query.or(searchFilter);
-        countQuery = countQuery.or(searchFilter);
       }
 
-      // 5. Fetch paginated documents
+      // 4. Fetch documents
       final response = await query
-          .order('created_at', ascending: false)
-          .range(from, to);
+          .order('created_at', ascending: false);
 
       var list = (response as List)
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
@@ -307,10 +249,38 @@ class UtilityBillsDataset {
       // Ensure utilityMetadata is present
       list = list.where((d) => d.utilityMetadata != null).toList();
 
+      // 5. Apply City filter safely in-memory (prevents HTTP 414 / URI overflow)
+      if (city != null && city.isNotEmpty && city != 'All Cities') {
+        final targetCity = city.toLowerCase().trim();
+        list = list.where((d) {
+          final docCity = d.address?.city.toLowerCase().trim();
+          return docCity != null && docCity.contains(targetCity);
+        }).toList();
+      }
 
-      // 2. Fetch metrics summary across matching records
-      final countRes = await countQuery.count(CountOption.exact);
-      final totalRecords = countRes.count;
+      // 6. Apply Payment Status filter safely in-memory
+      if (paymentStatus != null &&
+          paymentStatus.isNotEmpty &&
+          paymentStatus != 'all') {
+        final today = DateTime.now();
+        list = list.where((d) {
+          final s = d.utilityMetadata?.paymentStatus.toLowerCase() ?? 'pending';
+          if (paymentStatus == 'paid') {
+            return s == 'paid' || s == 'auto_debit';
+          }
+          if (paymentStatus == 'pending') {
+            return s != 'paid';
+          }
+          if (paymentStatus == 'overdue') {
+            final due = d.utilityMetadata?.dueDate;
+            return s != 'paid' && due != null && due.isBefore(today);
+          }
+          return true;
+        }).toList();
+      }
+
+      final totalRecords = list.length;
+      final paginatedList = list.skip(from).take(pageSize).toList();
 
       // Calculate summary metrics across all available bills
       final summaryRes = await _client
@@ -338,11 +308,11 @@ class UtilityBillsDataset {
 
       AppLogger.info(
         'UTILITY_DATASET',
-        'Returned ${list.length} utility bills on page $page (total count: $totalRecords)',
+        'Returned ${paginatedList.length} utility bills on page $page (total count: $totalRecords)',
       );
 
       return UtilityBillsResponse(
-        documents: list,
+        documents: paginatedList,
         totalCount: totalRecords,
         totalAmount: totalAmt,
         pendingAmount: pendingAmt,
