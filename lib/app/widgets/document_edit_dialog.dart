@@ -306,119 +306,177 @@ class DocumentEditDialog extends StatelessWidget {
     final renameController = TextEditingController(text: currentName);
     final renameError = ''.obs;
 
+    final isRenaming = false.obs;
+
     AppDialog.show<void>(
-      Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-        ),
-        backgroundColor: AppColors.surface,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Padding(
-            padding: const EdgeInsets.all(AppConstants.paddingLarge),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Obx(
+        () => PopScope(
+          canPop: !isRenaming.value,
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+            ),
+            backgroundColor: AppColors.surface,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.drive_file_rename_outline,
-                            size: 20, color: AppColors.primary),
-                        SizedBox(width: 8),
-                        Text(
-                          'Rename Document File',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+                        const Row(
+                          children: [
+                            Icon(Icons.drive_file_rename_outline,
+                                size: 20, color: AppColors.primary),
+                            SizedBox(width: 8),
+                            Text(
+                              'Rename Document File',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          color: AppColors.textSecondary,
+                          splashRadius: 16,
+                          onPressed: isRenaming.value ? null : () => Get.back(),
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      color: AppColors.textSecondary,
-                      splashRadius: 16,
-                      onPressed: () => Get.back(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Obx(() {
-                  if (renameError.value.isEmpty) return const SizedBox.shrink();
-                  return Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.errorLight,
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.radiusSmall),
-                    ),
-                    child: Text(
-                      renameError.value,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.error),
-                    ),
-                  );
-                }),
-                TextField(
-                  controller: renameController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'File Name',
-                    hintText: 'e.g. Electricity_Bill_Oct_2026.pdf',
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Get.back(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                    const SizedBox(height: 12),
+                    Obx(() {
+                      if (renameError.value.isEmpty) return const SizedBox.shrink();
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.errorLight,
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radiusSmall),
+                        ),
+                        child: Text(
+                          renameError.value,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.error),
+                        ),
+                      );
+                    }),
+                    TextField(
+                      controller: renameController,
+                      autofocus: true,
+                      enabled: !isRenaming.value,
+                      decoration: const InputDecoration(
+                        labelText: 'File Name',
+                        hintText: 'e.g. Electricity_Bill_Oct_2026.pdf',
                       ),
-                      onPressed: () {
-                        var text = renameController.text.trim();
-                        if (text.isEmpty) {
-                          renameError.value = 'File name cannot be empty.';
-                          return;
-                        }
-                        final oldExt = _currentDoc.value.fileType.isNotEmpty
-                            ? _currentDoc.value.fileType.toLowerCase()
-                            : 'pdf';
-                        if (!text.contains('.') && oldExt.isNotEmpty) {
-                          text = '$text.$oldExt';
-                        }
-                        _customFileName.value = text;
-                        final ext = text.contains('.')
-                            ? text.split('.').last.toLowerCase()
-                            : oldExt;
-                        _currentDoc.value = _currentDoc.value.copyWith(
-                          fileName: text,
-                          fileType: ext,
-                        );
-                        Get.back();
-                        AppSnackbar.showSuccess(
-                          'File Renamed',
-                          'Document file name updated to "$text". Click "Save Changes" to apply.',
-                        );
-                      },
-                      child: const Text('Rename'),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isRenaming.value ? null : () => Get.back(),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: isRenaming.value
+                              ? null
+                              : () async {
+                                  var text = renameController.text.trim();
+                                  if (text.isEmpty) {
+                                    renameError.value = 'File name cannot be empty.';
+                                    return;
+                                  }
+                                  final oldExt = _currentDoc.value.fileType.isNotEmpty
+                                      ? _currentDoc.value.fileType.toLowerCase()
+                                      : 'pdf';
+                                  if (!text.contains('.') && oldExt.isNotEmpty) {
+                                    text = '$text.$oldExt';
+                                  }
+
+                                  isRenaming.value = true;
+                                  renameError.value = '';
+
+                                  try {
+                                    final currentTitle = _titleController.text.trim().isNotEmpty
+                                        ? _titleController.text.trim()
+                                        : _currentDoc.value.title;
+
+                                    final updatedAppliance = _buildUpdatedAppliance();
+                                    final updatedVehicle = _buildUpdatedVehicle();
+
+                                    // Persist rename directly to backend / database
+                                    await onSave(
+                                      title: currentTitle,
+                                      description: _descriptionController.text.trim().isNotEmpty
+                                          ? _descriptionController.text.trim()
+                                          : null,
+                                      documentNumber: _documentNumberController.text.trim().isNotEmpty
+                                          ? _documentNumberController.text.trim()
+                                          : null,
+                                      applianceWarranty: updatedAppliance,
+                                      vehicleMetadata: updatedVehicle,
+                                      newFileName: text,
+                                      newFileBytes: null,
+                                      newMimeType: null,
+                                      attachmentUrl: null,
+                                    );
+
+                                    _customFileName.value = text;
+                                    final ext = text.contains('.')
+                                        ? text.split('.').last.toLowerCase()
+                                        : oldExt;
+                                    _currentDoc.value = _currentDoc.value.copyWith(
+                                      fileName: text,
+                                      fileType: ext,
+                                    );
+                                    _hasSavedChanges.value = true;
+
+                                    Get.back();
+                                    AppSnackbar.showSuccess(
+                                      'File Renamed',
+                                      'Document file name updated to "$text" successfully.',
+                                    );
+                                  } catch (e) {
+                                    renameError.value = e
+                                        .toString()
+                                        .replaceAll('Exception:', '')
+                                        .trim();
+                                  } finally {
+                                    isRenaming.value = false;
+                                  }
+                                },
+                          child: isRenaming.value
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Rename'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
