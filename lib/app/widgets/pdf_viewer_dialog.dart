@@ -9,6 +9,7 @@ import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// GetX-compliant interactive PDF Viewer Dialog loading binary bytes via API.
@@ -32,7 +33,8 @@ class PdfViewerDialog extends StatelessWidget {
   }) {
     if (pdfBytes != null && pdfBytes!.isNotEmpty) {
       _initFromBytes(pdfBytes!);
-    } else if (signedPdfUrl != null && signedPdfUrl!.trim().isNotEmpty) {
+    } else if ((signedPdfUrl != null && signedPdfUrl!.trim().isNotEmpty) ||
+        (filePath != null && filePath!.trim().isNotEmpty)) {
       _loadPdfBytesViaApi();
     } else {
       _errorMessage.value = 'No PDF URL or binary stream was provided.';
@@ -80,15 +82,34 @@ class PdfViewerDialog extends StatelessWidget {
     );
   }
 
+  static bool hasPdfHeader(Uint8List bytes) {
+    if (bytes.length < 5) return false;
+    final limit = bytes.length < 1024 ? bytes.length : 1024;
+    for (int i = 0; i <= limit - 5; i++) {
+      if (bytes[i] == 0x25 && // %
+          bytes[i + 1] == 0x50 && // P
+          bytes[i + 2] == 0x44 && // D
+          bytes[i + 3] == 0x46 && // F
+          bytes[i + 4] == 0x2D) { // -
+        return true;
+      }
+    }
+    return false;
+  }
+
   void _initFromBytes(Uint8List bytes) {
-    try {
-      final document = PdfDocument(inputBytes: bytes);
-      document.dispose();
-      AppLogger.info('PDF_VIEWER', 'In-memory PDF validated successfully (${bytes.length} bytes).');
+    if (hasPdfHeader(bytes)) {
+      try {
+        final document = PdfDocument(inputBytes: bytes);
+        document.dispose();
+        AppLogger.info('PDF_VIEWER', 'In-memory PDF validated successfully (${bytes.length} bytes).');
+      } catch (err) {
+        AppLogger.warning('PDF_VIEWER', 'In-memory PDF parser notice: $err (rendering natively).');
+      }
       _pdfBytes.value = bytes;
       _isLoading.value = false;
-    } catch (err) {
-      _errorMessage.value = 'This PDF is damaged or invalid. Please re-upload.';
+    } else {
+      _errorMessage.value = 'The provided file does not have a valid PDF format.';
       _isLoading.value = false;
     }
   }
@@ -97,19 +118,26 @@ class PdfViewerDialog extends StatelessWidget {
     _isLoading.value = true;
     _errorMessage.value = '';
 
-    AppLogger.debug('PDF_VIEWER', 'Fetching PDF bytes via API: title="$title", url=$signedPdfUrl');
+    AppLogger.debug('PDF_VIEWER', 'Fetching PDF bytes via API: title="$title", url=$signedPdfUrl, path=$filePath');
 
     try {
-      if (signedPdfUrl == null || signedPdfUrl!.trim().isEmpty) {
-        throw Exception('No PDF URL or binary stream was provided.');
-      }
-      final clean = signedPdfUrl!.trim();
-      if (clean.startsWith('gdrive://') ||
-          clean.contains('drive.google.com') ||
-          clean.contains('docs.google.com')) {
-        var resolvedGUrl = clean.startsWith('gdrive://')
-            ? 'https://drive.google.com/file/d/${clean.replaceFirst("gdrive://", "")}/preview'
-            : clean;
+      final candidateUrl = signedPdfUrl?.trim() ?? '';
+      final candidatePath = filePath?.trim() ?? '';
+
+      // 1. Google Drive attachment previews
+      if (candidateUrl.startsWith('gdrive://') ||
+          candidateUrl.contains('drive.google.com') ||
+          candidateUrl.contains('docs.google.com') ||
+          candidatePath.startsWith('gdrive://') ||
+          candidatePath.contains('drive.google.com') ||
+          candidatePath.contains('docs.google.com')) {
+        var resolvedGUrl = candidateUrl.isNotEmpty &&
+                (candidateUrl.contains('drive.google.com') || candidateUrl.startsWith('gdrive://'))
+            ? candidateUrl
+            : candidatePath;
+        if (resolvedGUrl.startsWith('gdrive://')) {
+          resolvedGUrl = 'https://drive.google.com/file/d/${resolvedGUrl.replaceFirst("gdrive://", "")}/preview';
+        }
         if (resolvedGUrl.contains('/view')) {
           resolvedGUrl = resolvedGUrl.replaceAll('/view', '/preview');
         }
@@ -117,17 +145,83 @@ class PdfViewerDialog extends StatelessWidget {
         _isLoading.value = false;
         return;
       }
-      final bytes = await FileApiHelper.fetchBytes(clean);
 
-      // Validate PDF structure
+      Uint8List? bytes;
+
+      // 2. Try fetching from signedPdfUrl if it's a valid HTTP URL
+      if (candidateUrl.startsWith('http://') || candidateUrl.startsWith('https://')) {
+        try {
+          final fetched = await FileApiHelper.fetchBytes(candidateUrl);
+          if (fetched.isNotEmpty && hasPdfHeader(fetched)) {
+            bytes = fetched;
+          }
+        } catch (fetchErr) {
+          AppLogger.warning('PDF_VIEWER', 'Direct signed URL fetch warning: $fetchErr. Trying storage fallback.');
+        }
+      }
+
+      // 3. Fallback: retrieve directly from Supabase Storage bucket
+      if (bytes == null) {
+        final storagePath = candidatePath.isNotEmpty && !candidatePath.startsWith('http')
+            ? candidatePath
+            : (candidateUrl.isNotEmpty && !candidateUrl.startsWith('http') ? candidateUrl : null);
+
+        if (storagePath != null) {
+          final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+
+          // Attempt 3a: Direct Supabase binary download using authenticated client
+          try {
+            AppLogger.info('PDF_VIEWER', 'Downloading PDF directly from Supabase storage: "$cleanPath"');
+            final downloaded = await Supabase.instance.client.storage
+                .from(AppConstants.storageBucket)
+                .download(cleanPath);
+            if (downloaded.isNotEmpty && hasPdfHeader(downloaded)) {
+              bytes = downloaded;
+            }
+          } catch (storageErr) {
+            AppLogger.warning('PDF_VIEWER', 'Direct Supabase storage download notice: $storageErr');
+          }
+
+          // Attempt 3b: Create fresh signed URL from Supabase storage
+          if (bytes == null) {
+            try {
+              AppLogger.info('PDF_VIEWER', 'Creating fresh signed URL for: "$cleanPath"');
+              final freshSignedUrl = await Supabase.instance.client.storage
+                  .from(AppConstants.storageBucket)
+                  .createSignedUrl(cleanPath, 3600);
+              final fetched = await FileApiHelper.fetchBytes(freshSignedUrl);
+              if (fetched.isNotEmpty && hasPdfHeader(fetched)) {
+                bytes = fetched;
+              }
+            } catch (signedErr) {
+              AppLogger.warning('PDF_VIEWER', 'Fresh signed URL fetch notice: $signedErr');
+            }
+          }
+        }
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception('Unable to retrieve PDF data. Please check network connection or verify document storage.');
+      }
+
+      // 4. Validate PDF header
+      if (!hasPdfHeader(bytes)) {
+        final previewStr = String.fromCharCodes(bytes.take(30)).toLowerCase();
+        if (previewStr.contains('<html') || previewStr.contains('<!doctype') || previewStr.contains('{"')) {
+          throw Exception('The storage service returned an HTML or error response instead of the PDF binary.');
+        }
+        throw Exception('This file is damaged or not a valid PDF document. Please upload the original PDF again.');
+      }
+
+      // 5. AST validation check (non-blocking)
       try {
         final document = PdfDocument(inputBytes: bytes);
         document.dispose();
         AppLogger.info('PDF_VIEWER', 'PDF structure validated successfully (${bytes.length} bytes).');
-      } catch (err) {
-        throw Exception(
-          'This PDF is damaged or invalid. Please upload the original PDF document again.',
-        );
+      } catch (parserErr) {
+        // Digitally signed invoices, Acrobat encryption flags, or XRef streams often throw in Syncfusion,
+        // but render natively without issue in the browser viewer.
+        AppLogger.warning('PDF_VIEWER', 'Syncfusion AST notice: $parserErr (proceeding with native PDF viewer).');
       }
 
       _pdfBytes.value = bytes;
@@ -140,17 +234,31 @@ class PdfViewerDialog extends StatelessWidget {
   }
 
   void _handleDownload() {
-    if (_pdfBytes.value != null) {
-      final resolvedName = fileName != null && fileName!.toLowerCase().endsWith('.pdf')
-          ? fileName!
-          : '$title.pdf';
+    final resolvedName = fileName != null && fileName!.toLowerCase().endsWith('.pdf')
+        ? fileName!
+        : '$title.pdf';
+
+    if (_pdfBytes.value != null && _pdfBytes.value!.isNotEmpty) {
       FileApiHelper.downloadFileFromBytes(
         bytes: _pdfBytes.value!,
         fileName: resolvedName,
         mimeType: 'application/pdf',
       );
-    } else if (onDownload != null) {
+      return;
+    }
+
+    if (onDownload != null) {
       onDownload!();
+      return;
+    }
+
+    if (signedPdfUrl != null && (signedPdfUrl!.startsWith('http://') || signedPdfUrl!.startsWith('https://'))) {
+      FileApiHelper.downloadFileFromUrl(
+        url: signedPdfUrl!,
+        fileName: resolvedName,
+        mimeType: 'application/pdf',
+      );
+      return;
     }
   }
 
@@ -326,6 +434,14 @@ class PdfViewerDialog extends StatelessWidget {
                     ),
                     onPressed: _loadPdfBytesViaApi,
                   ),
+                  if (_pdfBytes.value != null ||
+                      onDownload != null ||
+                      (signedPdfUrl != null && signedPdfUrl!.startsWith('http')))
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.download_outlined, size: 16),
+                      label: const Text('Download'),
+                      onPressed: _handleDownload,
+                    ),
                   TextButton(
                     onPressed: Get.back,
                     child: const Text('Dismiss'),

@@ -1578,18 +1578,20 @@ class DocumentEditDialog extends StatelessWidget {
                           size: 18, color: Color(0xFF4285F4)),
                       splashRadius: 16,
                       onPressed: () {
-                        final url =
-                            doc.googleAttachmentUrl ?? doc.filePath;
+                        final url = doc.googleAttachmentUrl ??
+                            (doc.filePath.startsWith('http') ? doc.filePath : null);
                         if (doc.isImage) {
                           ImageLightboxDialog.show(
                             title: doc.title,
                             imageUrl: url,
                             fileName: doc.fileName,
+                            filePath: doc.filePath,
                           );
                         } else {
                           PdfViewerDialog.show(
                             title: doc.title,
                             signedPdfUrl: url,
+                            filePath: doc.filePath,
                             fileName: doc.fileName,
                           );
                         }
@@ -1675,17 +1677,19 @@ class DocumentEditDialog extends StatelessWidget {
                         size: 18, color: AppColors.primary),
                     splashRadius: 16,
                     onPressed: () {
-                      final url = doc.filePath;
+                      final url = doc.filePath.startsWith('http') ? doc.filePath : null;
                       if (doc.isImage) {
                         ImageLightboxDialog.show(
                           title: doc.title,
                           imageUrl: url,
                           fileName: doc.fileName,
+                          filePath: doc.filePath,
                         );
                       } else {
                         PdfViewerDialog.show(
                           title: doc.title,
                           signedPdfUrl: url,
+                          filePath: doc.filePath,
                           fileName: doc.fileName,
                         );
                       }

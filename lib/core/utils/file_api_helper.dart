@@ -9,7 +9,11 @@ class FileApiHelper {
 
   /// Fetches binary bytes from an API URL with timeout and error handling.
   static Future<Uint8List> fetchBytes(String url) async {
-    final uri = Uri.parse(url);
+    final cleanUrl = url.trim();
+    final uri = Uri.tryParse(cleanUrl);
+    if (uri == null || (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://'))) {
+      throw ArgumentError('Invalid file URL: must begin with http:// or https:// ($cleanUrl)');
+    }
     AppLogger.debug('FILE_API', 'Initiating API byte download: host=${uri.host}, path=${uri.path}');
 
     try {
@@ -26,6 +30,13 @@ class FileApiHelper {
 
       if (response.bodyBytes.isEmpty) {
         throw Exception('The requested document file returned empty contents.');
+      }
+
+      final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+      if (contentType.contains('text/html') ||
+          (response.bodyBytes.length >= 15 &&
+              String.fromCharCodes(response.bodyBytes.take(15)).toLowerCase().contains('<!doc'))) {
+        throw Exception('The server returned an HTML webpage instead of a binary file.');
       }
 
       return response.bodyBytes;

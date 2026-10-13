@@ -9,6 +9,7 @@ import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// GetX-compliant interactive Image Lightbox Dialog loading bytes via API.
 /// Provides zoom, rotation, realistic skeleton loading, inline retry, and direct downloads.
@@ -17,6 +18,7 @@ class ImageLightboxDialog extends StatelessWidget {
   final String? imageUrl;
   final Uint8List? imageBytes;
   final String? fileName;
+  final String? filePath;
   final VoidCallback? onDownload;
 
   ImageLightboxDialog({
@@ -25,12 +27,14 @@ class ImageLightboxDialog extends StatelessWidget {
     this.imageUrl,
     this.imageBytes,
     this.fileName,
+    this.filePath,
     this.onDownload,
   }) {
     if (imageBytes != null && imageBytes!.isNotEmpty) {
       _loadedBytes.value = imageBytes;
       _isLoading.value = false;
-    } else if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
+    } else if ((imageUrl != null && imageUrl!.trim().isNotEmpty) ||
+        (filePath != null && filePath!.trim().isNotEmpty)) {
       _loadImageBytesViaApi();
     } else {
       _errorMessage.value = 'No image URL or binary data was provided.';
@@ -48,6 +52,7 @@ class ImageLightboxDialog extends StatelessWidget {
     String? imageUrl,
     Uint8List? imageBytes,
     String? fileName,
+    String? filePath,
     VoidCallback? onDownload,
   }) {
     AppDialog.show(
@@ -56,6 +61,7 @@ class ImageLightboxDialog extends StatelessWidget {
         imageUrl: imageUrl,
         imageBytes: imageBytes,
         fileName: fileName,
+        filePath: filePath,
         onDownload: onDownload,
       ),
       barrierColor: Colors.black87,
@@ -66,10 +72,65 @@ class ImageLightboxDialog extends StatelessWidget {
     _isLoading.value = true;
     _errorMessage.value = '';
 
-    AppLogger.debug('IMAGE_LIGHTBOX', 'Loading image bytes via API: title="$title", url=$imageUrl');
+    AppLogger.debug('IMAGE_LIGHTBOX', 'Loading image bytes via API: title="$title", url=$imageUrl, path=$filePath');
 
     try {
-      final bytes = await FileApiHelper.fetchBytes(imageUrl!);
+      final candidateUrl = imageUrl?.trim() ?? '';
+      final candidatePath = filePath?.trim() ?? '';
+
+      Uint8List? bytes;
+
+      if (candidateUrl.startsWith('http://') || candidateUrl.startsWith('https://')) {
+        try {
+          final fetched = await FileApiHelper.fetchBytes(candidateUrl);
+          if (fetched.isNotEmpty) {
+            bytes = fetched;
+          }
+        } catch (fetchErr) {
+          AppLogger.warning('IMAGE_LIGHTBOX', 'Direct image URL fetch failed: $fetchErr. Attempting storage fallback.');
+        }
+      }
+
+      if (bytes == null) {
+        final storagePath = candidatePath.isNotEmpty && !candidatePath.startsWith('http')
+            ? candidatePath
+            : (candidateUrl.isNotEmpty && !candidateUrl.startsWith('http') ? candidateUrl : null);
+
+        if (storagePath != null) {
+          final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+
+          try {
+            AppLogger.info('IMAGE_LIGHTBOX', 'Downloading image directly from Supabase storage: "$cleanPath"');
+            final downloaded = await Supabase.instance.client.storage
+                .from(AppConstants.storageBucket)
+                .download(cleanPath);
+            if (downloaded.isNotEmpty) {
+              bytes = downloaded;
+            }
+          } catch (storageErr) {
+            AppLogger.warning('IMAGE_LIGHTBOX', 'Direct Supabase storage image download notice: $storageErr');
+          }
+
+          if (bytes == null) {
+            try {
+              final freshSignedUrl = await Supabase.instance.client.storage
+                  .from(AppConstants.storageBucket)
+                  .createSignedUrl(cleanPath, 3600);
+              final fetched = await FileApiHelper.fetchBytes(freshSignedUrl);
+              if (fetched.isNotEmpty) {
+                bytes = fetched;
+              }
+            } catch (signedErr) {
+              AppLogger.warning('IMAGE_LIGHTBOX', 'Fresh signed image URL fetch notice: $signedErr');
+            }
+          }
+        }
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception('Unable to retrieve image data. Please check network connection or verify image storage.');
+      }
+
       _loadedBytes.value = bytes;
       _isLoading.value = false;
       AppLogger.info('IMAGE_LIGHTBOX', 'Image bytes successfully loaded via API (${bytes.length} bytes).');
@@ -89,17 +150,31 @@ class ImageLightboxDialog extends StatelessWidget {
   }
 
   void _handleDownload() {
-    if (_loadedBytes.value != null) {
-      final resolvedName = fileName != null && fileName!.isNotEmpty
-          ? fileName!
-          : '$title.jpg';
+    final resolvedName = fileName != null && fileName!.isNotEmpty
+        ? fileName!
+        : '$title.jpg';
+
+    if (_loadedBytes.value != null && _loadedBytes.value!.isNotEmpty) {
       FileApiHelper.downloadFileFromBytes(
         bytes: _loadedBytes.value!,
         fileName: resolvedName,
         mimeType: 'image/jpeg',
       );
-    } else if (onDownload != null) {
+      return;
+    }
+
+    if (onDownload != null) {
       onDownload!();
+      return;
+    }
+
+    if (imageUrl != null && (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://'))) {
+      FileApiHelper.downloadFileFromUrl(
+        url: imageUrl!,
+        fileName: resolvedName,
+        mimeType: 'image/jpeg',
+      );
+      return;
     }
   }
 
