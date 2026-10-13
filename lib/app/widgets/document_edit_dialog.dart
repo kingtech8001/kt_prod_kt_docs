@@ -308,6 +308,7 @@ class DocumentEditDialog extends StatelessWidget {
     final renameError = ''.obs;
 
     final isRenaming = false.obs;
+    final syncTitleWithFileName = true.obs;
 
     AppDialog.show<void>(
       Obx(
@@ -381,7 +382,49 @@ class DocumentEditDialog extends StatelessWidget {
                         hintText: 'e.g. Electricity_Bill_Oct_2026.pdf',
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 10),
+                    Obx(
+                      () => InkWell(
+                        onTap: isRenaming.value
+                            ? null
+                            : () => syncTitleWithFileName.value =
+                                !syncTitleWithFileName.value,
+                        borderRadius:
+                            BorderRadius.circular(AppConstants.radiusSmall),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: Checkbox(
+                                  value: syncTitleWithFileName.value,
+                                  onChanged: isRenaming.value
+                                      ? null
+                                      : (val) {
+                                          if (val != null) {
+                                            syncTitleWithFileName.value = val;
+                                          }
+                                        },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Also update Document Title to match new file name',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -421,13 +464,22 @@ class DocumentEditDialog extends StatelessWidget {
                                       'oldFileName': _currentDoc.value.fileName,
                                       'newFileName': text,
                                       'title': _titleController.text.trim(),
+                                      'syncTitle': syncTitleWithFileName.value,
                                     },
                                   );
 
                                   try {
-                                    final currentTitle = _titleController.text.trim().isNotEmpty
+                                    var currentTitle = _titleController.text.trim().isNotEmpty
                                         ? _titleController.text.trim()
                                         : _currentDoc.value.title;
+
+                                    if (syncTitleWithFileName.value) {
+                                      final newNameWithoutExt = text.contains('.')
+                                          ? text.substring(0, text.lastIndexOf('.'))
+                                          : text;
+                                      currentTitle = newNameWithoutExt;
+                                      _titleController.text = newNameWithoutExt;
+                                    }
 
                                     final updatedAppliance = _buildUpdatedAppliance();
                                     final updatedVehicle = _buildUpdatedVehicle();
@@ -454,6 +506,7 @@ class DocumentEditDialog extends StatelessWidget {
                                         ? text.split('.').last.toLowerCase()
                                         : oldExt;
                                     _currentDoc.value = _currentDoc.value.copyWith(
+                                      title: currentTitle,
                                       fileName: text,
                                       fileType: ext,
                                     );
