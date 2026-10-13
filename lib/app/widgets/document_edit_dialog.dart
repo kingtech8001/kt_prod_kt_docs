@@ -9,6 +9,7 @@ import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
 import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
@@ -412,6 +413,17 @@ class DocumentEditDialog extends StatelessWidget {
                                   isRenaming.value = true;
                                   renameError.value = '';
 
+                                  AppLogger.info(
+                                    'DOCUMENT_EDIT_DIALOG',
+                                    'Starting document file rename for docId: ${_currentDoc.value.id} | oldName: "${_currentDoc.value.fileName}" -> newName: "$text"',
+                                    {
+                                      'documentId': _currentDoc.value.id,
+                                      'oldFileName': _currentDoc.value.fileName,
+                                      'newFileName': text,
+                                      'title': _titleController.text.trim(),
+                                    },
+                                  );
+
                                   try {
                                     final currentTitle = _titleController.text.trim().isNotEmpty
                                         ? _titleController.text.trim()
@@ -447,12 +459,29 @@ class DocumentEditDialog extends StatelessWidget {
                                     );
                                     _hasSavedChanges.value = true;
 
+                                    AppLogger.info(
+                                      'DOCUMENT_EDIT_DIALOG',
+                                      'Document file renamed successfully for docId: ${_currentDoc.value.id} to "$text"',
+                                    );
+
                                     Get.back();
                                     AppSnackbar.showSuccess(
                                       'File Renamed',
                                       'Document file name updated to "$text" successfully.',
                                     );
-                                  } catch (e) {
+                                  } catch (e, st) {
+                                    AppLogger.error(
+                                      'DOCUMENT_EDIT_DIALOG',
+                                      'Failed to rename document file for docId: ${_currentDoc.value.id} to "$text": $e',
+                                      error: e,
+                                      stackTrace: st,
+                                      contextData: {
+                                        'documentId': _currentDoc.value.id,
+                                        'oldFileName': _currentDoc.value.fileName,
+                                        'attemptedNewFileName': text,
+                                        'title': _titleController.text.trim(),
+                                      },
+                                    );
                                     renameError.value = e
                                         .toString()
                                         .replaceAll('Exception:', '')

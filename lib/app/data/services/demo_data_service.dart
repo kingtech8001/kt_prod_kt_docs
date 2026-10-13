@@ -12,6 +12,7 @@ import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 
 class DemoDataService {
   DemoDataService._();
@@ -809,6 +810,15 @@ class DemoDataService {
                 : old.mimeType),
         filePath: updatedFilePath,
         extraAttributes: updatedExtraAttributes,
+      );
+      AppLogger.info(
+        'DEMO_DATA_SERVICE',
+        'updateDocumentMock updated document ID $documentId: file_name="$updatedFileName", title="$updatedTitle"',
+      );
+    } else {
+      AppLogger.warning(
+        'DEMO_DATA_SERVICE',
+        'updateDocumentMock: document ID $documentId not found in mock cache!',
       );
     }
   }

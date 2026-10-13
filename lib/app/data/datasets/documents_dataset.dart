@@ -455,6 +455,11 @@ class DocumentsDataset {
         if (sanitizedFileName.contains('.')) {
           docUpdates['file_type'] = sanitizedFileName.split('.').last.toLowerCase();
         }
+        AppLogger.info(
+          'DOCUMENTS_DATASET',
+          'Document ID $documentId rename payload prepared: file_name="$sanitizedFileName"',
+          {'documentId': documentId, 'docUpdates': docUpdates},
+        );
       } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
         docUpdates['file_path'] = attachmentUrl;
         final uri = Uri.tryParse(attachmentUrl);
@@ -477,6 +482,12 @@ class DocumentsDataset {
           docUpdates['extra_attributes'] = extras;
         } catch (_) {}
       }
+
+      AppLogger.debug(
+        'DOCUMENTS_DATASET',
+        'Executing documents table update for $documentId',
+        docUpdates,
+      );
 
       await _client.from('documents').update(docUpdates).eq('id', documentId);
 
