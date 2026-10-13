@@ -263,6 +263,51 @@ class DocumentEditDialog extends StatelessWidget {
     );
   }
 
+  void _previewCurrentDocument() {
+    final doc = _currentDoc.value;
+    final url = doc.googleAttachmentUrl ??
+        (doc.filePath.startsWith('http') ? doc.filePath : null);
+    if (doc.isImage) {
+      ImageLightboxDialog.show(
+        title: doc.title,
+        imageUrl: url,
+        fileName: doc.fileName,
+        filePath: doc.filePath,
+      );
+    } else {
+      PdfViewerDialog.show(
+        title: doc.title,
+        signedPdfUrl: url,
+        filePath: doc.filePath,
+        fileName: doc.fileName,
+      );
+    }
+  }
+
+  Future<void> _previewSelectedFile() async {
+    final file = _selectedNewFile.value;
+    if (file == null) return;
+    try {
+      final bytes = file.bytes ?? await file.loadBytes();
+      if (bytes.isEmpty) return;
+      if (FileCompressor.isPdf(file.name)) {
+        PdfViewerDialog.show(
+          title: file.name,
+          pdfBytes: bytes,
+          fileName: file.name,
+        );
+      } else {
+        ImageLightboxDialog.show(
+          title: file.name,
+          imageBytes: bytes,
+          fileName: file.name,
+        );
+      }
+    } catch (e) {
+      _errorMessage.value = 'Failed to preview selected file: $e';
+    }
+  }
+
   Future<void> _pickFile(BuildContext context) async {
     try {
       final result = await FilePicker.pickFiles(
@@ -772,16 +817,28 @@ class DocumentEditDialog extends StatelessWidget {
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 20),
-                        color: AppColors.textSecondary,
-                        splashRadius: 18,
-                        onPressed: (_isSaving.value || _isUploadingReplacement.value)
-                            ? null
-                            : () {
-                                _disposeControllers();
-                                Get.back(result: _hasSavedChanges.value);
-                              },
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.visibility_outlined, size: 20),
+                            color: AppColors.primary,
+                            tooltip: 'Preview Document',
+                            splashRadius: 18,
+                            onPressed: () => _previewCurrentDocument(),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            color: AppColors.textSecondary,
+                            splashRadius: 18,
+                            onPressed: (_isSaving.value || _isUploadingReplacement.value)
+                                ? null
+                                : () {
+                                    _disposeControllers();
+                                    Get.back(result: _hasSavedChanges.value);
+                                  },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1523,47 +1580,142 @@ class DocumentEditDialog extends StatelessWidget {
                         ],
                       ),
                     ),
+                    IconButton(
+                      tooltip: 'Preview Selected File',
+                      icon: const Icon(Icons.visibility_outlined,
+                          size: 20, color: AppColors.successDark),
+                      splashRadius: 18,
+                      onPressed: () => _previewSelectedFile(),
+                    ),
                   ],
                 ),
               );
             }
             if (doc.isGoogleAttachment) {
-              return Container(
+              return InkWell(
+                onTap: () => _previewCurrentDocument(),
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4285F4).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                    border: Border.all(
+                      color: const Color(0xFF4285F4).withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const GoogleDriveLogo(size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Text(
+                                  'Current: Google Drive Link',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                GoogleDriveBadge(compact: true),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              doc.googleAttachmentUrl ?? doc.filePath,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Preview Document',
+                        icon: const Icon(Icons.visibility_outlined,
+                            size: 20, color: Color(0xFF4285F4)),
+                        splashRadius: 18,
+                        onPressed: () => _previewCurrentDocument(),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return InkWell(
+              onTap: () => _previewCurrentDocument(),
+              borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+              child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4285F4).withValues(alpha: 0.08),
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                  border: Border.all(
-                    color: const Color(0xFF4285F4).withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   children: [
-                    const GoogleDriveLogo(size: 22),
+                    Icon(
+                      doc.fileType == 'pdf'
+                          ? Icons.picture_as_pdf_outlined
+                          : Icons.description_outlined,
+                      size: 22,
+                      color: doc.fileType == 'pdf'
+                          ? AppColors.error
+                          : AppColors.primary,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Text(
-                                'Current: Google Drive Link',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                              Expanded(
+                                child: Text(
+                                  'Current: ${doc.fileName}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                               ),
-                              SizedBox(width: 6),
-                              GoogleDriveBadge(compact: true),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.successLight,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: AppColors.success.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'VPS STORAGE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.successDark,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            doc.googleAttachmentUrl ?? doc.filePath,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            '${doc.fileType.toUpperCase()} • ${doc.fileSizeFormatted}',
                             style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.textSecondary,
@@ -1575,127 +1727,12 @@ class DocumentEditDialog extends StatelessWidget {
                     IconButton(
                       tooltip: 'Preview Document',
                       icon: const Icon(Icons.visibility_outlined,
-                          size: 18, color: Color(0xFF4285F4)),
-                      splashRadius: 16,
-                      onPressed: () {
-                        final url = doc.googleAttachmentUrl ??
-                            (doc.filePath.startsWith('http') ? doc.filePath : null);
-                        if (doc.isImage) {
-                          ImageLightboxDialog.show(
-                            title: doc.title,
-                            imageUrl: url,
-                            fileName: doc.fileName,
-                            filePath: doc.filePath,
-                          );
-                        } else {
-                          PdfViewerDialog.show(
-                            title: doc.title,
-                            signedPdfUrl: url,
-                            filePath: doc.filePath,
-                            fileName: doc.fileName,
-                          );
-                        }
-                      },
+                          size: 20, color: AppColors.primary),
+                      splashRadius: 18,
+                      onPressed: () => _previewCurrentDocument(),
                     ),
                   ],
                 ),
-              );
-            }
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    doc.fileType == 'pdf'
-                        ? Icons.picture_as_pdf_outlined
-                        : Icons.description_outlined,
-                    size: 22,
-                    color: doc.fileType == 'pdf'
-                        ? AppColors.error
-                        : AppColors.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Current: ${doc.fileName}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.successLight,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: AppColors.success.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: const Text(
-                                'VPS STORAGE',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.successDark,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${doc.fileType.toUpperCase()} • ${doc.fileSizeFormatted}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Preview Document',
-                    icon: const Icon(Icons.visibility_outlined,
-                        size: 18, color: AppColors.primary),
-                    splashRadius: 16,
-                    onPressed: () {
-                      final url = doc.filePath.startsWith('http') ? doc.filePath : null;
-                      if (doc.isImage) {
-                        ImageLightboxDialog.show(
-                          title: doc.title,
-                          imageUrl: url,
-                          fileName: doc.fileName,
-                          filePath: doc.filePath,
-                        );
-                      } else {
-                        PdfViewerDialog.show(
-                          title: doc.title,
-                          signedPdfUrl: url,
-                          filePath: doc.filePath,
-                          fileName: doc.fileName,
-                        );
-                      }
-                    },
-                  ),
-                ],
               ),
             );
           }),
@@ -1839,6 +1876,13 @@ class DocumentEditDialog extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        tooltip: 'Preview Picked File',
+                        icon: const Icon(Icons.visibility_outlined,
+                            size: 18, color: AppColors.primary),
+                        splashRadius: 16,
+                        onPressed: () => _previewSelectedFile(),
                       ),
                       IconButton(
                         tooltip: 'Remove',
