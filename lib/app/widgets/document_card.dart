@@ -308,15 +308,6 @@ class DocumentCard extends StatelessWidget {
                               tooltip: 'Open in Google Drive',
                               onPressed: onPreview,
                             ),
-                          if (onEdit != null)
-                            IconButton(
-                              icon: const Icon(
-                                Icons.upload_file_outlined,
-                                size: 18,
-                              ),
-                              tooltip: 'Re-upload / Replace file',
-                              onPressed: onEdit,
-                            ),
                           if (onPreview != null && !doc.isGoogleAttachment)
                             IconButton(
                               icon: const Icon(

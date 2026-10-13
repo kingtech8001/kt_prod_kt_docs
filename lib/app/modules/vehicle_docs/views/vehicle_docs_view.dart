@@ -1918,15 +1918,6 @@ class _VehicleDocumentCard extends StatelessWidget {
                             tooltip: 'Open in Google Drive',
                             visualDensity: VisualDensity.compact,
                           ),
-                        if (controller.canEdit)
-                          IconButton(
-                            icon: const Icon(Icons.upload_file_outlined, size: 18),
-                            onPressed: () =>
-                                controller.openEditDocumentDialog(doc),
-                            tooltip: 'Re-upload / Replace file',
-                            color: AppColors.textSecondary,
-                            visualDensity: VisualDensity.compact,
-                          ),
                         IconButton(
                           icon: const Icon(Icons.download_outlined, size: 18),
                           onPressed: () => controller.downloadDocument(doc),

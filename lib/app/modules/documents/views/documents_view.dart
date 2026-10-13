@@ -502,11 +502,6 @@ class DocumentsView extends GetView<DocumentsController> {
                   onPressed: () => controller.previewDocument(doc),
                 ),
               IconButton(
-                icon: const Icon(Icons.upload_file_outlined, size: 20),
-                tooltip: 'Re-upload / Replace file',
-                onPressed: () => controller.openEditDocumentDialog(doc),
-              ),
-              IconButton(
                 icon: Icon(
                   doc.isFavorite ? Icons.star : Icons.star_border,
                   color: doc.isFavorite
@@ -637,11 +632,6 @@ class DocumentsView extends GetView<DocumentsController> {
               tooltip: 'Open in Google Drive',
               onPressed: () => controller.previewDocument(doc),
             ),
-          IconButton(
-            icon: const Icon(Icons.upload_file_outlined, size: 20),
-            tooltip: 'Re-upload / Replace file',
-            onPressed: () => controller.openEditDocumentDialog(doc),
-          ),
           IconButton(
             icon: Icon(
               doc.isFavorite ? Icons.star : Icons.star_border,

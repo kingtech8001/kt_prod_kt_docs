@@ -1195,7 +1195,7 @@ class DocumentEditDialog extends StatelessWidget {
                                                   ? item.selectedBrand.value
                                                   : 'Other';
                                               return DropdownButtonFormField<String>(
-                                                value: activeBrand,
+                                                initialValue: activeBrand,
                                                 decoration: const InputDecoration(
                                                   labelText: 'Brand',
                                                 ),

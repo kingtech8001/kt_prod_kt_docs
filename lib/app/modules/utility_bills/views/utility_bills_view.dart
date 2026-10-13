@@ -879,11 +879,6 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
             onPressed: () => controller.previewDocument(doc),
           ),
         IconButton(
-          icon: const Icon(Icons.upload_file_outlined, size: 20),
-          tooltip: 'Re-upload / Replace file',
-          onPressed: () => controller.openEditDocumentDialog(doc),
-        ),
-        IconButton(
           icon: Icon(
             u?.isPaid == true
                 ? Icons.check_circle_rounded

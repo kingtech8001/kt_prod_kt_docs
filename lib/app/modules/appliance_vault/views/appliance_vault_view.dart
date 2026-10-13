@@ -680,16 +680,6 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                               onPressed: () =>
                                   controller.previewDocument(doc),
                             ),
-                          if (controller.canEdit)
-                            IconButton(
-                              icon: const Icon(
-                                Icons.upload_file_outlined,
-                                size: 18,
-                              ),
-                              tooltip: 'Re-upload / Replace file',
-                              onPressed: () =>
-                                  controller.openEditDocumentDialog(doc),
-                            ),
                           IconButton(
                             icon: const Icon(
                               Icons.visibility_outlined,
@@ -914,16 +904,6 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                             icon: const GoogleDriveLogo(size: 18),
                             tooltip: 'Open in Google Drive',
                             onPressed: () => controller.previewDocument(doc),
-                          ),
-                        if (controller.canEdit)
-                          IconButton(
-                            icon: const Icon(
-                              Icons.upload_file_outlined,
-                              size: 20,
-                            ),
-                            tooltip: 'Re-upload / Replace file',
-                            onPressed: () =>
-                                controller.openEditDocumentDialog(doc),
                           ),
                         IconButton(
                           icon: const Icon(Icons.visibility_outlined, size: 20),
