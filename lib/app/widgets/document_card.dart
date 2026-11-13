@@ -13,6 +13,7 @@ class DocumentCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onRestore;
+  final VoidCallback? onDoNotRemind;
   final bool isTrash;
 
   const DocumentCard({
@@ -24,6 +25,7 @@ class DocumentCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onRestore,
+    this.onDoNotRemind,
     this.isTrash = false,
   });
 
@@ -325,6 +327,16 @@ class DocumentCard extends StatelessWidget {
                               ),
                               tooltip: 'Download',
                               onPressed: onDownload,
+                            ),
+                          if (onDoNotRemind != null)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.notifications_off_outlined,
+                                size: 18,
+                                color: AppColors.textMuted,
+                              ),
+                              tooltip: "Don't remind me (Remove from recents)",
+                              onPressed: onDoNotRemind,
                             ),
                           if (onEdit != null)
                             IconButton(

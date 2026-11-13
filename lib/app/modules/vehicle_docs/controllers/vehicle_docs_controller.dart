@@ -7,6 +7,8 @@ import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehicle_dialog.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehicle_service_dialog.dart';
+import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/renew_vehicle_doc_dialog.dart';
+import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/vehicle_doc_history_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -607,5 +609,92 @@ class VehicleDocsController extends GetxController {
     if (updated == true) {
       await loadVehicleDocuments();
     }
+  }
+
+  /// Determines if a vehicle document is a recurring renewable certificate
+  /// (PUC, Insurance, FASTag / Toll Pass, Fitness, etc.)
+  bool isRenewableDoc(DocumentModel doc) {
+    final meta = doc.vehicleMetadata;
+    if (meta == null) return false;
+    final typeName = meta.docTypeName.toLowerCase();
+    final sub = doc.subCategory.toLowerCase();
+    return meta.expiryDate != null ||
+        typeName.contains('puc') ||
+        typeName.contains('insurance') ||
+        typeName.contains('pass') ||
+        typeName.contains('fastag') ||
+        typeName.contains('fitness') ||
+        sub.contains('puc') ||
+        sub.contains('insurance') ||
+        sub.contains('pass');
+  }
+
+  /// Opens the specialized Smart Renewal Dialog for renewable vehicle documents
+  Future<void> openRenewDocumentDialog(DocumentModel doc) async {
+    if (!canEdit) {
+      AppSnackbar.showError(
+        'Permission Denied',
+        'You do not have permission to renew documents.',
+      );
+      return;
+    }
+
+    final success = await RenewVehicleDocDialog.show(
+      previousDocument: doc,
+      onRenew: ({
+        required previousDocument,
+        required newMetadata,
+        required newTitle,
+        required fileBytes,
+        required fileName,
+        newDescription,
+      }) async {
+        try {
+          await _dataset.renewVehicleDocument(
+            previousDocument: previousDocument,
+            newMetadata: newMetadata,
+            newTitle: newTitle,
+            fileBytes: fileBytes,
+            fileName: fileName,
+            newDescription: newDescription,
+          );
+        } catch (e, st) {
+          AppLogger.error(
+            'VEHICLE_DOCS_CTRL',
+            'Error submitting vehicle document renewal: $e',
+            error: e,
+            stackTrace: st,
+          );
+          rethrow;
+        }
+      },
+    );
+
+    if (success == true) {
+      // Reload active documents - the old superseded record is now archived
+      await loadVehicleDocuments(resetPage: true);
+      AppSnackbar.showSuccess(
+        'Document Renewed',
+        '${doc.vehicleMetadata?.docTypeName ?? "Document"} renewed successfully. Previous certificate archived.',
+      );
+    }
+  }
+
+  /// Opens the chronological Renewal History Dialog for a vehicle document
+  Future<void> openRenewalHistoryDialog(DocumentModel doc) async {
+    final vNum = doc.vehicleMetadata?.vehicleNumber ?? '';
+    final dType = doc.vehicleMetadata?.docTypeName ?? doc.subCategory;
+
+    await VehicleDocHistoryDialog.show(
+      document: doc,
+      loadHistory: () async {
+        return _dataset.getVehicleDocTypeHistory(
+          vehicleNumber: vNum,
+          docTypeName: dType,
+        );
+      },
+      onPreview: (d) => previewDocument(d),
+      onDownload: (d) => downloadDocument(d),
+    );
   }
 }

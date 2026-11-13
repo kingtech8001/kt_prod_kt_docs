@@ -106,6 +106,24 @@ class AppConstants {
     'Other',
   ];
 
+  // Popular Vehicle & General Insurance Providers
+  static const List<String> popularInsuranceProviders = [
+    'HDFC ERGO General Insurance',
+    'ICICI Lombard General Insurance',
+    'Bajaj Allianz General Insurance',
+    'Tata AIG General Insurance',
+    'New India Assurance',
+    'United India Insurance',
+    'National Insurance Company',
+    'Oriental Insurance Company',
+    'Go Digit General Insurance',
+    'Acko General Insurance',
+    'SBI General Insurance',
+    'Reliance General Insurance',
+    'Royal Sundaram General Insurance',
+    'Other Provider',
+  ];
+
   // Vehicle Pass Types (Annual / Monthly / Parking)
   static const List<String> vehiclePassTypes = [
     'Annual Toll Pass',

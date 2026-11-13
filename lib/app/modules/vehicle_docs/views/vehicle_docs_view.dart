@@ -1891,13 +1891,36 @@ class _VehicleDocumentCard extends StatelessWidget {
                           ],
                         ),
                       ],
+                      if (meta?.tpExpiryDate != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.verified_user_outlined,
+                              size: 13,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'TP Cover Valid to: ${AppFormatters.formatDate(meta!.tpExpiryDate!)}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 10),
 
-                // Bottom Action Toolbar (Preview, Download, Share, Fav, Delete)
+                // Bottom Action Toolbar (Preview, Download, Share, Fav, Delete, Renew, History)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1925,6 +1948,22 @@ class _VehicleDocumentCard extends StatelessWidget {
                           color: AppColors.textSecondary,
                           visualDensity: VisualDensity.compact,
                         ),
+                        if (controller.isRenewableDoc(doc) && controller.canEdit)
+                          IconButton(
+                            icon: const Icon(Icons.autorenew_rounded, size: 18),
+                            onPressed: () => controller.openRenewDocumentDialog(doc),
+                            tooltip: 'Renew Document',
+                            color: AppColors.primary,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        if (controller.isRenewableDoc(doc))
+                          IconButton(
+                            icon: const Icon(Icons.history_edu_outlined, size: 18),
+                            onPressed: () => controller.openRenewalHistoryDialog(doc),
+                            tooltip: 'Renewal History',
+                            color: AppColors.textSecondary,
+                            visualDensity: VisualDensity.compact,
+                          ),
                         IconButton(
                           icon: Icon(
                             doc.isFavorite
@@ -2098,6 +2137,26 @@ class _VehicleDocumentListTile extends StatelessWidget {
                           padding: const EdgeInsets.all(6),
                           constraints: const BoxConstraints(),
                         ),
+                        if (controller.isRenewableDoc(doc) && controller.canEdit) ...[
+                          const SizedBox(width: 6),
+                          IconButton(
+                            icon: const Icon(Icons.autorenew_rounded, size: 18, color: AppColors.primary),
+                            onPressed: () => controller.openRenewDocumentDialog(doc),
+                            tooltip: 'Renew Document',
+                            padding: const EdgeInsets.all(6),
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                        if (controller.isRenewableDoc(doc)) ...[
+                          const SizedBox(width: 6),
+                          IconButton(
+                            icon: const Icon(Icons.history_edu_outlined, size: 18),
+                            onPressed: () => controller.openRenewalHistoryDialog(doc),
+                            tooltip: 'Renewal History',
+                            padding: const EdgeInsets.all(6),
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                         if (controller.canEdit) ...[
                           const SizedBox(width: 6),
                           IconButton(
@@ -2232,6 +2291,18 @@ class _VehicleDocumentListTile extends StatelessWidget {
                   onPressed: () => controller.downloadDocument(doc),
                   tooltip: 'Download',
                 ),
+                if (controller.isRenewableDoc(doc) && controller.canEdit)
+                  IconButton(
+                    icon: const Icon(Icons.autorenew_rounded, size: 18, color: AppColors.primary),
+                    onPressed: () => controller.openRenewDocumentDialog(doc),
+                    tooltip: 'Renew Document',
+                  ),
+                if (controller.isRenewableDoc(doc))
+                  IconButton(
+                    icon: const Icon(Icons.history_edu_outlined, size: 18),
+                    onPressed: () => controller.openRenewalHistoryDialog(doc),
+                    tooltip: 'Renewal History',
+                  ),
                 if (controller.canEdit)
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 18),

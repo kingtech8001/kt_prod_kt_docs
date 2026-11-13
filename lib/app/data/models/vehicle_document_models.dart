@@ -200,6 +200,11 @@ class VehicleDocumentMetadataModel {
   final String? passType;
   final String? tollPlazaName;
   final String? fastagId;
+  final String? insuranceType; // e.g. 'Bundled (1-Yr OD + 3/5-Yr TP)', 'Comprehensive', 'Standalone OD', 'Third-Party Only'
+  final DateTime? odExpiryDate; // Own Damage (OD) component expiration date
+  final DateTime? tpExpiryDate; // Third-Party Liability (TP) component expiration date (3 or 5 years)
+  final String? previousDocumentId; // Reference to superseded previous document
+  final int renewalCount; // Number of renewals completed
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -222,6 +227,11 @@ class VehicleDocumentMetadataModel {
     this.passType,
     this.tollPlazaName,
     this.fastagId,
+    this.insuranceType,
+    this.odExpiryDate,
+    this.tpExpiryDate,
+    this.previousDocumentId,
+    this.renewalCount = 0,
     this.createdAt,
     this.updatedAt,
   });
@@ -231,6 +241,10 @@ class VehicleDocumentMetadataModel {
       docTypeName.toLowerCase().contains('toll') ||
       docTypeName.toLowerCase().contains('pass') ||
       (passType != null && passType!.isNotEmpty);
+
+  bool get isBundledInsurance =>
+      (insuranceType != null && insuranceType!.toLowerCase().contains('bundled')) ||
+      (odExpiryDate != null && tpExpiryDate != null);
 
   bool get isExpired {
     if (expiryDate == null) return false;
@@ -297,6 +311,15 @@ class VehicleDocumentMetadataModel {
       passType: json['pass_type'] as String?,
       tollPlazaName: json['toll_plaza_name'] as String?,
       fastagId: json['fastag_id'] as String?,
+      insuranceType: json['insurance_type'] as String?,
+      odExpiryDate: json['od_expiry_date'] != null
+          ? DateTime.tryParse(json['od_expiry_date'] as String)
+          : null,
+      tpExpiryDate: json['tp_expiry_date'] != null
+          ? DateTime.tryParse(json['tp_expiry_date'] as String)
+          : null,
+      previousDocumentId: json['previous_document_id'] as String?,
+      renewalCount: (json['renewal_count'] as num?)?.toInt() ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -306,8 +329,8 @@ class VehicleDocumentMetadataModel {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson({bool forSupabaseTable = true}) {
+    final map = <String, dynamic>{
       if (id != null) 'id': id,
       if (documentId != null) 'document_id': documentId,
       if (vehicleId != null) 'vehicle_id': vehicleId,
@@ -330,6 +353,22 @@ class VehicleDocumentMetadataModel {
       if (tollPlazaName != null) 'toll_plaza_name': tollPlazaName,
       if (fastagId != null) 'fastag_id': fastagId,
     };
+    if (!forSupabaseTable) {
+      if (insuranceType != null) map['insurance_type'] = insuranceType;
+      if (odExpiryDate != null) {
+        map['od_expiry_date'] =
+            odExpiryDate!.toIso8601String().split('T').first;
+      }
+      if (tpExpiryDate != null) {
+        map['tp_expiry_date'] =
+            tpExpiryDate!.toIso8601String().split('T').first;
+      }
+      if (previousDocumentId != null) {
+        map['previous_document_id'] = previousDocumentId;
+      }
+      map['renewal_count'] = renewalCount;
+    }
+    return map;
   }
 
   VehicleDocumentMetadataModel copyWith({
@@ -351,6 +390,11 @@ class VehicleDocumentMetadataModel {
     String? passType,
     String? tollPlazaName,
     String? fastagId,
+    String? insuranceType,
+    DateTime? odExpiryDate,
+    DateTime? tpExpiryDate,
+    String? previousDocumentId,
+    int? renewalCount,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -373,6 +417,11 @@ class VehicleDocumentMetadataModel {
       passType: passType ?? this.passType,
       tollPlazaName: tollPlazaName ?? this.tollPlazaName,
       fastagId: fastagId ?? this.fastagId,
+      insuranceType: insuranceType ?? this.insuranceType,
+      odExpiryDate: odExpiryDate ?? this.odExpiryDate,
+      tpExpiryDate: tpExpiryDate ?? this.tpExpiryDate,
+      previousDocumentId: previousDocumentId ?? this.previousDocumentId,
+      renewalCount: renewalCount ?? this.renewalCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

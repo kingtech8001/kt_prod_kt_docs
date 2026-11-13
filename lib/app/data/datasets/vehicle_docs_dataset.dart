@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -194,7 +195,12 @@ class VehicleDocsDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-5' || d.categoryId == 'cat-vehicle' || d.categoryCode == 'vehicle_docs' || d.vehicleMetadata != null)
+          .where((d) =>
+              (d.categoryId == 'cat-5' ||
+                  d.categoryId == 'cat-vehicle' ||
+                  d.categoryCode == 'vehicle_docs' ||
+                  d.vehicleMetadata != null) &&
+              (d.status != 'archived' && d.status != 'superseded'))
           .toList();
 
       if (vehicleNumber != null && vehicleNumber.isNotEmpty && vehicleNumber != 'All Vehicles') {
@@ -292,7 +298,8 @@ class VehicleDocsDataset {
             vehicle_document_metadata(*),
             document_favorites(document_id, user_id)
           ''')
-          .isFilter('deleted_at', null);
+          .isFilter('deleted_at', null)
+          .neq('status', 'archived');
 
       if (categoryId.isNotEmpty) {
         query = query.eq('category_id', categoryId);
@@ -301,7 +308,8 @@ class VehicleDocsDataset {
       var countQuery = _client
           .from('documents')
           .select('id')
-          .isFilter('deleted_at', null);
+          .isFilter('deleted_at', null)
+          .neq('status', 'archived');
 
       if (categoryId.isNotEmpty) {
         countQuery = countQuery.eq('category_id', categoryId);
@@ -446,18 +454,33 @@ class VehicleDocsDataset {
       final countRes = await countQuery.count(CountOption.exact);
       final totalRecords = countRes.count;
 
-      // 7. Calculate summary metrics across all vehicle document records in the database
+      // 7. Calculate summary metrics across all active vehicle document records in the database
+      final activeDocsRes = await _client
+          .from('documents')
+          .select('id')
+          .isFilter('deleted_at', null)
+          .neq('status', 'archived');
+      final activeDocIds = (activeDocsRes as List)
+          .map((r) => r['id'] as String?)
+          .whereType<String>()
+          .toSet();
+
       final summaryRes = await _client
           .from('vehicle_document_metadata')
-          .select('vehicle_number, expiry_date');
+          .select('document_id, vehicle_number, expiry_date');
 
       final vehicleSet = <String>{};
       int expiringCount = 0;
       int expiredCount = 0;
+      int totalActiveDocsCount = 0;
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
       for (final raw in (summaryRes as List)) {
+        final docId = raw['document_id'] as String?;
+        if (docId == null || !activeDocIds.contains(docId)) continue;
+        totalActiveDocsCount++;
+
         final vNum = raw['vehicle_number'] as String?;
         if (vNum != null && vNum.isNotEmpty) {
           vehicleSet.add(vNum.trim().toUpperCase());
@@ -482,7 +505,7 @@ class VehicleDocsDataset {
       return VehicleDocsResponse(
         documents: list,
         totalCount: totalRecords,
-        totalDocumentsCount: summaryRes.length,
+        totalDocumentsCount: totalActiveDocsCount,
         totalVehiclesCount: vehicleSet.length,
         expiringSoonCount: expiringCount,
         expiredCount: expiredCount,
@@ -505,9 +528,30 @@ class VehicleDocsDataset {
     required String docTypeName,
   }) async {
     if (DemoDataService.isDemoMode) {
-      return DemoDataService.getAllDocuments()
-          .where((d) => d.vehicleMetadata?.vehicleNumber.toUpperCase() == vehicleNumber.trim().toUpperCase())
-          .toList();
+      final cleanNum = vehicleNumber.trim().toUpperCase();
+      final cleanType = docTypeName.trim().toLowerCase();
+      final list = DemoDataService.getAllDocuments().where((d) {
+        final vNum = d.vehicleMetadata?.vehicleNumber.trim().toUpperCase();
+        final dType = d.vehicleMetadata?.docTypeName.trim().toLowerCase() ?? '';
+        final sub = d.subCategory.trim().toLowerCase();
+        return vNum == cleanNum &&
+            (dType.contains(cleanType) ||
+                cleanType.contains(dType) ||
+                sub.contains(cleanType) ||
+                cleanType.contains(sub));
+      }).toList();
+
+      list.sort((a, b) {
+        final aExp = a.vehicleMetadata?.expiryDate;
+        final bExp = b.vehicleMetadata?.expiryDate;
+        if (aExp != null && bExp != null) {
+          return bExp.compareTo(aExp);
+        }
+        if (aExp != null) return -1;
+        if (bExp != null) return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+      return list;
     }
     AppLogger.debug(
       'VEHICLE_DOCS_DATASET',
@@ -571,6 +615,166 @@ class VehicleDocsDataset {
         stackTrace: st,
       );
       return [];
+    }
+  }
+
+  /// Renews an expiring/renewable vehicle document (PUC, Insurance, FASTag/Pass, etc.)
+  /// Archives previous document to 'superseded' status and inserts new active document.
+  Future<DocumentModel> renewVehicleDocument({
+    required DocumentModel previousDocument,
+    required VehicleDocumentMetadataModel newMetadata,
+    required String newTitle,
+    required Uint8List fileBytes,
+    required String fileName,
+    String? newDescription,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.renewVehicleDocumentMock(
+        previousDoc: previousDocument,
+        newMetadata: newMetadata,
+        newTitle: newTitle,
+        newFileName: fileName,
+        newFileSize: fileBytes.length,
+        newMimeType: fileName.toLowerCase().endsWith('.pdf')
+            ? 'application/pdf'
+            : 'image/jpeg',
+        newFilePath: 'mock/$fileName',
+        newDescription: newDescription,
+      );
+    }
+
+    AppLogger.info(
+      'VEHICLE_DOCS_DATASET',
+      'Renewing vehicle document: ${previousDocument.id} ("${previousDocument.title}")...',
+    );
+
+    try {
+      final ext = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : 'pdf';
+      final mimeType =
+          ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+      final storagePath =
+          'vehicles/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+      // 1. Upload new certificate / policy binary
+      await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+            storagePath,
+            fileBytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      // 2. Mark previous document as archived so it leaves active views and alerts
+      final prevExtra =
+          Map<String, dynamic>.from(previousDocument.extraAttributes);
+      prevExtra['archived_reason'] = 'renewed';
+      prevExtra['archived_at'] = DateTime.now().toIso8601String();
+      await _client
+          .from('documents')
+          .update({
+            'status': 'archived',
+            'extra_attributes': prevExtra,
+          })
+          .eq('id', previousDocument.id);
+
+      // 3. Insert new active document record
+      final nextRenewalCount =
+          (previousDocument.vehicleMetadata?.renewalCount ?? 0) + 1;
+
+      final extraAttrs = <String, dynamic>{
+        'storage_provider': 'supabase',
+        'previous_document_id': previousDocument.id,
+        'renewal_count': nextRenewalCount,
+      };
+      if (newMetadata.insuranceType != null) {
+        extraAttrs['insurance_type'] = newMetadata.insuranceType;
+      }
+      if (newMetadata.tpExpiryDate != null) {
+        extraAttrs['tp_expiry_date'] =
+            newMetadata.tpExpiryDate!.toIso8601String();
+      }
+      if (newMetadata.odExpiryDate != null) {
+        extraAttrs['od_expiry_date'] =
+            newMetadata.odExpiryDate!.toIso8601String();
+      }
+
+      final newDocPayload = {
+        'title': newTitle,
+        'description': newDescription ?? previousDocument.description,
+        'category_id': previousDocument.categoryId,
+        'folder_id': previousDocument.folderId,
+        'file_name': fileName,
+        'file_path': storagePath,
+        'file_type': ext,
+        'mime_type': mimeType,
+        'file_size': fileBytes.length,
+        'document_number':
+            newMetadata.policyOrCertNumber ?? previousDocument.documentNumber,
+        'status': 'active',
+        'extra_attributes': extraAttrs,
+      };
+
+      final docRes = await _client
+          .from('documents')
+          .insert(newDocPayload)
+          .select()
+          .single();
+      final newDocId = docRes['id'] as String;
+
+      // Update previous doc with superseded_by reference
+      prevExtra['superseded_by'] = newDocId;
+      await _client
+          .from('documents')
+          .update({'extra_attributes': prevExtra})
+          .eq('id', previousDocument.id);
+
+      // 4. Insert new vehicle document metadata with lineage reference
+      final metaPayload = newMetadata
+          .copyWith(
+            documentId: newDocId,
+            previousDocumentId: previousDocument.id,
+            renewalCount: nextRenewalCount,
+          )
+          .toJson(forSupabaseTable: true)
+        ..remove('id');
+
+      await _client.from('vehicle_document_metadata').insert(metaPayload);
+
+      return DocumentModel(
+        id: newDocId,
+        title: newTitle,
+        description: newDescription ?? previousDocument.description,
+        categoryId: previousDocument.categoryId,
+        categoryName: previousDocument.categoryName,
+        categoryCode: previousDocument.categoryCode,
+        subCategory: previousDocument.subCategory,
+        folderId: previousDocument.folderId,
+        folderName: previousDocument.folderName,
+        fileName: fileName,
+        filePath: storagePath,
+        fileType: ext,
+        mimeType: mimeType,
+        fileSize: fileBytes.length,
+        documentNumber:
+            newMetadata.policyOrCertNumber ?? previousDocument.documentNumber,
+        status: 'active',
+        isFavorite: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        vehicleMetadata: newMetadata.copyWith(
+          documentId: newDocId,
+          previousDocumentId: previousDocument.id,
+          renewalCount: nextRenewalCount,
+        ),
+      );
+    } catch (e, st) {
+      AppLogger.error(
+        'VEHICLE_DOCS_DATASET',
+        'Error renewing vehicle document: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
     }
   }
 

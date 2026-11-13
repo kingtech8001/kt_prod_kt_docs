@@ -58,12 +58,21 @@ class DashboardView extends GetView<DashboardController> {
                       accentColor: AppColors.financeBlue,
                     );
                     final card3 = MetricCard(
-                      title: 'EXPIRING WARRANTIES',
+                      title: 'EXPIRING / OVERDUE',
                       value: '${m.expiringWarrantiesCount}',
-                      subtitle: 'Due within 30 days',
-                      icon: Icons.shield_outlined,
-                      accentColor: AppColors.warrantyEmerald,
-                      onTap: () => Get.toNamed(AppRoutes.APPLIANCES),
+                      subtitle: 'Warranties & Vehicle docs',
+                      icon: Icons.notification_important_outlined,
+                      accentColor: m.expiringWarrantiesCount > 0
+                          ? AppColors.warning
+                          : AppColors.warrantyEmerald,
+                      onTap: () {
+                        if (controller.expiringWarranties
+                            .any((d) => d.vehicleMetadata != null)) {
+                          Get.toNamed(AppRoutes.VEHICLE_DOCS);
+                        } else {
+                          Get.toNamed(AppRoutes.APPLIANCES);
+                        }
+                      },
                     );
                     final card4 = MetricCard(
                       title: 'PENDING UTILITIES',
@@ -327,6 +336,8 @@ class DashboardView extends GetView<DashboardController> {
                             onEdit: () =>
                                 controller.openEditDocumentDialog(doc),
                             onDelete: () => controller.confirmMoveToTrash(doc),
+                            onDoNotRemind: () =>
+                                controller.dismissReminder(doc),
                           );
                         },
                       );
@@ -341,12 +352,17 @@ class DashboardView extends GetView<DashboardController> {
   }
 
   Widget _buildExpiringWarrantiesCard() {
+    final docs = controller.expiringWarranties;
+    final hasOverdue = docs.any((d) => d.isGeneralExpired);
+
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingLarge),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: hasOverdue ? AppColors.errorLight : AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,37 +370,117 @@ class DashboardView extends GetView<DashboardController> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
                   Icon(
-                    Icons.warning_amber_rounded,
-                    color: AppColors.warning,
+                    hasOverdue
+                        ? Icons.error_outline_rounded
+                        : Icons.warning_amber_rounded,
+                    color: hasOverdue ? AppColors.error : AppColors.warning,
                     size: 20,
                   ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Warranties Expiring Soon',
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Expiring Soon & Alerts',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
+                  if (docs.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: hasOverdue
+                            ? AppColors.errorLight.withValues(alpha: 0.3)
+                            : AppColors.warningLight.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${docs.length}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: hasOverdue
+                              ? AppColors.error
+                              : AppColors.warning,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              TextButton(
-                onPressed: () => Get.toNamed(AppRoutes.APPLIANCES),
-                child: const Text('View All', style: TextStyle(fontSize: 12)),
+              PopupMenuButton<String>(
+                tooltip: 'Quick Navigation',
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View Vaults',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(width: 2),
+                      Icon(Icons.arrow_drop_down,
+                          size: 16, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+                onSelected: (val) {
+                  if (val == 'vehicle') Get.toNamed(AppRoutes.VEHICLE_DOCS);
+                  if (val == 'appliance') Get.toNamed(AppRoutes.APPLIANCES);
+                  if (val == 'personal') Get.toNamed(AppRoutes.PERSONAL_DOCS);
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'vehicle',
+                    child: Row(
+                      children: [
+                        Icon(Icons.directions_car_outlined, size: 16),
+                        SizedBox(width: 8),
+                        Text('Vehicle Vault', style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'appliance',
+                    child: Row(
+                      children: [
+                        Icon(Icons.shield_outlined, size: 16),
+                        SizedBox(width: 8),
+                        Text('Appliance Vault', style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'personal',
+                    child: Row(
+                      children: [
+                        Icon(Icons.badge_outlined, size: 16),
+                        SizedBox(width: 8),
+                        Text('Personal Vault', style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const Divider(height: 20),
-          if (controller.expiringWarranties.isEmpty)
+          if (docs.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
-                  'No warranties expiring in next 30 days 🎉',
+                  'No documents expiring in next 30 days 🎉',
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -396,12 +492,58 @@ class DashboardView extends GetView<DashboardController> {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: controller.expiringWarranties.take(4).length,
+              itemCount: docs.take(6).length,
               separatorBuilder: (context, index) => const Divider(height: 16),
               itemBuilder: (context, index) {
-                final doc = controller.expiringWarranties[index];
-                final w = doc.applianceWarranty;
-                final days = w?.daysUntilExpiry ?? 0;
+                final doc = docs[index];
+                final isVehicle = doc.vehicleMetadata != null;
+                final isPersonal = doc.personalMetadata != null;
+                final isWarranty = doc.applianceWarranty != null;
+
+                final expDate = doc.generalExpiryDate;
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final days =
+                    expDate != null ? expDate.difference(today).inDays : 0;
+                final isExpired = days < 0;
+
+                final badgeLabel = isExpired
+                    ? (days == 0 ? 'Expired Today' : 'Expired ${-days} d ago')
+                    : (days == 0 ? 'Expires Today' : '$days Days Left');
+                final badgeType =
+                    isExpired ? StatusBadgeType.error : StatusBadgeType.warning;
+
+                String subtitle = '';
+                if (isVehicle) {
+                  final v = doc.vehicleMetadata!;
+                  subtitle =
+                      '${v.vehicleNumber} • ${v.docTypeName} • Valid: ${AppFormatters.formatDate(v.expiryDate)}';
+                } else if (isWarranty) {
+                  final w = doc.applianceWarranty!;
+                  subtitle =
+                      'Brand: ${w.brand} • Valid: ${AppFormatters.formatDate(w.warrantyValidUpto)}';
+                } else if (isPersonal) {
+                  final p = doc.personalMetadata!;
+                  subtitle =
+                      '${p.personName} • ${p.docTypeName} • Valid: ${AppFormatters.formatDate(p.expiryDate)}';
+                } else {
+                  subtitle =
+                      '${doc.subCategory} • Valid: ${AppFormatters.formatDate(expDate)}';
+                }
+
+                IconData leadIcon = Icons.shield_outlined;
+                Color leadColor = AppColors.warning;
+                Color leadBg = AppColors.warningLight.withValues(alpha: 0.2);
+
+                if (isVehicle) {
+                  leadIcon = Icons.directions_car_outlined;
+                  leadColor = AppColors.primary;
+                  leadBg = AppColors.primaryLight.withValues(alpha: 0.2);
+                } else if (isPersonal) {
+                  leadIcon = Icons.badge_outlined;
+                  leadColor = AppColors.secondary;
+                  leadBg = AppColors.secondary.withValues(alpha: 0.1);
+                }
 
                 return Row(
                   children: [
@@ -410,20 +552,17 @@ class DashboardView extends GetView<DashboardController> {
                       decoration: BoxDecoration(
                         color: doc.isGoogleAttachment
                             ? const Color(0xFFF0FDF4)
-                            : AppColors.warningLight.withValues(alpha: 0.2),
+                            : leadBg,
                         borderRadius:
                             BorderRadius.circular(AppConstants.radiusSmall),
                         border: doc.isGoogleAttachment
-                            ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                            ? Border.all(
+                                color: const Color(0xFF86EFAC), width: 1)
                             : null,
                       ),
                       child: doc.isGoogleAttachment
                           ? const GoogleDriveLogo(size: 18)
-                          : const Icon(
-                              Icons.shield_outlined,
-                              color: AppColors.warning,
-                              size: 18,
-                            ),
+                          : Icon(leadIcon, color: leadColor, size: 18),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -454,7 +593,7 @@ class DashboardView extends GetView<DashboardController> {
                             ],
                           ),
                           Text(
-                            'Brand: ${w?.brand ?? "N/A"} • Valid: ${AppFormatters.formatDate(w?.warrantyValidUpto)}',
+                            subtitle,
                             style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.textSecondary,
@@ -467,8 +606,32 @@ class DashboardView extends GetView<DashboardController> {
                     ),
                     const SizedBox(width: 8),
                     StatusBadge(
-                      label: '$days Days Left',
-                      type: StatusBadgeType.warning,
+                      label: badgeLabel,
+                      type: badgeType,
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                              AppConstants.radiusSmall),
+                        ),
+                      ),
+                      icon: const Icon(Icons.notifications_off_outlined,
+                          size: 13),
+                      label: const Text(
+                        'Not Remind',
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                      onPressed: () => controller.dismissReminder(doc),
                     ),
                   ],
                 );

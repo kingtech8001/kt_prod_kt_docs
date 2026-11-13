@@ -187,6 +187,51 @@ class DashboardController extends GetxController {
     );
   }
 
+  Future<void> dismissReminder(DocumentModel doc) async {
+    AppLogger.info(
+      'DASHBOARD_CTRL',
+      'Dismissing reminder for document: "${doc.title}" (ID: ${doc.id})',
+    );
+    try {
+      // 1. Immediately remove from reactive lists for instant feedback
+      expiringWarranties.removeWhere((d) => d.id == doc.id);
+      recentDocuments.removeWhere((d) => d.id == doc.id);
+
+      // 2. Adjust observable metrics
+      final currentM = metrics.value;
+      final newExpCount = currentM.expiringWarrantiesCount > 0
+          ? currentM.expiringWarrantiesCount - 1
+          : 0;
+      metrics.value = DashboardMetricsModel(
+        totalDocuments: currentM.totalDocuments,
+        totalStorageBytes: currentM.totalStorageBytes,
+        totalFolders: currentM.totalFolders,
+        expiringWarrantiesCount: newExpCount,
+        activeWarrantiesCount: currentM.activeWarrantiesCount,
+        pendingBillsCount: currentM.pendingBillsCount,
+        pendingBillsAmount: currentM.pendingBillsAmount,
+        trashCount: currentM.trashCount,
+        trashSizeBytes: currentM.trashSizeBytes,
+      );
+
+      // 3. Persist asynchronously in database
+      await _dataset.dismissReminder(doc.id);
+
+      AppSnackbar.showSuccess(
+        'Reminder Dismissed',
+        '"${doc.title}" removed from alerts and recents.',
+      );
+    } catch (e, st) {
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Error dismissing reminder: $e',
+        error: e,
+        stackTrace: st,
+      );
+      AppSnackbar.showError('Action Failed', 'Could not dismiss reminder.');
+    }
+  }
+
   void openEditDocumentDialog(DocumentModel doc) async {
     final updated = await DocumentEditDialog.show(
       document: doc,

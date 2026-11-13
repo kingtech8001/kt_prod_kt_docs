@@ -173,6 +173,35 @@ class DocumentModel {
   String get personName => personalMetadata?.personName ?? 'Unknown Person';
   String get docTypeName => personalMetadata?.docTypeName ?? subCategory;
 
+  DateTime? get generalExpiryDate {
+    if (vehicleMetadata?.expiryDate != null) return vehicleMetadata!.expiryDate;
+    if (applianceWarranty?.warrantyValidUpto != null) {
+      return applianceWarranty!.warrantyValidUpto;
+    }
+    if (personalMetadata?.expiryDate != null) {
+      return personalMetadata!.expiryDate;
+    }
+    if (utilityMetadata?.dueDate != null) return utilityMetadata!.dueDate;
+    return null;
+  }
+
+  int? get generalDaysUntilExpiry {
+    final exp = generalExpiryDate;
+    if (exp == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return exp.difference(today).inDays;
+  }
+
+  bool get isGeneralExpired {
+    final days = generalDaysUntilExpiry;
+    return days != null && days < 0;
+  }
+
+  bool get isDoNotRemind =>
+      extraAttributes['do_not_remind'] == true ||
+      extraAttributes['dismissed_from_recents'] == true;
+
   static Map<String, dynamic>? _extractMap(dynamic value) {
     if (value == null) return null;
     if (value is Map<String, dynamic>) return value;
@@ -223,6 +252,32 @@ class DocumentModel {
       };
     }
 
+    Map<String, dynamic>? vehicleMap = vehicle;
+    if (vehicleMap != null) {
+      if (extra['insurance_type'] != null ||
+          extra['tp_expiry_date'] != null ||
+          extra['od_expiry_date'] != null ||
+          extra['previous_document_id'] != null ||
+          extra['renewal_count'] != null) {
+        vehicleMap = Map<String, dynamic>.from(vehicleMap);
+        if (extra['insurance_type'] != null) {
+          vehicleMap['insurance_type'] = extra['insurance_type'];
+        }
+        if (extra['tp_expiry_date'] != null) {
+          vehicleMap['tp_expiry_date'] = extra['tp_expiry_date'];
+        }
+        if (extra['od_expiry_date'] != null) {
+          vehicleMap['od_expiry_date'] = extra['od_expiry_date'];
+        }
+        if (extra['previous_document_id'] != null) {
+          vehicleMap['previous_document_id'] = extra['previous_document_id'];
+        }
+        if (extra['renewal_count'] != null) {
+          vehicleMap['renewal_count'] = extra['renewal_count'];
+        }
+      }
+    }
+
     return DocumentModel(
       id: json['id'] as String,
       title: json['title'] as String? ?? 'Untitled Document',
@@ -259,7 +314,7 @@ class DocumentModel {
       applianceWarranty:
           warrantyMap != null ? ApplianceWarrantyModel.fromJson(warrantyMap) : null,
       personalMetadata: personal != null ? PersonalDocumentMetadataModel.fromJson(personal) : null,
-      vehicleMetadata: vehicle != null ? VehicleDocumentMetadataModel.fromJson(vehicle) : null,
+      vehicleMetadata: vehicleMap != null ? VehicleDocumentMetadataModel.fromJson(vehicleMap) : null,
       isFavorite: favs != null && favs.isNotEmpty,
     );
   }

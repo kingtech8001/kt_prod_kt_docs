@@ -159,7 +159,10 @@ class DashboardDataset {
   /// Fetches recent non-deleted documents with necessary relations.
   Future<List<DocumentModel>> getRecentDocuments({int limit = 8}) async {
     if (DemoDataService.isDemoMode) {
-      return DemoDataService.getAllDocuments().take(limit).toList();
+      return DemoDataService.getAllDocuments()
+          .where((d) => !d.isDoNotRemind)
+          .take(limit)
+          .toList();
     }
     AppLogger.debug('DASHBOARD_DATASET', 'Fetching recent documents limit: $limit');
     try {
@@ -172,14 +175,19 @@ class DashboardDataset {
             document_addresses(*),
             utility_metadata(*),
             appliance_warranty_metadata(*),
+            vehicle_document_metadata(*),
+            personal_document_metadata(*),
             document_favorites(document_id, user_id)
           ''')
           .isFilter('deleted_at', null)
+          .neq('status', 'archived')
           .order('created_at', ascending: false)
-          .limit(limit);
+          .limit(limit * 2);
 
       final list = (response as List)
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
+          .where((d) => !d.isDoNotRemind)
+          .take(limit)
           .toList();
 
       AppLogger.info(
@@ -198,35 +206,56 @@ class DashboardDataset {
     }
   }
 
-  /// Fetches warranties expiring within 30 days using indexed query.
-  Future<List<DocumentModel>> getExpiringWarranties({int limit = 4}) async {
+  /// Fetches expiring and overdue documents across warranties, vehicle docs, and personal IDs.
+  Future<List<DocumentModel>> getExpiringWarranties({int limit = 6}) async {
     if (DemoDataService.isDemoMode) {
       return DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-3' || d.applianceWarranty != null)
+          .where((d) =>
+              !d.isDoNotRemind &&
+              (d.categoryCode == 'appliance_warranty' ||
+                  d.applianceWarranty != null ||
+                  (d.vehicleMetadata != null && d.vehicleMetadata!.isExpired)))
           .take(limit)
           .toList();
     }
-    AppLogger.debug('DASHBOARD_DATASET', 'Fetching expiring warranties...');
+    AppLogger.debug('DASHBOARD_DATASET', 'Fetching expiring & overdue documents...');
     try {
-      final today = DateTime.now().toIso8601String().split('T').first;
       final in30Days = DateTime.now()
           .add(const Duration(days: 30))
           .toIso8601String()
           .split('T')
           .first;
+      final past90Days = DateTime.now()
+          .subtract(const Duration(days: 90))
+          .toIso8601String()
+          .split('T')
+          .first;
 
-      final metaRows = await _client
+      // 1. Warranty IDs
+      final warrantyRows = await _client
           .from('appliance_warranty_metadata')
           .select('document_id')
-          .gte('warranty_valid_upto', today)
           .lte('warranty_valid_upto', in30Days)
+          .gte('warranty_valid_upto', past90Days)
           .neq('warranty_status', 'no_warranty')
           .limit(limit);
 
-      final ids = (metaRows as List)
-          .map((r) => r['document_id'] as String?)
-          .whereType<String>()
-          .toList();
+      // 2. Vehicle Doc IDs
+      final vehicleRows = await _client
+          .from('vehicle_document_metadata')
+          .select('document_id')
+          .lte('expiry_date', in30Days)
+          .gte('expiry_date', past90Days)
+          .limit(limit);
+
+      final ids = <String>{
+        ...(warrantyRows as List)
+            .map((r) => r['document_id'] as String?)
+            .whereType<String>(),
+        ...(vehicleRows as List)
+            .map((r) => r['document_id'] as String?)
+            .whereType<String>(),
+      }.toList();
 
       if (ids.isEmpty) {
         return [];
@@ -237,19 +266,23 @@ class DashboardDataset {
           .select('''
             *,
             document_categories(id, name, code, color_hex, icon),
-            appliance_warranty_metadata(*)
+            appliance_warranty_metadata(*),
+            vehicle_document_metadata(*),
+            personal_document_metadata(*)
           ''')
           .inFilter('id', ids)
           .isFilter('deleted_at', null)
+          .neq('status', 'archived')
           .order('created_at', ascending: false);
 
       final list = (response as List)
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
+          .where((d) => !d.isDoNotRemind)
           .toList();
 
       AppLogger.info(
         'DASHBOARD_DATASET',
-        'Found ${list.length} expiring warranties.',
+        'Found ${list.length} expiring & overdue documents.',
       );
       return list;
     } catch (e, st) {
@@ -260,6 +293,48 @@ class DashboardDataset {
         stackTrace: st,
       );
       return [];
+    }
+  }
+
+  /// Marks a document with do_not_remind and dismissed_from_recents in its extra_attributes.
+  Future<void> dismissReminder(String docId) async {
+    if (DemoDataService.isDemoMode) {
+      DemoDataService.dismissReminderMock(docId);
+      return;
+    }
+    AppLogger.info('DASHBOARD_DATASET', 'Dismissing reminder for doc ID: $docId');
+    try {
+      final res = await _client
+          .from('documents')
+          .select('extra_attributes')
+          .eq('id', docId)
+          .single();
+
+      final currentAttrs = (res['extra_attributes'] is Map)
+          ? Map<String, dynamic>.from(res['extra_attributes'] as Map)
+          : <String, dynamic>{};
+
+      currentAttrs['do_not_remind'] = true;
+      currentAttrs['dismissed_from_recents'] = true;
+      currentAttrs['dismissed_at'] = DateTime.now().toIso8601String();
+
+      await _client
+          .from('documents')
+          .update({'extra_attributes': currentAttrs})
+          .eq('id', docId);
+
+      AppLogger.info(
+        'DASHBOARD_DATASET',
+        'Successfully dismissed reminder for doc: $docId',
+      );
+    } catch (e, st) {
+      AppLogger.error(
+        'DASHBOARD_DATASET',
+        'Error dismissing reminder for doc $docId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
     }
   }
 

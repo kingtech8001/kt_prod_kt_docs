@@ -205,6 +205,19 @@ Public registration is disabled. All staff accounts are provisioned and managed 
   - Ceiling Fans, Washing Machines, Geysers/Heaters, Air Conditioners, Refrigerators, Laptops/Computers.
   - Brand catalogs (*Samsung, LG, Voltas, Havells, Crompton, Daikin, Philips, Blue Star, Sony, Apple, Dell, HP*).
   - Serial numbers, purchase dates, warranty validity dates, and auto-computed expiration status (*Active / Expiring in 30 Days / Expired*).
+- **Vehicle Vault & Fleet Documents (Car Insurance, RC, PUC, FASTag & Maintenance)**:
+  - Vehicle fleet categorization: Four Wheeler / Cars (Hatchbacks, Sedans, SUVs), Two Wheeler (Scooters, Motorcycles), Commercial Vehicles, Electric Vehicles (EVs).
+  - Supported document types: Car Insurance Policies, Registration Certificates (RC Book), PUC (Pollution Under Control) Certificates, FASTag & Toll Passes, Road Tax Receipts, Purchase Invoices, and Fitness Certificates.
+  - Insurance Policy metadata specifications:
+    - Policy / Certificate Number (e.g., `HDFC-ERGO-23114920`).
+    - Underwriter / Insurance Provider (*HDFC ERGO, ICICI Lombard, Bajaj Allianz, Tata AIG, New India Assurance, Go Digit, Acko, SBI General*).
+    - Premium Amount, Start/Issue Date, and Expiration / Renewal Date.
+    - Policy Notes & Add-on coverage (Zero Depreciation / Bumper-to-Bumper, 24x7 Roadside Assistance, Engine Protect, Return-to-Invoice).
+    - Expiration state machine: *Active* (Green), *Expiring in 30 Days* (Warning Amber), *Expired* (Error Red).
+  - Service & Maintenance Logging:
+    - Service Date, Odometer Reading (KM), Service Center / Workshop Name, Bill / Invoice Number, Total Cost.
+    - Standard checklist: Engine Oil, Oil Filter, Periodic Service, Air Filter, Brake Pads, Tyre Rotation, Wheel Alignment, AC Gas, Battery Check.
+    - Next Service due date and KM forecasting.
 - **Multi-Format Previews & Actions**:
   - Interactive PDF viewer dialog.
   - Zoomable/rotatable image lightbox dialog.

@@ -623,10 +623,126 @@ class DemoDataService {
           docTypeName: 'Insurance Policy',
           policyOrCertNumber: 'HDFC-ERGO-23114920',
           insuranceCompany: 'HDFC ERGO General Insurance',
+          insuranceType: 'Bundled (1-Yr OD + 3-Yr TP)',
           premiumAmount: 42500.00,
           issueDate: DateTime(2026, 1, 15),
           expiryDate: DateTime(2027, 1, 14),
+          odExpiryDate: DateTime(2027, 1, 14),
+          tpExpiryDate: DateTime(2029, 1, 14),
+          previousDocumentId: 'doc-ins-hycross-prev',
+          renewalCount: 1,
           notes: 'Includes 24x7 Roadside Assistance and Return-to-Invoice add-on cover',
+        ),
+      ),
+
+      // 8-prev. Vehicle Vault - Previous Year Insurance (Superseded History)
+      DocumentModel(
+        id: 'doc-ins-hycross-prev',
+        title: 'HDFC ERGO Comprehensive Policy (Year 1) - GJ-01-AB-1234',
+        description: 'First-year comprehensive policy issued at vehicle delivery (Superseded by renewal)',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'Insurance Policy',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'HDFC_Insurance_GJ01AB1234_Year1.pdf',
+        filePath: 'mock/insurance_gj01ab1234_y1.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 1620000,
+        documentNumber: 'HDFC-ERGO-22019481',
+        status: 'archived', // Archived, does not show as expired
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 395)),
+        updatedAt: now.subtract(const Duration(days: 30)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-1',
+          vehicleNumber: 'GJ-01-AB-1234',
+          vehicleName: 'Toyota Innova Hycross ZX',
+          docTypeId: 'vdt-2',
+          docTypeName: 'Insurance Policy',
+          policyOrCertNumber: 'HDFC-ERGO-22019481',
+          insuranceCompany: 'HDFC ERGO General Insurance',
+          insuranceType: 'Bundled (1-Yr OD + 3-Yr TP)',
+          premiumAmount: 48000.00,
+          issueDate: DateTime(2025, 1, 15),
+          expiryDate: DateTime(2026, 1, 14),
+          odExpiryDate: DateTime(2026, 1, 14),
+          tpExpiryDate: DateTime(2029, 1, 14),
+          renewalCount: 0,
+          notes: 'Initial policy bundled at vehicle purchase',
+        ),
+      ),
+
+      // 8b. Vehicle Vault - Active 6-Month PUC Certificate (Renewed)
+      DocumentModel(
+        id: 'doc-puc-active',
+        title: 'PUC Certificate (Valid) - Toyota Innova Hycross',
+        description: 'Bi-annual emissions compliance certificate issued by Gujarat Transport Department',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'PUC Certificate',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'PUC_Hycross_2026_Active.pdf',
+        filePath: 'mock/puc_hycross_2026.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 340000,
+        documentNumber: 'PUC-GJ01-2026-9812',
+        status: 'active',
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 20)),
+        updatedAt: now.subtract(const Duration(days: 20)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-1',
+          vehicleNumber: 'GJ-01-AB-1234',
+          vehicleName: 'Toyota Innova Hycross ZX',
+          docTypeId: 'vdt-3',
+          docTypeName: 'PUC Certificate',
+          policyOrCertNumber: 'PUC-GJ01-2026-9812',
+          issueDate: now.subtract(const Duration(days: 20)),
+          expiryDate: now.add(const Duration(days: 160)),
+          previousDocumentId: 'doc-puc-superseded',
+          renewalCount: 1,
+          notes: '6-Month BS-VI petrol hybrid emissions test passed',
+        ),
+      ),
+
+      // 8c. Vehicle Vault - Previous 6-Month PUC Certificate (Superseded History)
+      DocumentModel(
+        id: 'doc-puc-superseded',
+        title: 'PUC Certificate (Previous 2025 Cycle) - Toyota Innova Hycross',
+        description: 'Previous bi-annual emissions compliance certificate (Superseded by renewal)',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'PUC Certificate',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'PUC_Hycross_2025_Superseded.pdf',
+        filePath: 'mock/puc_hycross_2025.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 310000,
+        documentNumber: 'PUC-GJ01-2025-4410',
+        status: 'archived', // Does not show as expired on active dashboard!
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 200)),
+        updatedAt: now.subtract(const Duration(days: 20)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-1',
+          vehicleNumber: 'GJ-01-AB-1234',
+          vehicleName: 'Toyota Innova Hycross ZX',
+          docTypeId: 'vdt-3',
+          docTypeName: 'PUC Certificate',
+          policyOrCertNumber: 'PUC-GJ01-2025-4410',
+          issueDate: now.subtract(const Duration(days: 200)),
+          expiryDate: now.subtract(const Duration(days: 20)),
+          renewalCount: 0,
+          notes: 'Archived automatically when 2026 renewal was uploaded',
         ),
       ),
 
@@ -664,31 +780,390 @@ class DemoDataService {
           notes: 'Active wallet linked to ICICI corporate current account with auto-recharge',
         ),
       ),
+
+      // ==========================================
+      // VEHICLE 2: Hyundai Creta SX(O) - GJ-01-CD-5678 (Owner: Mihir Gandhi)
+      // ==========================================
+
+      // 10. Vehicle 2 - RC Book
+      DocumentModel(
+        id: 'doc-rc-creta',
+        title: 'RC Book - Hyundai Creta SX(O) (GJ-01-CD-5678)',
+        description: 'Smart card registration certificate issued by RTO Ahmedabad',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'RC Book (Registration Certificate)',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'RC_Creta_GJ01CD5678.pdf',
+        filePath: 'mock/rc_creta_gj01cd5678.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 680000,
+        documentNumber: 'GJ01-2023-RC-11029',
+        status: 'active',
+        isFavorite: true,
+        createdAt: now.subtract(const Duration(days: 80)),
+        updatedAt: now.subtract(const Duration(days: 80)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-2',
+          vehicleNumber: 'GJ-01-CD-5678',
+          vehicleName: 'Hyundai Creta SX(O)',
+          docTypeId: 'vdt-1',
+          docTypeName: 'RC Book (Registration Certificate)',
+          policyOrCertNumber: 'GJ01-2023-RC-11029',
+          issueDate: DateTime(2023, 6, 10),
+          notes: 'Hypothecation HDFC Bank Ltd',
+        ),
+      ),
+
+      // 11. Vehicle 2 - Active Car Insurance (Renewed Year 2)
+      DocumentModel(
+        id: 'doc-ins-creta-active',
+        title: 'ICICI Lombard Zero-Dep Policy - GJ-01-CD-5678',
+        description: 'Annual comprehensive bumper-to-bumper zero-dep policy with engine protect',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'Insurance Policy',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'ICICI_Insurance_Creta_2026.pdf',
+        filePath: 'mock/icici_insurance_creta_2026.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 1540000,
+        documentNumber: 'ICICI-LOMB-99014285',
+        status: 'active',
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 45)),
+        updatedAt: now.subtract(const Duration(days: 45)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-2',
+          vehicleNumber: 'GJ-01-CD-5678',
+          vehicleName: 'Hyundai Creta SX(O)',
+          docTypeId: 'vdt-2',
+          docTypeName: 'Insurance Policy',
+          policyOrCertNumber: 'ICICI-LOMB-99014285',
+          insuranceCompany: 'ICICI Lombard General Insurance',
+          insuranceType: 'Comprehensive',
+          premiumAmount: 26800.00,
+          issueDate: DateTime(2026, 6, 10),
+          expiryDate: DateTime(2027, 6, 9),
+          previousDocumentId: 'doc-ins-creta-prev',
+          renewalCount: 1,
+          notes: 'Renewed for year 2 with Zero Depreciation, Consumables & Key Protect',
+        ),
+      ),
+
+      // 11-prev. Vehicle 2 - Previous Insurance (Superseded History)
+      DocumentModel(
+        id: 'doc-ins-creta-prev',
+        title: 'ICICI Lombard Policy (Previous Cycle) - GJ-01-CD-5678',
+        description: 'Previous year comprehensive insurance policy (Superseded by 2026 renewal)',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'Insurance Policy',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'ICICI_Insurance_Creta_2025_Superseded.pdf',
+        filePath: 'mock/icici_insurance_creta_2025.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 1480000,
+        documentNumber: 'ICICI-LOMB-88192031',
+        status: 'archived', // Archived in history, omitted from active expired alerts
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 410)),
+        updatedAt: now.subtract(const Duration(days: 45)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-2',
+          vehicleNumber: 'GJ-01-CD-5678',
+          vehicleName: 'Hyundai Creta SX(O)',
+          docTypeId: 'vdt-2',
+          docTypeName: 'Insurance Policy',
+          policyOrCertNumber: 'ICICI-LOMB-88192031',
+          insuranceCompany: 'ICICI Lombard General Insurance',
+          insuranceType: 'Comprehensive',
+          premiumAmount: 29500.00,
+          issueDate: DateTime(2025, 6, 10),
+          expiryDate: DateTime(2026, 6, 9),
+          renewalCount: 0,
+          notes: 'First-year insurance policy',
+        ),
+      ),
+
+      // 12. Vehicle 2 - Active 6-Month PUC
+      DocumentModel(
+        id: 'doc-puc-creta-active',
+        title: 'PUC Certificate (Valid) - Hyundai Creta (GJ-01-CD-5678)',
+        description: 'Bi-annual emissions compliance certificate issued by Gujarat Transport Department',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'PUC Certificate',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'PUC_Creta_2026_Active.pdf',
+        filePath: 'mock/puc_creta_2026.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 290000,
+        documentNumber: 'PUC-GJ01-2026-3391',
+        status: 'active',
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 35)),
+        updatedAt: now.subtract(const Duration(days: 35)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-2',
+          vehicleNumber: 'GJ-01-CD-5678',
+          vehicleName: 'Hyundai Creta SX(O)',
+          docTypeId: 'vdt-3',
+          docTypeName: 'PUC Certificate',
+          policyOrCertNumber: 'PUC-GJ01-2026-3391',
+          issueDate: now.subtract(const Duration(days: 35)),
+          expiryDate: now.add(const Duration(days: 145)),
+          previousDocumentId: 'doc-puc-creta-prev',
+          renewalCount: 1,
+          notes: 'BS-VI Petrol emissions test approved',
+        ),
+      ),
+
+      // 12-prev. Vehicle 2 - Previous PUC (Superseded History)
+      DocumentModel(
+        id: 'doc-puc-creta-prev',
+        title: 'PUC Certificate (Previous 2025 Cycle) - Hyundai Creta',
+        description: 'Previous bi-annual emissions test (Superseded by renewal)',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'PUC Certificate',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'PUC_Creta_2025_Superseded.pdf',
+        filePath: 'mock/puc_creta_2025.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 280000,
+        documentNumber: 'PUC-GJ01-2025-1109',
+        status: 'archived', // Archived
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 215)),
+        updatedAt: now.subtract(const Duration(days: 35)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-2',
+          vehicleNumber: 'GJ-01-CD-5678',
+          vehicleName: 'Hyundai Creta SX(O)',
+          docTypeId: 'vdt-3',
+          docTypeName: 'PUC Certificate',
+          policyOrCertNumber: 'PUC-GJ01-2025-1109',
+          issueDate: now.subtract(const Duration(days: 215)),
+          expiryDate: now.subtract(const Duration(days: 35)),
+          renewalCount: 0,
+          notes: 'Archived automatically when 2026 renewal was uploaded',
+        ),
+      ),
+
+      // ==========================================
+      // VEHICLE 3: Tata Nexon EV Max - GJ-27-EF-9012 (Owner: King Technology Pvt Ltd)
+      // ==========================================
+
+      // 13. Vehicle 3 - RC Book (EV Green Plate)
+      DocumentModel(
+        id: 'doc-rc-nexon',
+        title: 'RC Book (EV Green Plate) - Tata Nexon EV (GJ-27-EF-9012)',
+        description: 'Zero-emission electric vehicle registration certificate issued by RTO Ahmedabad East Vastral',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'RC Book (Registration Certificate)',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'RC_NexonEV_GJ27EF9012.pdf',
+        filePath: 'mock/rc_nexonev_gj27ef9012.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 710000,
+        documentNumber: 'GJ27-2025-RC-88190',
+        status: 'active',
+        isFavorite: true,
+        createdAt: now.subtract(const Duration(days: 40)),
+        updatedAt: now.subtract(const Duration(days: 40)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-3',
+          vehicleNumber: 'GJ-27-EF-9012',
+          vehicleName: 'Tata Nexon EV Empowered',
+          docTypeId: 'vdt-1',
+          docTypeName: 'RC Book (Registration Certificate)',
+          policyOrCertNumber: 'GJ27-2025-RC-88190',
+          issueDate: DateTime(2025, 4, 1),
+          notes: 'Electric passenger vehicle (PUC exempt)',
+        ),
+      ),
+
+      // 14. Vehicle 3 - Bundled EV Insurance (1-Yr OD + 5-Yr TP)
+      DocumentModel(
+        id: 'doc-ins-nexon-active',
+        title: 'Tata AIG EV Shield Insurance Policy - GJ-27-EF-9012',
+        description: 'Comprehensive 1+5 year EV package policy including HV battery protection & roadside charging',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'Insurance Policy',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'TataAIG_NexonEV_Insurance.pdf',
+        filePath: 'mock/tataaig_nexonev_insurance.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 1720000,
+        documentNumber: 'TATA-AIG-EV-4418290',
+        status: 'active',
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 40)),
+        updatedAt: now.subtract(const Duration(days: 40)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-3',
+          vehicleNumber: 'GJ-27-EF-9012',
+          vehicleName: 'Tata Nexon EV Empowered',
+          docTypeId: 'vdt-2',
+          docTypeName: 'Insurance Policy',
+          policyOrCertNumber: 'TATA-AIG-EV-4418290',
+          insuranceCompany: 'Tata AIG General Insurance',
+          insuranceType: 'Bundled (1-Yr OD + 3/5-Yr TP)',
+          premiumAmount: 38400.00,
+          issueDate: DateTime(2026, 4, 1),
+          expiryDate: DateTime(2027, 3, 31),
+          odExpiryDate: DateTime(2027, 3, 31),
+          tpExpiryDate: DateTime(2031, 3, 31), // 5-Year TP Protection for EV
+          notes: 'Covers High Voltage (HV) Battery pack, Wall Charger, and 24x7 Emergency Mobile Charging',
+        ),
+      ),
+
+      // 15. Vehicle 3 - Active Monthly Expressway Toll Pass
+      DocumentModel(
+        id: 'doc-pass-nexon-active',
+        title: 'Ahmedabad-Gandhinagar Expressway Monthly Pass - GJ-27-EF-9012',
+        description: 'Monthly unlimited commuter toll pass issued by Gujarat State Road Development Corp',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'FASTag Pass',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'TollPass_Gandhinagar_May2026.pdf',
+        filePath: 'mock/tollpass_gandhinagar_may2026.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 310000,
+        documentNumber: 'GSRDC-AHM-GND-2026-05',
+        status: 'active',
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 5)),
+        updatedAt: now.subtract(const Duration(days: 5)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-3',
+          vehicleNumber: 'GJ-27-EF-9012',
+          vehicleName: 'Tata Nexon EV Empowered',
+          docTypeId: 'vdt-4',
+          docTypeName: 'FASTag / Toll Pass',
+          passType: 'Monthly Toll Pass',
+          tollPlazaName: 'Koba Circle / Gandhinagar Toll Plaza',
+          policyOrCertNumber: 'GSRDC-AHM-GND-2026-05',
+          issueDate: now.subtract(const Duration(days: 5)),
+          expiryDate: now.add(const Duration(days: 25)), // Expiring soon in 25 days!
+          previousDocumentId: 'doc-pass-nexon-prev',
+          renewalCount: 1,
+          notes: 'Monthly renewal pass for corporate fleet commuting',
+        ),
+      ),
+
+      // 15-prev. Vehicle 3 - Previous Monthly Toll Pass (Superseded History)
+      DocumentModel(
+        id: 'doc-pass-nexon-prev',
+        title: 'Ahmedabad-Gandhinagar Expressway Pass (April Cycle) - GJ-27-EF-9012',
+        description: 'Previous month commuter toll pass (Superseded by renewal)',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'FASTag Pass',
+        folderId: 'fld-4',
+        folderName: 'Fleet & Vehicle Docs',
+        fileName: 'TollPass_Gandhinagar_Apr2026_Superseded.pdf',
+        filePath: 'mock/tollpass_gandhinagar_apr2026.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 295000,
+        documentNumber: 'GSRDC-AHM-GND-2026-04',
+        status: 'archived', // Archived
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 35)),
+        updatedAt: now.subtract(const Duration(days: 5)),
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleId: 'v-3',
+          vehicleNumber: 'GJ-27-EF-9012',
+          vehicleName: 'Tata Nexon EV Empowered',
+          docTypeId: 'vdt-4',
+          docTypeName: 'FASTag / Toll Pass',
+          passType: 'Monthly Toll Pass',
+          tollPlazaName: 'Koba Circle / Gandhinagar Toll Plaza',
+          policyOrCertNumber: 'GSRDC-AHM-GND-2026-04',
+          issueDate: now.subtract(const Duration(days: 35)),
+          expiryDate: now.subtract(const Duration(days: 5)),
+          renewalCount: 0,
+          notes: 'Archived automatically upon monthly pass renewal',
+        ),
+      ),
     ];
     return _cachedMockDocuments!;
   }
 
   // --- Dashboard Bundle ---
   static DashboardBundleModel getDashboardBundle() {
-    final docs = getAllDocuments();
+    final docs = getAllDocuments().where((d) => !d.isDoNotRemind).toList();
     final expiring = docs
-        .where((d) => d.categoryCode == 'appliance_warranty')
+        .where((d) =>
+            d.categoryCode == 'appliance_warranty' ||
+            (d.vehicleMetadata != null && d.vehicleMetadata!.isExpired) ||
+            d.isGeneralExpired)
         .toList();
     final pending = docs
-        .where((d) => d.categoryCode == 'utility_bills' && d.utilityMetadata?.paymentStatus == 'pending')
+        .where((d) =>
+            d.categoryCode == 'utility_bills' &&
+            d.utilityMetadata?.paymentStatus == 'pending')
         .toList();
 
     return DashboardBundleModel(
       metrics: DashboardMetricsModel(
-        totalDocuments: 42,
+        totalDocuments: docs.length,
         totalStorageBytes: 1288490188, // ~1.2 GB
+        expiringWarrantiesCount: expiring.length,
         trashCount: 3,
         trashSizeBytes: 14500000,
       ),
-      recentDocuments: docs,
-      expiringWarranties: expiring,
+      recentDocuments: docs.take(8).toList(),
+      expiringWarranties: expiring.take(6).toList(),
       pendingUtilityBills: pending,
     );
+  }
+
+  /// Dismisses reminder for a document in mock memory
+  static void dismissReminderMock(String docId) {
+    final docs = getAllDocuments();
+    final idx = docs.indexWhere((d) => d.id == docId);
+    if (idx != -1) {
+      final old = docs[idx];
+      final attrs = Map<String, dynamic>.from(old.extraAttributes);
+      attrs['do_not_remind'] = true;
+      attrs['dismissed_from_recents'] = true;
+      docs[idx] = old.copyWith(extraAttributes: attrs);
+      AppLogger.info(
+        'DEMO_DATA_SERVICE',
+        'dismissReminderMock marked document $docId as do_not_remind.',
+      );
+    }
   }
 
   // --- Activity Logs ---
@@ -821,5 +1296,69 @@ class DemoDataService {
         'updateDocumentMock: document ID $documentId not found in mock cache!',
       );
     }
+  }
+
+  /// Handles mock renewal of a vehicle document (PUC, Insurance, FASTag, etc.)
+  /// Automatically transitions previous document to 'archived' status and adds new active document.
+  static DocumentModel renewVehicleDocumentMock({
+    required DocumentModel previousDoc,
+    required VehicleDocumentMetadataModel newMetadata,
+    required String newTitle,
+    required String newFileName,
+    required int newFileSize,
+    required String newMimeType,
+    required String newFilePath,
+    String? newDescription,
+  }) {
+    final docs = getAllDocuments();
+    final prevIdx = docs.indexWhere((d) => d.id == previousDoc.id);
+    if (prevIdx != -1) {
+      // Mark old document as archived so it stops showing as expired
+      docs[prevIdx] = docs[prevIdx].copyWith(status: 'archived');
+      AppLogger.info(
+        'DEMO_DATA_SERVICE',
+        'Archived previous document ${previousDoc.id} to "archived" status.',
+      );
+    }
+
+    final newDocId = 'doc-renew-${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
+    final newDoc = DocumentModel(
+      id: newDocId,
+      title: newTitle,
+      description: newDescription ?? previousDoc.description,
+      categoryId: previousDoc.categoryId,
+      categoryName: previousDoc.categoryName,
+      categoryCode: previousDoc.categoryCode,
+      subCategory: previousDoc.subCategory,
+      folderId: previousDoc.folderId,
+      folderName: previousDoc.folderName,
+      fileName: newFileName,
+      filePath: newFilePath,
+      fileType: newFileName.contains('.')
+          ? newFileName.split('.').last.toLowerCase()
+          : 'pdf',
+      mimeType: newMimeType,
+      fileSize: newFileSize,
+      documentNumber:
+          newMetadata.policyOrCertNumber ?? previousDoc.documentNumber,
+      status: 'active',
+      isFavorite: false,
+      createdAt: now,
+      updatedAt: now,
+      vehicleMetadata: newMetadata.copyWith(
+        id: 'vmeta-${DateTime.now().millisecondsSinceEpoch}',
+        documentId: newDocId,
+        previousDocumentId: previousDoc.id,
+        renewalCount: (previousDoc.vehicleMetadata?.renewalCount ?? 0) + 1,
+      ),
+    );
+
+    docs.insert(0, newDoc);
+    AppLogger.info(
+      'DEMO_DATA_SERVICE',
+      'Created new active renewed document $newDocId: "${newDoc.title}".',
+    );
+    return newDoc;
   }
 }

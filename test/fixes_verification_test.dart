@@ -4,6 +4,7 @@ import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
+import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/app/modules/document_upload/controllers/document_upload_controller.dart';
 
 void main() {
@@ -167,6 +168,166 @@ void main() {
       expect(updated.premiumAmount, equals(12500));
       expect(updated.expiryDate, equals(DateTime(2026, 12, 31)));
       expect(updated.vehicleNumber, equals('GJ01AB1234'));
+    });
+
+    test('Point 7: Car Insurance policy expiry state and metadata serialization', () {
+      final now = DateTime.now();
+      final activePolicy = VehicleDocumentMetadataModel(
+        vehicleNumber: 'GJ-01-AB-1234',
+        vehicleName: 'Toyota Innova Hycross ZX',
+        docTypeName: 'Insurance Policy',
+        policyOrCertNumber: 'HDFC-ERGO-23114920',
+        insuranceCompany: 'HDFC ERGO General Insurance',
+        premiumAmount: 42500.0,
+        issueDate: now.subtract(const Duration(days: 30)),
+        expiryDate: now.add(const Duration(days: 15)), // Expiring soon <= 30d
+        notes: 'Zero depreciation, Return-to-Invoice, 24x7 RSA',
+      );
+
+      expect(activePolicy.isExpired, isFalse);
+      expect(activePolicy.isExpiringSoon, isTrue);
+      expect(activePolicy.expiryStatusLabel, contains('Expires in'));
+      expect(AppConstants.popularInsuranceProviders, contains('HDFC ERGO General Insurance'));
+
+      final json = activePolicy.toJson();
+      expect(json['insurance_company'], equals('HDFC ERGO General Insurance'));
+      expect(json['premium_amount'], equals(42500.0));
+      expect(json['policy_or_cert_number'], equals('HDFC-ERGO-23114920'));
+
+      final fromJson = VehicleDocumentMetadataModel.fromJson(json);
+      expect(fromJson.insuranceCompany, equals('HDFC ERGO General Insurance'));
+      expect(fromJson.premiumAmount, equals(42500.0));
+      expect(fromJson.policyOrCertNumber, equals('HDFC-ERGO-23114920'));
+    });
+
+    test('Point 8: Renewable documents (PUC & Insurance) smart renewal & cross-date verification', () {
+      final now = DateTime.now();
+      final prevIssue = now.subtract(const Duration(days: 200));
+      final prevExpiry = now.subtract(const Duration(days: 20));
+
+      final prevPuc = DocumentModel(
+        id: 'puc-old',
+        title: 'PUC Certificate 2025 Cycle',
+        categoryId: 'cat-vehicle',
+        categoryName: 'Vehicle Vault',
+        categoryCode: 'vehicle_docs',
+        subCategory: 'PUC Certificate',
+        folderId: 'fld-4',
+        folderName: 'Fleet',
+        fileName: 'puc_old.pdf',
+        filePath: 'mock/puc_old.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 100000,
+        status: 'active',
+        createdAt: prevIssue,
+        updatedAt: prevIssue,
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleNumber: 'GJ-01-AB-1234',
+          vehicleName: 'Innova Hycross',
+          docTypeName: 'PUC Certificate',
+          policyOrCertNumber: 'PUC-2025-01',
+          issueDate: prevIssue,
+          expiryDate: prevExpiry,
+          renewalCount: 0,
+        ),
+      );
+
+      // 1. Cross-Date Verification Check
+      // Case A: Attempting to renew with an expiry date ON or BEFORE previous expiry must fail validation
+      final invalidExpiry = prevExpiry.subtract(const Duration(days: 1));
+      final isInvalidExpiryAfterPrev = invalidExpiry.isAfter(prevExpiry);
+      expect(isInvalidExpiryAfterPrev, isFalse);
+
+      // Case B: Valid renewal dates
+      final validNewIssue = now;
+      final validNewExpiry = now.add(const Duration(days: 180)); // +6 months
+      expect(validNewExpiry.isAfter(validNewIssue), isTrue);
+      expect(validNewExpiry.isAfter(prevExpiry), isTrue);
+
+      // 2. Perform Mock Renewal
+      DemoDataService.getAllDocuments().add(prevPuc);
+      final newMeta = prevPuc.vehicleMetadata!.copyWith(
+        policyOrCertNumber: 'PUC-2026-02',
+        issueDate: validNewIssue,
+        expiryDate: validNewExpiry,
+      );
+
+      final renewedDoc = DemoDataService.renewVehicleDocumentMock(
+        previousDoc: prevPuc,
+        newMetadata: newMeta,
+        newTitle: 'PUC Certificate - GJ-01-AB-1234 (2026)',
+        newFileName: 'puc_2026.pdf',
+        newFileSize: 120000,
+        newMimeType: 'application/pdf',
+        newFilePath: 'mock/puc_2026.pdf',
+      );
+
+      // Verify the new document is active and points to previous document
+      expect(renewedDoc.status, equals('active'));
+      expect(renewedDoc.vehicleMetadata?.previousDocumentId, equals('puc-old'));
+      expect(renewedDoc.vehicleMetadata?.renewalCount, equals(1));
+
+      // Verify previous document is marked 'archived' in cache
+      final allDocs = DemoDataService.getAllDocuments();
+      final updatedPrev = allDocs.firstWhere((d) => d.id == 'puc-old');
+      expect(updatedPrev.status, equals('archived'));
+
+      // 3. Verify Bundled Insurance (1-Yr OD + 5-Yr TP)
+      final bundledInsurance = VehicleDocumentMetadataModel(
+        vehicleNumber: 'GJ-01-AB-1234',
+        vehicleName: 'Innova Hycross',
+        docTypeName: 'Insurance Policy',
+        insuranceType: 'Bundled (1-Yr OD + 3/5-Yr TP)',
+        odExpiryDate: now.add(const Duration(days: 365)), // 1-year OD
+        tpExpiryDate: now.add(const Duration(days: 365 * 5)), // 5-year TP
+        issueDate: now,
+        expiryDate: now.add(const Duration(days: 365)),
+      );
+
+      expect(bundledInsurance.isBundledInsurance, isTrue);
+      expect(bundledInsurance.tpExpiryDate?.year, equals(now.year + 5));
+      expect(bundledInsurance.odExpiryDate?.year, equals(now.year + 1));
+    });
+
+    test('Point 9: Dashboard Expiring Documents & "Not Remind" dismissal', () {
+      final now = DateTime.now();
+      
+      // 1. Create vehicle document that expired 19 days ago
+      final vehicleDoc = DocumentModel(
+        id: 'test-vehicle-exp',
+        title: 'Insurance Policy - GJ03NS8003',
+        categoryId: 'cat-vehicle',
+        subCategory: 'Insurance Policy',
+        fileName: 'insurance.pdf',
+        filePath: 'mock/insurance.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 100000,
+        createdAt: now.subtract(const Duration(days: 384)),
+        updatedAt: now,
+        vehicleMetadata: VehicleDocumentMetadataModel(
+          vehicleNumber: 'GJ03NS8003',
+          vehicleName: 'SP-125 (GJ03NS8003)',
+          docTypeName: 'Insurance Policy',
+          expiryDate: DateTime(now.year, now.month, now.day).subtract(const Duration(days: 19)),
+        ),
+      );
+
+      expect(vehicleDoc.isGeneralExpired, isTrue);
+      expect(vehicleDoc.generalDaysUntilExpiry, equals(-19));
+      expect(vehicleDoc.isDoNotRemind, isFalse);
+
+      // 2. Dismiss reminder for this document
+      DemoDataService.dismissReminderMock('doc-1');
+      final allDocs = DemoDataService.getAllDocuments();
+      final dismissedDoc = allDocs.firstWhere((d) => d.id == 'doc-1');
+      expect(dismissedDoc.isDoNotRemind, isTrue);
+
+      // 3. Verify bundle excludes dismissed documents from recent and expiring
+      final bundle = DemoDataService.getDashboardBundle();
+      expect(bundle.recentDocuments.any((d) => d.id == 'doc-1'), isFalse);
+      expect(bundle.expiringWarranties.any((d) => d.id == 'doc-1'), isFalse);
     });
   });
 }
