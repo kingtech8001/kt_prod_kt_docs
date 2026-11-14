@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+
 class MasterPersonModel {
   final String id;
   final String fullName;
@@ -144,6 +147,13 @@ class PersonalDocumentMetadataModel {
   final DateTime? issueDate;
   final DateTime? expiryDate;
   final String? issuingAuthority;
+  final String? insuranceCompany;
+  final String? policyType; // 'Individual', 'Family Floater', 'Group Mediclaim', 'Senior Citizen', 'Top-Up'
+  final double? sumInsured;
+  final double? premiumAmount;
+  final String? tpaName;
+  final String? previousDocumentId; // Reference to superseded previous policy
+  final int renewalCount;
   final String? notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -159,18 +169,70 @@ class PersonalDocumentMetadataModel {
     this.issueDate,
     this.expiryDate,
     this.issuingAuthority,
+    this.insuranceCompany,
+    this.policyType,
+    this.sumInsured,
+    this.premiumAmount,
+    this.tpaName,
+    this.previousDocumentId,
+    this.renewalCount = 0,
     this.notes,
     this.createdAt,
     this.updatedAt,
   });
 
-  bool get isExpired => expiryDate != null && expiryDate!.isBefore(DateTime.now());
-
-  bool get isExpiringSoon {
+  bool get isExpired {
     if (expiryDate == null) return false;
     final now = DateTime.now();
-    final difference = expiryDate!.difference(now).inDays;
+    final today = DateTime(now.year, now.month, now.day);
+    return expiryDate!.isBefore(today);
+  }
+
+  bool get isExpiringSoon {
+    if (expiryDate == null || isExpired) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final difference = expiryDate!.difference(today).inDays;
     return difference >= 0 && difference <= 60;
+  }
+
+  bool get isInsurance =>
+      docTypeName.toLowerCase().contains('insurance') ||
+      docTypeName.toLowerCase().contains('mediclaim') ||
+      (policyType != null && policyType!.isNotEmpty) ||
+      (sumInsured != null && sumInsured! > 0) ||
+      docTypeId == 'fb2bf191-b2c0-40dc-a818-6e7758a07b56' ||
+      docTypeId == '7b1c3e4a-9b12-4c56-8a78-9e1f3b5a7c90';
+
+  bool get isRenewable =>
+      isInsurance ||
+      docTypeName.toLowerCase().contains('passport') ||
+      docTypeName.toLowerCase().contains('license');
+
+  int? get daysUntilExpiry {
+    if (expiryDate == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return expiryDate!.difference(today).inDays;
+  }
+
+  String get expiryStatusLabel {
+    if (expiryDate == null) return 'No Expiry';
+    if (isExpired) {
+      final days = -daysUntilExpiry!;
+      return days == 0 ? 'Expired Today' : 'Expired $days d ago';
+    }
+    final days = daysUntilExpiry!;
+    if (days == 0) return 'Expires Today';
+    if (days <= 60) return 'Expires in $days days';
+    return 'Active';
+  }
+
+  Color get statusBadgeColor {
+    if (expiryDate == null) return AppColors.textSecondary;
+    if (isExpired) return AppColors.error;
+    if (isExpiringSoon) return AppColors.warning;
+    return AppColors.success;
   }
 
   factory PersonalDocumentMetadataModel.fromJson(Map<String, dynamic> json) {
@@ -189,6 +251,14 @@ class PersonalDocumentMetadataModel {
           ? DateTime.tryParse(json['expiry_date'] as String)
           : null,
       issuingAuthority: json['issuing_authority'] as String?,
+      insuranceCompany: json['insurance_company'] as String? ??
+          json['issuing_authority'] as String?,
+      policyType: json['policy_type'] as String?,
+      sumInsured: (json['sum_insured'] as num?)?.toDouble(),
+      premiumAmount: (json['premium_amount'] as num?)?.toDouble(),
+      tpaName: json['tpa_name'] as String?,
+      previousDocumentId: json['previous_document_id'] as String?,
+      renewalCount: (json['renewal_count'] as num?)?.toInt() ?? 0,
       notes: json['notes'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -199,8 +269,8 @@ class PersonalDocumentMetadataModel {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson({bool forSupabaseTable = true}) {
+    final map = <String, dynamic>{
       if (id != null) 'id': id,
       if (documentId != null) 'document_id': documentId,
       if (personId != null) 'person_id': personId,
@@ -208,10 +278,70 @@ class PersonalDocumentMetadataModel {
       if (docTypeId != null) 'doc_type_id': docTypeId,
       'doc_type_name': docTypeName,
       if (idNumber != null) 'id_number': idNumber,
-      if (issueDate != null) 'issue_date': issueDate!.toIso8601String().split('T').first,
-      if (expiryDate != null) 'expiry_date': expiryDate!.toIso8601String().split('T').first,
+      if (issueDate != null)
+        'issue_date': issueDate!.toIso8601String().split('T').first,
+      if (expiryDate != null)
+        'expiry_date': expiryDate!.toIso8601String().split('T').first,
       if (issuingAuthority != null) 'issuing_authority': issuingAuthority,
       if (notes != null) 'notes': notes,
     };
+    if (!forSupabaseTable) {
+      if (insuranceCompany != null) map['insurance_company'] = insuranceCompany;
+      if (policyType != null) map['policy_type'] = policyType;
+      if (sumInsured != null) map['sum_insured'] = sumInsured;
+      if (premiumAmount != null) map['premium_amount'] = premiumAmount;
+      if (tpaName != null) map['tpa_name'] = tpaName;
+      if (previousDocumentId != null) {
+        map['previous_document_id'] = previousDocumentId;
+      }
+      map['renewal_count'] = renewalCount;
+    }
+    return map;
+  }
+
+  PersonalDocumentMetadataModel copyWith({
+    String? id,
+    String? documentId,
+    String? personId,
+    String? personName,
+    String? docTypeId,
+    String docTypeName = '',
+    String? idNumber,
+    DateTime? issueDate,
+    DateTime? expiryDate,
+    String? issuingAuthority,
+    String? insuranceCompany,
+    String? policyType,
+    double? sumInsured,
+    double? premiumAmount,
+    String? tpaName,
+    String? previousDocumentId,
+    int? renewalCount,
+    String? notes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return PersonalDocumentMetadataModel(
+      id: id ?? this.id,
+      documentId: documentId ?? this.documentId,
+      personId: personId ?? this.personId,
+      personName: personName ?? this.personName,
+      docTypeId: docTypeId ?? this.docTypeId,
+      docTypeName: docTypeName.isNotEmpty ? docTypeName : this.docTypeName,
+      idNumber: idNumber ?? this.idNumber,
+      issueDate: issueDate ?? this.issueDate,
+      expiryDate: expiryDate ?? this.expiryDate,
+      issuingAuthority: issuingAuthority ?? this.issuingAuthority,
+      insuranceCompany: insuranceCompany ?? this.insuranceCompany,
+      policyType: policyType ?? this.policyType,
+      sumInsured: sumInsured ?? this.sumInsured,
+      premiumAmount: premiumAmount ?? this.premiumAmount,
+      tpaName: tpaName ?? this.tpaName,
+      previousDocumentId: previousDocumentId ?? this.previousDocumentId,
+      renewalCount: renewalCount ?? this.renewalCount,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }

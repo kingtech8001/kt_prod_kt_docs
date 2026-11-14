@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
@@ -328,6 +329,105 @@ void main() {
       final bundle = DemoDataService.getDashboardBundle();
       expect(bundle.recentDocuments.any((d) => d.id == 'doc-1'), isFalse);
       expect(bundle.expiringWarranties.any((d) => d.id == 'doc-1'), isFalse);
+    });
+
+    test('Point 10: Health Insurance & Personal Document Renewal Architecture', () {
+      final now = DateTime.now();
+      final prevExpiry = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 5));
+      final prevIssue = prevExpiry.subtract(const Duration(days: 365));
+
+      // 1. Verify Popular Health Insurance Providers constant
+      expect(AppConstants.popularHealthInsuranceProviders, contains('Star Health and Allied Insurance'));
+      expect(AppConstants.popularHealthInsuranceProviders, contains('Care Health Insurance (Religare)'));
+      expect(AppConstants.popularHealthInsuranceProviders, contains('HDFC ERGO Health Insurance'));
+      expect(AppConstants.popularHealthInsuranceProviders, contains('Niva Bupa Health Insurance (Max Bupa)'));
+      expect(AppConstants.popularHealthInsuranceProviders, contains('Other Insurer'));
+
+      // 2. Initial Health Insurance Policy
+      final initialPolicy = DocumentModel(
+        id: 'health-policy-1',
+        title: 'Health Insurance - Star Health (Vikram)',
+        categoryId: 'cat-personal',
+        subCategory: 'Health Insurance / Mediclaim',
+        fileName: 'star_health_policy.pdf',
+        filePath: 'mock/star_health_policy.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 150000,
+        status: 'active',
+        createdAt: prevIssue,
+        updatedAt: prevIssue,
+        personalMetadata: PersonalDocumentMetadataModel(
+          id: 'meta-health-1',
+          documentId: 'health-policy-1',
+          personName: 'Vikram Sarabhai',
+          docTypeName: 'Health Insurance / Mediclaim',
+          idNumber: 'P/123456/01/2025',
+          issueDate: prevIssue,
+          expiryDate: prevExpiry,
+          insuranceCompany: 'Star Health and Allied Insurance',
+          policyType: 'Family Floater',
+          sumInsured: 1000000,
+          premiumAmount: 18500,
+        ),
+      );
+
+      expect(initialPolicy.personalMetadata?.isInsurance, isTrue);
+      expect(initialPolicy.personalMetadata?.isRenewable, isTrue);
+      expect(initialPolicy.personalMetadata?.isExpired, isTrue);
+      expect(initialPolicy.personalMetadata?.daysUntilExpiry, equals(-5));
+
+      // 3. Date Cross-Verification: new expiry must be strictly after previous expiry
+      final invalidNewExpiry = prevExpiry.subtract(const Duration(days: 1));
+      final validNewExpiry = DateTime(now.year + 1, now.month, now.day);
+      expect(invalidNewExpiry.isAfter(prevExpiry), isFalse);
+      expect(validNewExpiry.isAfter(prevExpiry), isTrue);
+
+      // 4. Perform renewal via DemoDataService
+      DemoDataService.getAllDocuments().add(initialPolicy);
+      final renewedDoc = DemoDataService.renewPersonalDocumentMock(
+        previousDoc: initialPolicy,
+        newMetadata: PersonalDocumentMetadataModel(
+          personName: 'Vikram Sarabhai', // locked
+          docTypeName: 'Health Insurance / Mediclaim', // locked
+          idNumber: 'P/123456/01/2026', // updated policy number
+          insuranceCompany: 'Star Health and Allied Insurance',
+          policyType: 'Family Floater',
+          sumInsured: 1500000, // upgraded sum insured
+          premiumAmount: 21200,
+          tpaName: 'Medi Assist',
+          issueDate: now,
+          expiryDate: validNewExpiry,
+        ),
+        newTitle: 'Health Insurance - Star Health (Vikram) [Renewed]',
+        newFileName: 'star_health_renewal_2026.pdf',
+        newFileSize: 150000,
+        newMimeType: 'application/pdf',
+        newFilePath: 'mock/star_health_renewal_2026.pdf',
+      );
+
+      // Verify new renewed document attributes & lineage
+      expect(renewedDoc.id, isNot(equals(initialPolicy.id)));
+      expect(renewedDoc.status, equals('active'));
+      expect(renewedDoc.personalMetadata?.previousDocumentId, equals('health-policy-1'));
+      expect(renewedDoc.personalMetadata?.renewalCount, equals(1));
+      expect(renewedDoc.personalMetadata?.personName, equals('Vikram Sarabhai'));
+      expect(renewedDoc.personalMetadata?.sumInsured, equals(1500000));
+      expect(renewedDoc.personalMetadata?.expiryDate, equals(validNewExpiry));
+
+      // Verify previous policy is archived and supersession recorded
+      final allDocs = DemoDataService.getAllDocuments();
+      final updatedPrev = allDocs.firstWhere((d) => d.id == 'health-policy-1');
+      expect(updatedPrev.status, equals('archived'));
+
+      // 5. Verify History query returns both chronologically
+      final history = DemoDataService.getPersonalDocTypeHistoryMock(
+        personName: 'Vikram Sarabhai',
+        docTypeName: 'Health Insurance / Mediclaim',
+      );
+      expect(history.length, equals(2));
+      expect(history.first.id, equals(renewedDoc.id)); // newest first
+      expect(history.last.id, equals(initialPolicy.id)); // older archived
     });
   });
 }

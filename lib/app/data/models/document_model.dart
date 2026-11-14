@@ -278,6 +278,40 @@ class DocumentModel {
       }
     }
 
+    Map<String, dynamic>? personalMap = personal;
+    if (personalMap != null) {
+      if (extra['insurance_company'] != null ||
+          extra['policy_type'] != null ||
+          extra['sum_insured'] != null ||
+          extra['premium_amount'] != null ||
+          extra['tpa_name'] != null ||
+          extra['previous_document_id'] != null ||
+          extra['renewal_count'] != null) {
+        personalMap = Map<String, dynamic>.from(personalMap);
+        if (extra['insurance_company'] != null) {
+          personalMap['insurance_company'] = extra['insurance_company'];
+        }
+        if (extra['policy_type'] != null) {
+          personalMap['policy_type'] = extra['policy_type'];
+        }
+        if (extra['sum_insured'] != null) {
+          personalMap['sum_insured'] = extra['sum_insured'];
+        }
+        if (extra['premium_amount'] != null) {
+          personalMap['premium_amount'] = extra['premium_amount'];
+        }
+        if (extra['tpa_name'] != null) {
+          personalMap['tpa_name'] = extra['tpa_name'];
+        }
+        if (extra['previous_document_id'] != null) {
+          personalMap['previous_document_id'] = extra['previous_document_id'];
+        }
+        if (extra['renewal_count'] != null) {
+          personalMap['renewal_count'] = extra['renewal_count'];
+        }
+      }
+    }
+
     return DocumentModel(
       id: json['id'] as String,
       title: json['title'] as String? ?? 'Untitled Document',
@@ -313,7 +347,9 @@ class DocumentModel {
       utilityMetadata: util != null ? UtilityMetadataModel.fromJson(util) : null,
       applianceWarranty:
           warrantyMap != null ? ApplianceWarrantyModel.fromJson(warrantyMap) : null,
-      personalMetadata: personal != null ? PersonalDocumentMetadataModel.fromJson(personal) : null,
+      personalMetadata: personalMap != null
+          ? PersonalDocumentMetadataModel.fromJson(personalMap)
+          : null,
       vehicleMetadata: vehicleMap != null ? VehicleDocumentMetadataModel.fromJson(vehicleMap) : null,
       isFavorite: favs != null && favs.isNotEmpty,
     );

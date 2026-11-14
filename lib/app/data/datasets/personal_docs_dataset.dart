@@ -4,6 +4,7 @@ import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -216,13 +217,15 @@ class PersonalDocsDataset {
             document_favorites(document_id, user_id)
           ''')
           .eq('category_id', categoryId)
-          .isFilter('deleted_at', null);
+          .isFilter('deleted_at', null)
+          .neq('status', 'archived');
 
       var countQuery = _client
           .from('documents')
           .select('id')
           .eq('category_id', categoryId)
-          .isFilter('deleted_at', null);
+          .isFilter('deleted_at', null)
+          .neq('status', 'archived');
 
       // 1. Person filter via metadata subquery
       if (personName != null &&
@@ -293,17 +296,32 @@ class PersonalDocsDataset {
       final countRes = await countQuery.count(CountOption.exact);
       final totalRecords = countRes.count;
 
-      // 6. Calculate summary metrics across all personal document records in the database
+      // 6. Calculate summary metrics across all active personal document records in the database
+      final activeDocsRes = await _client
+          .from('documents')
+          .select('id')
+          .isFilter('deleted_at', null)
+          .neq('status', 'archived');
+      final activeDocIds = (activeDocsRes as List)
+          .map((r) => r['id'] as String?)
+          .whereType<String>()
+          .toSet();
+
       final summaryRes = await _client
           .from('personal_document_metadata')
-          .select('person_name, expiry_date');
+          .select('document_id, person_name, expiry_date');
 
       final personSet = <String>{};
       int expiringCount = 0;
       int expiredCount = 0;
+      int totalActiveCount = 0;
       final now = DateTime.now();
 
       for (final raw in (summaryRes as List)) {
+        final docId = raw['document_id'] as String?;
+        if (docId == null || !activeDocIds.contains(docId)) continue;
+        totalActiveCount++;
+
         final pName = raw['person_name'] as String?;
         if (pName != null && pName.isNotEmpty) {
           personSet.add(pName.trim().toLowerCase());
@@ -328,7 +346,7 @@ class PersonalDocsDataset {
       return PersonalDocsResponse(
         documents: list,
         totalCount: totalRecords,
-        totalDocumentsCount: summaryRes.length,
+        totalDocumentsCount: totalActiveCount,
         totalPersonsCoveredCount: personSet.length,
         expiringSoonCount: expiringCount,
         expiredCount: expiredCount,
@@ -477,6 +495,247 @@ class PersonalDocsDataset {
       AppLogger.error(
         'PERSONAL_DOCS_DATASET',
         'Error generating share token: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
+  /// Fetches all documents for a single person and document type to show history/renewals.
+  Future<List<DocumentModel>> getPersonalDocTypeHistory({
+    required String personName,
+    required String docTypeName,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getPersonalDocTypeHistoryMock(
+        personName: personName,
+        docTypeName: docTypeName,
+      );
+    }
+    AppLogger.debug(
+      'PERSONAL_DOCS_DATASET',
+      'Fetching history for person: $personName, docType: $docTypeName...',
+    );
+    try {
+      final metaRows = await _client
+          .from('personal_document_metadata')
+          .select('document_id')
+          .ilike('person_name', '%${personName.trim()}%')
+          .ilike('doc_type_name', '%${docTypeName.trim()}%');
+
+      final ids = (metaRows as List)
+          .map((r) => r['document_id'] as String?)
+          .whereType<String>()
+          .toList();
+
+      if (ids.isEmpty) return [];
+
+      final response = await _client
+          .from('documents')
+          .select('''
+            *,
+            document_categories(id, name, code, color_hex, icon),
+            folders(id, name),
+            profiles:uploaded_by(id, full_name, email),
+            document_addresses(*),
+            utility_metadata(*),
+            appliance_warranty_metadata(*),
+            personal_document_metadata(*),
+            vehicle_document_metadata(*),
+            document_favorites(document_id, user_id)
+          ''')
+          .inFilter('id', ids)
+          .isFilter('deleted_at', null)
+          .order('created_at', ascending: false);
+
+      final list = (response as List)
+          .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
+          .where((d) => d.personalMetadata != null)
+          .toList();
+
+      // Sort by expiry_date descending (latest active first) or created_at descending
+      list.sort((a, b) {
+        final aExp = a.personalMetadata?.expiryDate;
+        final bExp = b.personalMetadata?.expiryDate;
+        if (aExp != null && bExp != null) {
+          return bExp.compareTo(aExp);
+        }
+        if (aExp != null) return -1;
+        if (bExp != null) return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+      return list;
+    } catch (e, st) {
+      AppLogger.error(
+        'PERSONAL_DOCS_DATASET',
+        'Error fetching personal doc type history: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return [];
+    }
+  }
+
+  /// Renews an expiring/renewable personal document (Health Insurance, Mediclaim, Passport, License, etc.)
+  /// Archives previous document to 'archived' status and inserts new active document with lineage.
+  Future<DocumentModel> renewPersonalDocument({
+    required DocumentModel previousDocument,
+    required PersonalDocumentMetadataModel newMetadata,
+    required String newTitle,
+    required Uint8List fileBytes,
+    required String fileName,
+    String? newDescription,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.renewPersonalDocumentMock(
+        previousDoc: previousDocument,
+        newMetadata: newMetadata,
+        newTitle: newTitle,
+        newFileName: fileName,
+        newFileSize: fileBytes.length,
+        newMimeType: fileName.toLowerCase().endsWith('.pdf')
+            ? 'application/pdf'
+            : 'image/jpeg',
+        newFilePath: 'mock/$fileName',
+        newDescription: newDescription,
+      );
+    }
+
+    AppLogger.info(
+      'PERSONAL_DOCS_DATASET',
+      'Renewing personal document: ${previousDocument.id} ("${previousDocument.title}")...',
+    );
+
+    try {
+      final ext = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : 'pdf';
+      final mimeType =
+          ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+      final storagePath =
+          'personal/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+      // 1. Upload new policy binary
+      await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+            storagePath,
+            fileBytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      // 2. Mark previous document as archived so it leaves active views and alerts
+      final prevExtra =
+          Map<String, dynamic>.from(previousDocument.extraAttributes);
+      prevExtra['archived_reason'] = 'renewed';
+      prevExtra['archived_at'] = DateTime.now().toIso8601String();
+      await _client
+          .from('documents')
+          .update({
+            'status': 'archived',
+            'extra_attributes': prevExtra,
+          })
+          .eq('id', previousDocument.id);
+
+      // 3. Insert new active document record
+      final nextRenewalCount =
+          (previousDocument.personalMetadata?.renewalCount ?? 0) + 1;
+
+      final extraAttrs = <String, dynamic>{
+        'storage_provider': 'supabase',
+        'previous_document_id': previousDocument.id,
+        'renewal_count': nextRenewalCount,
+      };
+      if (newMetadata.insuranceCompany != null) {
+        extraAttrs['insurance_company'] = newMetadata.insuranceCompany;
+      }
+      if (newMetadata.policyType != null) {
+        extraAttrs['policy_type'] = newMetadata.policyType;
+      }
+      if (newMetadata.sumInsured != null) {
+        extraAttrs['sum_insured'] = newMetadata.sumInsured;
+      }
+      if (newMetadata.premiumAmount != null) {
+        extraAttrs['premium_amount'] = newMetadata.premiumAmount;
+      }
+      if (newMetadata.tpaName != null) {
+        extraAttrs['tpa_name'] = newMetadata.tpaName;
+      }
+
+      final newDocPayload = {
+        'title': newTitle,
+        'description': newDescription ?? previousDocument.description,
+        'category_id': previousDocument.categoryId,
+        'folder_id': previousDocument.folderId,
+        'file_name': fileName,
+        'file_path': storagePath,
+        'file_type': ext,
+        'mime_type': mimeType,
+        'file_size': fileBytes.length,
+        'document_number':
+            newMetadata.idNumber ?? previousDocument.documentNumber,
+        'status': 'active',
+        'extra_attributes': extraAttrs,
+      };
+
+      final docRes = await _client
+          .from('documents')
+          .insert(newDocPayload)
+          .select()
+          .single();
+      final newDocId = docRes['id'] as String;
+
+      // Update previous doc with superseded_by reference
+      prevExtra['superseded_by'] = newDocId;
+      await _client
+          .from('documents')
+          .update({'extra_attributes': prevExtra})
+          .eq('id', previousDocument.id);
+
+      // 4. Insert new personal document metadata with lineage reference
+      final metaPayload = newMetadata
+          .copyWith(
+            documentId: newDocId,
+            previousDocumentId: previousDocument.id,
+            renewalCount: nextRenewalCount,
+          )
+          .toJson(forSupabaseTable: true)
+        ..remove('id');
+
+      await _client.from('personal_document_metadata').insert(metaPayload);
+
+      return DocumentModel(
+        id: newDocId,
+        title: newTitle,
+        description: newDescription ?? previousDocument.description,
+        categoryId: previousDocument.categoryId,
+        categoryName: previousDocument.categoryName,
+        categoryCode: previousDocument.categoryCode,
+        subCategory: previousDocument.subCategory,
+        folderId: previousDocument.folderId,
+        folderName: previousDocument.folderName,
+        fileName: fileName,
+        filePath: storagePath,
+        fileType: ext,
+        mimeType: mimeType,
+        fileSize: fileBytes.length,
+        documentNumber:
+            newMetadata.idNumber ?? previousDocument.documentNumber,
+        status: 'active',
+        isFavorite: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        extraAttributes: extraAttrs,
+        personalMetadata: newMetadata.copyWith(
+          documentId: newDocId,
+          previousDocumentId: previousDocument.id,
+          renewalCount: nextRenewalCount,
+        ),
+      );
+    } catch (e, st) {
+      AppLogger.error(
+        'PERSONAL_DOCS_DATASET',
+        'Error renewing personal document: $e',
         error: e,
         stackTrace: st,
       );

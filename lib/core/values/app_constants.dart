@@ -124,6 +124,26 @@ class AppConstants {
     'Other Provider',
   ];
 
+  // Popular Health Insurance & Mediclaim Providers
+  static const List<String> popularHealthInsuranceProviders = [
+    'Star Health and Allied Insurance',
+    'Care Health Insurance (Religare)',
+    'HDFC ERGO Health Insurance',
+    'Niva Bupa Health Insurance (Max Bupa)',
+    'ICICI Lombard Health Insurance',
+    'Aditya Birla Health Insurance',
+    'Bajaj Allianz Health Insurance',
+    'Tata AIG Health Insurance',
+    'ManipalCigna Health Insurance',
+    'New India Assurance Mediclaim',
+    'National Insurance Mediclaim',
+    'Oriental Insurance Mediclaim',
+    'United India Insurance Mediclaim',
+    'Reliance Health Insurance',
+    'SBI General Health Insurance',
+    'Other Insurer',
+  ];
+
   // Vehicle Pass Types (Annual / Monthly / Parking)
   static const List<String> vehiclePassTypes = [
     'Annual Toll Pass',

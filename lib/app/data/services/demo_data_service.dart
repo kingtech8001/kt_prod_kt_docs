@@ -1361,4 +1361,127 @@ class DemoDataService {
     );
     return newDoc;
   }
+
+  /// Handles mock renewal of a personal document (Health Insurance, Mediclaim, Passport, etc.)
+  static DocumentModel renewPersonalDocumentMock({
+    required DocumentModel previousDoc,
+    required PersonalDocumentMetadataModel newMetadata,
+    required String newTitle,
+    required String newFileName,
+    required int newFileSize,
+    required String newMimeType,
+    required String newFilePath,
+    String? newDescription,
+  }) {
+    final docs = getAllDocuments();
+    final prevIdx = docs.indexWhere((d) => d.id == previousDoc.id);
+    if (prevIdx != -1) {
+      final prevExtra =
+          Map<String, dynamic>.from(docs[prevIdx].extraAttributes);
+      prevExtra['archived_reason'] = 'renewed';
+      docs[prevIdx] = docs[prevIdx].copyWith(
+        status: 'archived',
+        extraAttributes: prevExtra,
+      );
+      AppLogger.info(
+        'DEMO_DATA_SERVICE',
+        'Archived previous personal document ${previousDoc.id} to "archived" status.',
+      );
+    }
+
+    final newDocId = 'doc-pers-renew-${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
+    final extraAttrs = <String, dynamic>{
+      'storage_provider': 'supabase',
+      'previous_document_id': previousDoc.id,
+      'renewal_count': (previousDoc.personalMetadata?.renewalCount ?? 0) + 1,
+    };
+    if (newMetadata.insuranceCompany != null) {
+      extraAttrs['insurance_company'] = newMetadata.insuranceCompany;
+    }
+    if (newMetadata.policyType != null) {
+      extraAttrs['policy_type'] = newMetadata.policyType;
+    }
+    if (newMetadata.sumInsured != null) {
+      extraAttrs['sum_insured'] = newMetadata.sumInsured;
+    }
+    if (newMetadata.premiumAmount != null) {
+      extraAttrs['premium_amount'] = newMetadata.premiumAmount;
+    }
+    if (newMetadata.tpaName != null) {
+      extraAttrs['tpa_name'] = newMetadata.tpaName;
+    }
+
+    final newDoc = DocumentModel(
+      id: newDocId,
+      title: newTitle,
+      description: newDescription ?? previousDoc.description,
+      categoryId: previousDoc.categoryId,
+      categoryName: previousDoc.categoryName,
+      categoryCode: previousDoc.categoryCode,
+      subCategory: previousDoc.subCategory,
+      folderId: previousDoc.folderId,
+      folderName: previousDoc.folderName,
+      fileName: newFileName,
+      filePath: newFilePath,
+      fileType: newFileName.contains('.')
+          ? newFileName.split('.').last.toLowerCase()
+          : 'pdf',
+      mimeType: newMimeType,
+      fileSize: newFileSize,
+      documentNumber: newMetadata.idNumber ?? previousDoc.documentNumber,
+      status: 'active',
+      isFavorite: false,
+      createdAt: now,
+      updatedAt: now,
+      extraAttributes: extraAttrs,
+      personalMetadata: newMetadata.copyWith(
+        id: 'pmeta-${DateTime.now().millisecondsSinceEpoch}',
+        documentId: newDocId,
+        previousDocumentId: previousDoc.id,
+        renewalCount: (previousDoc.personalMetadata?.renewalCount ?? 0) + 1,
+      ),
+    );
+
+    docs.insert(0, newDoc);
+    AppLogger.info(
+      'DEMO_DATA_SERVICE',
+      'Created new active renewed personal document $newDocId: "${newDoc.title}".',
+    );
+    return newDoc;
+  }
+
+  /// Fetches history for a person and doc type in mock mode
+  static List<DocumentModel> getPersonalDocTypeHistoryMock({
+    required String personName,
+    required String docTypeName,
+  }) {
+    final cleanPerson = personName.trim().toLowerCase();
+    final cleanType = docTypeName.trim().toLowerCase();
+    final list = getAllDocuments().where((d) {
+      final pMeta = d.personalMetadata;
+      if (pMeta == null) return false;
+      final pName = pMeta.personName.trim().toLowerCase();
+      final dType = pMeta.docTypeName.trim().toLowerCase();
+      final sub = d.subCategory.trim().toLowerCase();
+      if (pName.isEmpty) return false;
+      final personMatches = pName.contains(cleanPerson) || cleanPerson.contains(pName);
+      final typeMatches = (dType.isNotEmpty && (dType.contains(cleanType) || cleanType.contains(dType))) ||
+          (sub.isNotEmpty && (sub.contains(cleanType) || cleanType.contains(sub)));
+      return personMatches && typeMatches;
+    }).toList();
+
+    list.sort((a, b) {
+      final aExp = a.personalMetadata?.expiryDate;
+      final bExp = b.personalMetadata?.expiryDate;
+      if (aExp != null && bExp != null) {
+        return bExp.compareTo(aExp);
+      }
+      if (aExp != null) return -1;
+      if (bExp != null) return 1;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return list;
+  }
 }

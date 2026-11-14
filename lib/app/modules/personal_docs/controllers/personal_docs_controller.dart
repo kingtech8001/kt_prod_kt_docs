@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/personal_docs_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
+import 'package:kt_prod_kt_docs/app/modules/personal_docs/views/widgets/personal_doc_history_dialog.dart';
+import 'package:kt_prod_kt_docs/app/modules/personal_docs/views/widgets/renew_personal_doc_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -371,6 +373,92 @@ class PersonalDocsController extends GetxController {
     DocumentDeleteDialog.show(
       documentTitle: doc.title,
       onConfirm: () => moveToTrash(doc),
+    );
+  }
+
+  /// Determines if a personal document is a renewable certificate or policy
+  /// (Health Insurance, Mediclaim, Life Insurance, Passport, Driving License, etc.)
+  bool isRenewableDoc(DocumentModel doc) {
+    final meta = doc.personalMetadata;
+    if (meta != null && meta.isRenewable) return true;
+    final sub = doc.subCategory.toLowerCase();
+    final title = doc.title.toLowerCase();
+    return sub.contains('insurance') ||
+        sub.contains('mediclaim') ||
+        sub.contains('passport') ||
+        sub.contains('license') ||
+        sub.contains('licence') ||
+        title.contains('insurance') ||
+        title.contains('mediclaim') ||
+        (meta?.expiryDate != null);
+  }
+
+  /// Opens the specialized Smart Renewal Dialog for renewable personal documents
+  Future<void> openRenewDocumentDialog(DocumentModel doc) async {
+    if (!canEdit) {
+      AppSnackbar.showError(
+        'Permission Denied',
+        'You do not have permission to renew documents.',
+      );
+      return;
+    }
+
+    final success = await RenewPersonalDocDialog.show(
+      previousDocument: doc,
+      onRenew: ({
+        required previousDocument,
+        required newMetadata,
+        required newTitle,
+        required fileBytes,
+        required fileName,
+        newDescription,
+      }) async {
+        try {
+          await _dataset.renewPersonalDocument(
+            previousDocument: previousDocument,
+            newMetadata: newMetadata,
+            newTitle: newTitle,
+            fileBytes: fileBytes,
+            fileName: fileName,
+            newDescription: newDescription,
+          );
+        } catch (e, st) {
+          AppLogger.error(
+            'PERSONAL_DOCS_CTRL',
+            'Error submitting personal document renewal: $e',
+            error: e,
+            stackTrace: st,
+          );
+          rethrow;
+        }
+      },
+    );
+
+    if (success == true) {
+      // Reload active documents - the old superseded record is now archived
+      await loadPersonalDocuments(resetPage: true);
+      AppSnackbar.showSuccess(
+        'Policy / Document Renewed',
+        '${doc.personalMetadata?.docTypeName ?? "Document"} renewed successfully. Previous policy archived.',
+      );
+    }
+  }
+
+  /// Opens the chronological Renewal History Dialog for a personal document
+  Future<void> openRenewalHistoryDialog(DocumentModel doc) async {
+    final personName = doc.personalMetadata?.personName ?? '';
+    final docTypeName = doc.personalMetadata?.docTypeName ?? doc.subCategory;
+
+    await PersonalDocHistoryDialog.show(
+      document: doc,
+      loadHistory: () async {
+        return _dataset.getPersonalDocTypeHistory(
+          personName: personName,
+          docTypeName: docTypeName,
+        );
+      },
+      onPreview: (d) => previewDocument(d),
+      onDownload: (d) => downloadDocument(d),
     );
   }
 }

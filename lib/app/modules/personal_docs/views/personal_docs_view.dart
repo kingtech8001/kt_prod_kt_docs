@@ -650,6 +650,20 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                               ),
                             ),
                           ),
+                        if (meta?.insuranceCompany != null &&
+                            meta!.insuranceCompany!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${meta.insuranceCompany!}${meta.sumInsured != null ? " • ₹${AppFormatters.formatCurrency(meta.sumInsured!)}" : ""}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ],
                     ),
 
@@ -706,6 +720,26 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                     label:
                         const Text('Download', style: TextStyle(fontSize: 11)),
                   ),
+                  if (controller.isRenewableDoc(doc) && controller.canEdit)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.autorenew_rounded,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      onPressed: () => controller.openRenewDocumentDialog(doc),
+                      tooltip: 'Renew Policy / Document',
+                    ),
+                  if (controller.isRenewableDoc(doc))
+                    IconButton(
+                      icon: const Icon(
+                        Icons.history_edu_outlined,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      onPressed: () => controller.openRenewalHistoryDialog(doc),
+                      tooltip: 'Renewal History',
+                    ),
                   if (controller.canDelete)
                     IconButton(
                       icon: const Icon(
@@ -727,6 +761,8 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
 
   Widget _buildPersonalDocListTile(DocumentModel doc) {
     final meta = doc.personalMetadata;
+    final insCompany = meta?.insuranceCompany;
+    final sumInsured = meta?.sumInsured;
 
     return RepaintBoundary(
       child: Container(
@@ -789,7 +825,7 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${meta?.personName ?? "Unknown"} • ${meta?.docTypeName ?? doc.subCategory}${meta?.idNumber != null ? " • ID: ${meta!.idNumber}" : ""} • ${AppFormatters.formatFileSize(doc.fileSize)}',
+                    '${meta?.personName ?? "Unknown"} • ${meta?.docTypeName ?? doc.subCategory}${meta?.idNumber != null ? " • ID: ${meta!.idNumber}" : ""}${insCompany != null && insCompany.isNotEmpty ? " • $insCompany" : ""}${sumInsured != null ? " • ₹${AppFormatters.formatCurrency(sumInsured)}" : ""} • ${AppFormatters.formatFileSize(doc.fileSize)}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -835,6 +871,18 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
               onPressed: () => controller.downloadDocument(doc),
               tooltip: 'Download',
             ),
+            if (controller.isRenewableDoc(doc) && controller.canEdit)
+              IconButton(
+                icon: const Icon(Icons.autorenew_rounded, size: 20, color: AppColors.primary),
+                onPressed: () => controller.openRenewDocumentDialog(doc),
+                tooltip: 'Renew Policy / Document',
+              ),
+            if (controller.isRenewableDoc(doc))
+              IconButton(
+                icon: const Icon(Icons.history_edu_outlined, size: 20, color: AppColors.textSecondary),
+                onPressed: () => controller.openRenewalHistoryDialog(doc),
+                tooltip: 'Renewal History',
+              ),
             if (controller.canDelete)
               IconButton(
                 icon: const Icon(
