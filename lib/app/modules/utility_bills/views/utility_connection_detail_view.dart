@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/controllers/utility_connection_detail_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
@@ -438,7 +439,7 @@ class UtilityConnectionDetailView
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Connection & Address Details (Editable)',
+                      'Connection & Premise Location (Editable)',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -446,7 +447,7 @@ class UtilityConnectionDetailView
                       ),
                     ),
                     Text(
-                      'Changes save across all recurring cycles of this account',
+                      'Location details are synchronized from Settings and save across all cycles',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
@@ -459,19 +460,149 @@ class UtilityConnectionDetailView
           ),
           const Divider(height: 24),
 
-          // Premise / Display Name
-          const Text(
-            'Premises / Office Name *',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          // 1. Premise Location from Settings Dropdown
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 16, color: AppColors.primary),
+                  SizedBox(width: 4),
+                  Text(
+                    'Premises Location (From Settings) *',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () => Get.toNamed(AppRoutes.SETTINGS),
+                borderRadius: BorderRadius.circular(4),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.settings_outlined, size: 13, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Manage in Settings',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          TextField(
-            controller: controller.premiseNameController,
-            decoration: const InputDecoration(
-              hintText: 'e.g. RK Iconic, B-1118, Corporate HQ',
-            ),
-          ),
+          const SizedBox(height: 6),
+          Obx(() {
+            final locs = controller.dynamicLocations;
+            final selected = controller.selectedLocation.value;
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<MasterLocationModel>(
+                  value: locs.contains(selected)
+                      ? selected
+                      : (locs.isNotEmpty ? locs.first : null),
+                  isExpanded: true,
+                  hint: const Text('Select Location from Settings...'),
+                  items: locs.map((loc) {
+                    return DropdownMenuItem<MasterLocationModel>(
+                      value: loc,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.apartment_rounded,
+                              size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              loc.summary,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (loc) => controller.onLocationSelected(loc),
+                ),
+              ),
+            );
+          }),
           const SizedBox(height: 12),
+
+          // Selected Location Card
+          Obx(() {
+            final loc = controller.selectedLocation.value;
+            if (loc == null) return const SizedBox.shrink();
+
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          loc.name,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        loc.city,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    loc.fullAddress,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
 
           // Provider & Utility Type
           Row(
@@ -561,196 +692,6 @@ class UtilityConnectionDetailView
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          const Text(
-            'PHYSICAL PREMISES ADDRESS',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textMuted,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Flat & Building
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Flat / House / Unit No',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.flatHouseNoController,
-                      decoration: const InputDecoration(hintText: 'e.g. B-1118'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Building / Tower Name',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.buildingNameController,
-                      decoration:
-                          const InputDecoration(hintText: 'e.g. RK Iconic'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Street Address & Area
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Street Address / Road',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.streetAddressController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. 150 Feet Ring Road',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Area / Locality',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.areaLocalityController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. Sheetal Park, Nana Mava',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // City & Pincode
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'City *',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.cityController,
-                      decoration:
-                          const InputDecoration(hintText: 'e.g. Rajkot'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Pincode',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.postalCodeController,
-                      decoration:
-                          const InputDecoration(hintText: 'e.g. 360005'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // State & Country
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'State',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.stateController,
-                      decoration:
-                          const InputDecoration(hintText: 'e.g. Gujarat'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Country',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: controller.countryController,
-                      decoration:
-                          const InputDecoration(hintText: 'e.g. India'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 20),
 
           // Save Button
@@ -779,8 +720,8 @@ class UtilityConnectionDetailView
                     : const Icon(Icons.save_rounded, size: 18),
                 label: Text(
                   controller.isSaving.value
-                      ? 'Saving Address Changes...'
-                      : 'Save Account & Address Changes',
+                      ? 'Saving Location Changes...'
+                      : 'Save Account & Location Changes',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -987,6 +928,11 @@ class UtilityConnectionDetailView
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            tooltip: 'Edit Bill Cycle Details',
+                            onPressed: () => controller.openEditBillCycleDialog(doc),
+                          ),
                           IconButton(
                             icon: const Icon(Icons.visibility_outlined, size: 18),
                             tooltip: 'Preview Bill',

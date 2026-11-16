@@ -846,5 +846,89 @@ void main() {
       expect(renewedPolicy.premiumAmount, equals(26800.0));
       expect(renewedPolicy.expiryDate, equals(DateTime(2027, 3, 31)));
     });
+
+    test('Point 14: Settings Location Selection and Historical Bill Cycle Editing', () async {
+      // 1. Verify Settings Location mapping to Utility Address
+      final settingLocation = MasterLocationModel(
+        id: 'loc-rk-iconic-1118',
+        name: 'RK Iconic Office 1118',
+        premiseName: 'RK Iconic, 11th Floor',
+        flatHouseNo: 'Office 1118',
+        buildingName: 'RK Iconic',
+        streetAddress: '150 Feet Ring Road',
+        areaLocality: 'Near Nana Mava Circle',
+        city: 'Rajkot',
+        state: 'Gujarat',
+        postalCode: '360005',
+        country: 'India',
+        isActive: true,
+      );
+
+      expect(settingLocation.fullAddress, equals('Office 1118, RK Iconic, 150 Feet Ring Road, Near Nana Mava Circle, Rajkot - 360005, Gujarat, India'));
+      expect(settingLocation.summary, equals('RK Iconic Office 1118 (Rajkot - 360005, India)'));
+
+      final mappedAddress = AddressModel(
+        premiseName: settingLocation.name,
+        flatHouseNo: settingLocation.flatHouseNo,
+        buildingName: settingLocation.buildingName,
+        streetAddress: settingLocation.streetAddress,
+        areaLocality: settingLocation.areaLocality,
+        city: settingLocation.city,
+        postalCode: settingLocation.postalCode,
+        state: settingLocation.state,
+        country: settingLocation.country,
+      );
+
+      expect(mappedAddress.city, equals('Rajkot'));
+      expect(mappedAddress.postalCode, equals('360005'));
+      expect(mappedAddress.streetAddress, equals('150 Feet Ring Road'));
+      expect(mappedAddress.flatHouseNo, equals('Office 1118'));
+
+      // 2. Verify Older Bill Cycle Editing via DemoDataService.updateUtilityBillCycleMock
+      final allDocs = DemoDataService.getAllDocuments();
+      final utilityDocs = allDocs.where((d) => d.categoryCode == 'utility_bills' || d.utilityMetadata != null).toList();
+      expect(utilityDocs.isNotEmpty, isTrue);
+
+      final targetBill = utilityDocs.first;
+      final originalId = targetBill.id;
+      final updatedBillAmount = 9876.50;
+      final updatedBillDate = DateTime(2026, 8, 15);
+      final updatedDueDate = DateTime(2026, 8, 30);
+      const updatedPaymentStatus = 'paid';
+      final updatedPaymentDate = DateTime(2026, 8, 20);
+      const updatedReferenceId = 'UPI-TXN-99887766';
+      const updatedTitle = 'Edited PGVCL August 2026 Bill';
+      const updatedDescription = 'Audited commercial power bill cycle';
+      const updatedMeter = 'MTR-9988-X';
+      final updatedUnits = 850.5;
+
+      DemoDataService.updateUtilityBillCycleMock(
+        documentId: originalId,
+        title: updatedTitle,
+        billAmount: updatedBillAmount,
+        billDate: updatedBillDate,
+        dueDate: updatedDueDate,
+        paymentStatus: updatedPaymentStatus,
+        paymentDate: updatedPaymentDate,
+        paymentReferenceId: updatedReferenceId,
+        meterNumber: updatedMeter,
+        unitsConsumed: updatedUnits,
+        description: updatedDescription,
+      );
+
+      // Verify target cycle was updated in DemoDataService
+      final cycleAfterEdit = allDocs.firstWhere((d) => d.id == originalId);
+
+      expect(cycleAfterEdit.title, equals(updatedTitle));
+      expect(cycleAfterEdit.description, equals(updatedDescription));
+      expect(cycleAfterEdit.utilityMetadata?.billAmount, equals(updatedBillAmount));
+      expect(cycleAfterEdit.utilityMetadata?.billDate, equals(updatedBillDate));
+      expect(cycleAfterEdit.utilityMetadata?.dueDate, equals(updatedDueDate));
+      expect(cycleAfterEdit.utilityMetadata?.paymentStatus, equals(updatedPaymentStatus));
+      expect(cycleAfterEdit.utilityMetadata?.paymentDate, equals(updatedPaymentDate));
+      expect(cycleAfterEdit.utilityMetadata?.paymentReferenceId, equals(updatedReferenceId));
+      expect(cycleAfterEdit.utilityMetadata?.meterNumber, equals(updatedMeter));
+      expect(cycleAfterEdit.utilityMetadata?.unitsConsumed, equals(updatedUnits));
+    });
   });
 }

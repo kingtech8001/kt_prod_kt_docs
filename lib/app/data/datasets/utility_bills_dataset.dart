@@ -526,6 +526,75 @@ class UtilityBillsDataset {
     }
   }
 
+  /// Updates details of an individual utility bill cycle (e.g. title, amount, dates, payment status, meter).
+  Future<void> updateUtilityBillCycle({
+    required String documentId,
+    required String title,
+    String? description,
+    required double billAmount,
+    required DateTime billDate,
+    DateTime? dueDate,
+    required String paymentStatus,
+    DateTime? paymentDate,
+    String? paymentReferenceId,
+    String? meterNumber,
+    double? unitsConsumed,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      DemoDataService.updateUtilityBillCycleMock(
+        documentId: documentId,
+        title: title,
+        description: description,
+        billAmount: billAmount,
+        billDate: billDate,
+        dueDate: dueDate,
+        paymentStatus: paymentStatus,
+        paymentDate: paymentDate,
+        paymentReferenceId: paymentReferenceId,
+        meterNumber: meterNumber,
+        unitsConsumed: unitsConsumed,
+      );
+      return;
+    }
+
+    AppLogger.debug('UTILITY_DATASET', 'Updating bill cycle: $documentId ($title)');
+    try {
+      // 1. Update documents title and description
+      await _client.from('documents').update({
+        'title': title,
+        'description': description,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', documentId);
+
+      // 2. Update utility_metadata
+      final metaUpdate = <String, dynamic>{
+        'bill_amount': billAmount,
+        'bill_date': billDate.toIso8601String().split('T').first,
+        'due_date': dueDate?.toIso8601String().split('T').first,
+        'payment_status': paymentStatus,
+        'payment_date': paymentDate?.toIso8601String().split('T').first,
+        'payment_reference_id': paymentReferenceId,
+        if (meterNumber != null && meterNumber.isNotEmpty) 'meter_number': meterNumber,
+        'units_consumed': ?unitsConsumed,
+      };
+
+      await _client
+          .from('utility_metadata')
+          .update(metaUpdate)
+          .eq('document_id', documentId);
+
+      AppLogger.info('UTILITY_DATASET', 'Bill cycle $documentId updated successfully.');
+    } catch (e, st) {
+      AppLogger.error(
+        'UTILITY_DATASET',
+        'Error updating bill cycle $documentId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
   Future<void> updateDocumentDetails({
     required String documentId,
     required String title,

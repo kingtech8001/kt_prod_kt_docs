@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/datasets/settings_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/utility_bills_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
+import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/edit_utility_bill_dialog.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/upload_next_utility_bill_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -14,13 +17,18 @@ import 'package:url_launcher/url_launcher.dart';
 
 class UtilityConnectionDetailController extends GetxController {
   final UtilityBillsDataset _dataset;
+  final SettingsDataset _settingsDataset;
 
-  UtilityConnectionDetailController(this._dataset);
+  UtilityConnectionDetailController(this._dataset, this._settingsDataset);
 
   final connection = Rxn<UtilityConnectionAccount>();
   final isLoading = true.obs;
   final isSaving = false.obs;
   final historyBills = <DocumentModel>[].obs;
+
+  // Settings Locations
+  final dynamicLocations = <MasterLocationModel>[].obs;
+  final selectedLocation = Rxn<MasterLocationModel>();
 
   // Editable Form Controllers
   final premiseNameController = TextEditingController();
@@ -46,8 +54,15 @@ class UtilityConnectionDetailController extends GetxController {
     _loadInitialData();
   }
 
-  void _loadInitialData() {
+  Future<void> _loadInitialData() async {
     isLoading.value = true;
+    try {
+      final locs = await _settingsDataset.getLocations(activeOnly: true);
+      dynamicLocations.assignAll(locs);
+    } catch (e, st) {
+      AppLogger.error('UTILITY_DETAIL_CTRL', 'Error loading settings locations: $e', error: e, stackTrace: st);
+    }
+
     final args = Get.arguments;
     if (args is UtilityConnectionAccount) {
       _populateFromAccount(args);
@@ -55,7 +70,7 @@ class UtilityConnectionDetailController extends GetxController {
       // Fallback: check query parameter
       final consumer = Get.parameters['consumerNumber'];
       if (consumer != null && consumer.isNotEmpty) {
-        _fetchAccountByConsumer(consumer);
+        await _fetchAccountByConsumer(consumer);
         return;
       }
     }
@@ -66,21 +81,69 @@ class UtilityConnectionDetailController extends GetxController {
     connection.value = acc;
     historyBills.assignAll(acc.historicalBills);
 
-    premiseNameController.text = acc.premiseName ?? acc.displayName;
-    flatHouseNoController.text = acc.flatHouseNo ?? '';
-    buildingNameController.text = acc.buildingName ?? '';
-    streetAddressController.text = acc.streetAddress ?? '';
-    areaLocalityController.text = acc.areaLocality ?? '';
-    cityController.text = acc.city ?? 'Rajkot';
-    postalCodeController.text = acc.postalCode ?? '';
-    stateController.text = acc.state;
-    countryController.text = acc.country;
+    // Try to match setting location
+    if (dynamicLocations.isNotEmpty) {
+      final accPremise = (acc.premiseName ?? acc.displayName).toLowerCase().trim();
+      final match = dynamicLocations.firstWhereOrNull((l) =>
+          (l.premiseName?.toLowerCase().trim() == accPremise) ||
+          (l.name.toLowerCase().trim() == accPremise) ||
+          (accPremise.contains(l.name.toLowerCase().trim())) ||
+          (l.name.toLowerCase().trim().contains(accPremise)));
+      selectedLocation.value = match ?? dynamicLocations.first;
+      if (match != null) {
+        premiseNameController.text = match.premiseName ?? match.name;
+        flatHouseNoController.text = match.flatHouseNo ?? '';
+        buildingNameController.text = match.buildingName ?? '';
+        streetAddressController.text = match.streetAddress ?? '';
+        areaLocalityController.text = match.areaLocality;
+        cityController.text = match.city;
+        postalCodeController.text = match.postalCode ?? '';
+        stateController.text = match.state;
+        countryController.text = match.country;
+      } else {
+        premiseNameController.text = acc.premiseName ?? acc.displayName;
+        flatHouseNoController.text = acc.flatHouseNo ?? '';
+        buildingNameController.text = acc.buildingName ?? '';
+        streetAddressController.text = acc.streetAddress ?? '';
+        areaLocalityController.text = acc.areaLocality ?? '';
+        cityController.text = acc.city ?? 'Rajkot';
+        postalCodeController.text = acc.postalCode ?? '';
+        stateController.text = acc.state;
+        countryController.text = acc.country;
+      }
+    } else {
+      premiseNameController.text = acc.premiseName ?? acc.displayName;
+      flatHouseNoController.text = acc.flatHouseNo ?? '';
+      buildingNameController.text = acc.buildingName ?? '';
+      streetAddressController.text = acc.streetAddress ?? '';
+      areaLocalityController.text = acc.areaLocality ?? '';
+      cityController.text = acc.city ?? 'Rajkot';
+      postalCodeController.text = acc.postalCode ?? '';
+      stateController.text = acc.state;
+      countryController.text = acc.country;
+    }
+
     consumerNumberController.text = acc.consumerNumber;
     meterNumberController.text = acc.meterNumber ?? '';
     providerNameController.text = acc.providerName;
     utilityTypeController.text = acc.utilityType;
 
     _calculateTotalSpent();
+  }
+
+  void onLocationSelected(MasterLocationModel? loc) {
+    selectedLocation.value = loc;
+    if (loc != null) {
+      premiseNameController.text = loc.premiseName ?? loc.name;
+      flatHouseNoController.text = loc.flatHouseNo ?? '';
+      buildingNameController.text = loc.buildingName ?? '';
+      streetAddressController.text = loc.streetAddress ?? '';
+      areaLocalityController.text = loc.areaLocality;
+      cityController.text = loc.city;
+      postalCodeController.text = loc.postalCode ?? '';
+      stateController.text = loc.state;
+      countryController.text = loc.country;
+    }
   }
 
   void _calculateTotalSpent() {
@@ -129,10 +192,13 @@ class UtilityConnectionDetailController extends GetxController {
     final current = connection.value;
     if (current == null) return;
 
-    final newPremise = premiseNameController.text.trim();
+    final loc = selectedLocation.value;
+    final newPremise = loc != null
+        ? (loc.premiseName ?? loc.name)
+        : premiseNameController.text.trim();
     final newConsumer = consumerNumberController.text.trim();
     final newProvider = providerNameController.text.trim();
-    final newCity = cityController.text.trim();
+    final newCity = loc?.city ?? (cityController.text.trim().isNotEmpty ? cityController.text.trim() : 'Rajkot');
 
     if (newConsumer.isEmpty) {
       AppSnackbar.showError('Validation Error', 'Consumer number is required.');
@@ -142,13 +208,39 @@ class UtilityConnectionDetailController extends GetxController {
       AppSnackbar.showError('Validation Error', 'Provider name is required.');
       return;
     }
-    if (newCity.isEmpty) {
-      AppSnackbar.showError('Validation Error', 'City is required.');
-      return;
-    }
 
     isSaving.value = true;
     try {
+      final newFlat = loc?.flatHouseNo ??
+          (flatHouseNoController.text.trim().isNotEmpty
+              ? flatHouseNoController.text.trim()
+              : null);
+      final newBuilding = loc?.buildingName ??
+          (buildingNameController.text.trim().isNotEmpty
+              ? buildingNameController.text.trim()
+              : null);
+      final newStreet = loc?.streetAddress ??
+          (streetAddressController.text.trim().isNotEmpty
+              ? streetAddressController.text.trim()
+              : null);
+      final newArea = loc != null
+          ? loc.areaLocality
+          : (areaLocalityController.text.trim().isNotEmpty
+              ? areaLocalityController.text.trim()
+              : 'General');
+      final newPostal = loc?.postalCode ??
+          (postalCodeController.text.trim().isNotEmpty
+              ? postalCodeController.text.trim()
+              : null);
+      final newState = loc?.state ??
+          (stateController.text.trim().isNotEmpty
+              ? stateController.text.trim()
+              : 'Gujarat');
+      final newCountry = loc?.country ??
+          (countryController.text.trim().isNotEmpty
+              ? countryController.text.trim()
+              : 'India');
+
       await _dataset.updateConnectionAccountDetails(
         oldConsumerNumber: current.consumerNumber,
         newConsumerNumber: newConsumer,
@@ -160,28 +252,14 @@ class UtilityConnectionDetailController extends GetxController {
             ? utilityTypeController.text.trim()
             : current.utilityType,
         premiseName: newPremise.isNotEmpty ? newPremise : null,
-        flatHouseNo: flatHouseNoController.text.trim().isNotEmpty
-            ? flatHouseNoController.text.trim()
-            : null,
-        buildingName: buildingNameController.text.trim().isNotEmpty
-            ? buildingNameController.text.trim()
-            : null,
-        streetAddress: streetAddressController.text.trim().isNotEmpty
-            ? streetAddressController.text.trim()
-            : null,
-        areaLocality: areaLocalityController.text.trim().isNotEmpty
-            ? areaLocalityController.text.trim()
-            : (newPremise.isNotEmpty ? newPremise : 'General'),
+        flatHouseNo: newFlat,
+        buildingName: newBuilding,
+        streetAddress: newStreet,
+        areaLocality: newArea,
         city: newCity,
-        state: stateController.text.trim().isNotEmpty
-            ? stateController.text.trim()
-            : 'Gujarat',
-        postalCode: postalCodeController.text.trim().isNotEmpty
-            ? postalCodeController.text.trim()
-            : null,
-        country: countryController.text.trim().isNotEmpty
-            ? countryController.text.trim()
-            : 'India',
+        state: newState,
+        postalCode: newPostal,
+        country: newCountry,
       );
 
       await reloadHistory();
@@ -194,6 +272,47 @@ class UtilityConnectionDetailController extends GetxController {
       AppSnackbar.showError('Save Failed', 'Could not save account details: $e');
     } finally {
       isSaving.value = false;
+    }
+  }
+
+  Future<void> openEditBillCycleDialog(DocumentModel bill) async {
+    final success = await EditUtilityBillDialog.show(
+      bill: bill,
+      onSave: ({
+        required documentId,
+        required title,
+        description,
+        required billAmount,
+        required billDate,
+        dueDate,
+        required paymentStatus,
+        paymentDate,
+        paymentReferenceId,
+        meterNumber,
+        unitsConsumed,
+      }) async {
+        await _dataset.updateUtilityBillCycle(
+          documentId: documentId,
+          title: title,
+          description: description,
+          billAmount: billAmount,
+          billDate: billDate,
+          dueDate: dueDate,
+          paymentStatus: paymentStatus,
+          paymentDate: paymentDate,
+          paymentReferenceId: paymentReferenceId,
+          meterNumber: meterNumber,
+          unitsConsumed: unitsConsumed,
+        );
+      },
+    );
+
+    if (success == true) {
+      await reloadHistory();
+      AppSnackbar.showSuccess(
+        'Bill Cycle Saved',
+        'Updated bill details for "${bill.title}" successfully.',
+      );
     }
   }
 

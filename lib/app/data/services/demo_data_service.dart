@@ -1349,6 +1349,59 @@ class DemoDataService {
     }
   }
 
+  /// Updates an individual utility bill cycle in the mock cache.
+  static void updateUtilityBillCycleMock({
+    required String documentId,
+    required String title,
+    String? description,
+    required double billAmount,
+    required DateTime billDate,
+    DateTime? dueDate,
+    required String paymentStatus,
+    DateTime? paymentDate,
+    String? paymentReferenceId,
+    String? meterNumber,
+    double? unitsConsumed,
+  }) {
+    final all = getAllDocuments();
+    final index = all.indexWhere((d) => d.id == documentId);
+    if (index != -1) {
+      final doc = all[index];
+      final oldMeta = doc.utilityMetadata;
+      final newMeta = UtilityMetadataModel(
+        id: oldMeta?.id,
+        documentId: documentId,
+        utilityType: oldMeta?.utilityType ?? doc.subCategory,
+        providerName: oldMeta?.providerName ?? '',
+        consumerNumber: oldMeta?.consumerNumber ?? '',
+        meterNumber: meterNumber ?? oldMeta?.meterNumber,
+        billDate: billDate,
+        dueDate: dueDate,
+        billingPeriodStart: oldMeta?.billingPeriodStart,
+        billingPeriodEnd: oldMeta?.billingPeriodEnd,
+        billAmount: billAmount,
+        paymentStatus: paymentStatus,
+        paymentDate: paymentDate,
+        paymentReferenceId: paymentReferenceId,
+        unitsConsumed: unitsConsumed ?? oldMeta?.unitsConsumed,
+      );
+      all[index] = doc.copyWith(
+        title: title,
+        description: description,
+        utilityMetadata: newMeta,
+      );
+      AppLogger.info(
+        'DEMO_DATA_SERVICE',
+        'updateUtilityBillCycleMock updated bill cycle: $documentId ($title)',
+      );
+    } else {
+      AppLogger.warning(
+        'DEMO_DATA_SERVICE',
+        'updateUtilityBillCycleMock: bill cycle $documentId not found in mock cache!',
+      );
+    }
+  }
+
   /// Handles mock renewal of a vehicle document (PUC, Insurance, FASTag, etc.)
   /// Automatically transitions previous document to 'archived' status and adds new active document.
   static DocumentModel renewVehicleDocumentMock({
