@@ -8,14 +8,92 @@ import 'package:kt_prod_kt_docs/core/utils/file_compressor.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// Background worker isolate function for heavy PDF parsing and text extraction.
-/// Pure Dart execution offloaded from the main UI isolate to keep UI & mini-game fluid at 60 FPS.
+/// Pure Dart execution offloaded from the main UI isolate on native platforms.
 String _extractPdfTextWorker(Uint8List bytes) {
   try {
     final PdfDocument document = PdfDocument(inputBytes: bytes);
-    final text = PdfTextExtractor(document).extractText();
+    final int pageCount = document.pages.count;
+    if (pageCount == 0) {
+      document.dispose();
+      return '';
+    }
+
+    final extractor = PdfTextExtractor(document);
+    final StringBuffer buffer = StringBuffer();
+
+    // Scan up to first 6 pages, plus the last page if document is long
+    final Set<int> targetPages = <int>{};
+    final int initialPages = pageCount > 6 ? 6 : pageCount;
+    for (int i = 0; i < initialPages; i++) {
+      targetPages.add(i);
+    }
+    if (pageCount > 6) {
+      targetPages.add(pageCount - 1);
+    }
+
+    final sortedPages = targetPages.toList()..sort();
+    for (final pageIndex in sortedPages) {
+      final pageText = extractor.extractText(startPageIndex: pageIndex, endPageIndex: pageIndex);
+      if (pageText.isNotEmpty) {
+        buffer.writeln(pageText);
+      }
+    }
+
     document.dispose();
-    return text;
+    return buffer.toString();
   } catch (_) {
+    return '';
+  }
+}
+
+/// Asynchronous, non-blocking PDF text extractor for Flutter Web.
+/// Yields to the browser event loop between pages to prevent freezing the UI thread,
+/// keeping 60 FPS animations, loaders, and user interactions fluid.
+Future<String> _extractPdfTextAsync(
+  Uint8List bytes, {
+  void Function(double progress)? onProgress,
+}) async {
+  try {
+    // Yield to the browser event loop before loading document
+    await Future.delayed(Duration.zero);
+    final PdfDocument document = PdfDocument(inputBytes: bytes);
+    final int pageCount = document.pages.count;
+    if (pageCount == 0) {
+      document.dispose();
+      return '';
+    }
+
+    final extractor = PdfTextExtractor(document);
+    final StringBuffer buffer = StringBuffer();
+
+    // Scan up to first 6 pages, plus the last page if document is long
+    final Set<int> targetPages = <int>{};
+    final int initialPages = pageCount > 6 ? 6 : pageCount;
+    for (int i = 0; i < initialPages; i++) {
+      targetPages.add(i);
+    }
+    if (pageCount > 6) {
+      targetPages.add(pageCount - 1);
+    }
+
+    final sortedPages = targetPages.toList()..sort();
+    final totalToScan = sortedPages.length;
+
+    for (int idx = 0; idx < totalToScan; idx++) {
+      final pageIndex = sortedPages[idx];
+      // Yield to the event loop before each page extraction so Flutter can render frames, animations and loaders
+      await Future.delayed(Duration.zero);
+      final pageText = extractor.extractText(startPageIndex: pageIndex, endPageIndex: pageIndex);
+      if (pageText.isNotEmpty) {
+        buffer.writeln(pageText);
+      }
+      onProgress?.call((idx + 1) / totalToScan);
+    }
+
+    document.dispose();
+    return buffer.toString();
+  } catch (e) {
+    AppLogger.error('SCANNER', 'Async PDF text extraction error: $e');
     return '';
   }
 }
@@ -36,6 +114,7 @@ class DocumentScannerService {
     List<String> knownCities = const [],
     List<MasterPersonModel> knownPersons = const [],
     List<MasterVehicleModel> knownVehicles = const [],
+    void Function(double progress)? onProgress,
   }) async {
     final stopwatch = Stopwatch()..start();
     AppLogger.info('SCANNER', 'Starting document scan for "$fileName" (${bytes.length} bytes)');
@@ -44,20 +123,20 @@ class DocumentScannerService {
     final isPdf = FileCompressor.isPdf(fileName);
 
     if (isPdf) {
-      try {
-        // Offload heavy PDF parsing to background isolate via compute so the UI thread & game remain 100% fluid
-        rawText = await compute(_extractPdfTextWorker, bytes);
-        AppLogger.debug('SCANNER', 'Extracted ${rawText.length} characters from PDF: "$fileName"');
-      } catch (e, st) {
-        // Fallback to inline extraction if compute fails (e.g. specialized test harnesses)
+      if (kIsWeb) {
+        // Flutter Web runs on a single JS thread. To prevent UI freezing,
+        // extract text asynchronously page-by-page and yield to the event loop.
+        rawText = await _extractPdfTextAsync(bytes, onProgress: onProgress);
+        AppLogger.debug('SCANNER', 'Extracted ${rawText.length} characters from PDF (web async): "$fileName"');
+      } else {
         try {
-          final PdfDocument document = PdfDocument(inputBytes: bytes);
-          rawText = PdfTextExtractor(document).extractText();
-          document.dispose();
+          // Offload heavy PDF parsing to background isolate via compute on native
+          rawText = await compute(_extractPdfTextWorker, bytes);
+          AppLogger.debug('SCANNER', 'Extracted ${rawText.length} characters from PDF: "$fileName"');
+        } catch (e) {
+          // Fallback to inline async extraction if compute fails
+          rawText = await _extractPdfTextAsync(bytes, onProgress: onProgress);
           AppLogger.debug('SCANNER', 'Extracted ${rawText.length} characters (inline fallback): "$fileName"');
-        } catch (e2) {
-          AppLogger.error('SCANNER', 'PDF text extraction failed: $e2', error: e2, stackTrace: st);
-          rawText = '';
         }
       }
     }

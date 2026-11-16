@@ -153,5 +153,29 @@ void main() {
       expect(result.city, 'Rajkot');
       expect(result.postalCode, '360005');
     });
+
+    test('Invokes onProgress callback during multi-page document scanning', () async {
+      final pdfDoc = PdfDocument();
+      for (int i = 0; i < 3; i++) {
+        final page = pdfDoc.pages.add();
+        page.graphics.drawString(
+          'Page $i: Torrent Power Electricity Bill Ahmedabad Rs 3200',
+          PdfStandardFont(PdfFontFamily.helvetica, 12),
+        );
+      }
+      final pdfBytes = Uint8List.fromList(pdfDoc.saveSync());
+      pdfDoc.dispose();
+
+      final List<double> progressValues = [];
+      final result = await DocumentScannerService.scanDocument(
+        bytes: pdfBytes,
+        fileName: 'torrent_power_bill.pdf',
+        knownCities: ['Ahmedabad'],
+        onProgress: (p) => progressValues.add(p),
+      );
+
+      expect(result.detectedCategoryCode, DocumentScannerService.catUtilityBills);
+      expect(result.amount, 3200.0);
+    });
   });
 }

@@ -53,6 +53,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                 () => WebDropzone(
                                   onFileSelected: controller.onFileSelected,
                                   currentFile: controller.selectedFile.value,
+                                  isScanning: controller.isScanning.value,
+                                  scanProgress: controller.scanProgress.value,
                                 ),
                               ),
                               _buildScanTriggerCard(context),
@@ -76,6 +78,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                           () => WebDropzone(
                             onFileSelected: controller.onFileSelected,
                             currentFile: controller.selectedFile.value,
+                            isScanning: controller.isScanning.value,
+                            scanProgress: controller.scanProgress.value,
                           ),
                         ),
                         _buildScanTriggerCard(context),

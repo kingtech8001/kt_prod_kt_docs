@@ -958,6 +958,8 @@ class DocumentUploadController extends GetxController {
     scanSelectedDocument();
   }
 
+  int _scanSessionId = 0;
+
   Future<void> scanSelectedDocument() async {
     final file = selectedFile.value;
     if (file == null || file.bytes == null) {
@@ -965,22 +967,28 @@ class DocumentUploadController extends GetxController {
       return;
     }
 
+    final int currentSession = ++_scanSessionId;
+
     isScanning.value = true;
     isScanDismissed.value = false;
     hasMismatch.value = false;
     mismatchMessage.value = '';
     autoFilledFieldsCount.value = 0;
     showScanMiniGame.value = false;
-    scanProgress.value = 0.15;
+    scanProgress.value = 0.12;
     scanSummaryText.value = 'Scanning document and extracting key metadata...';
+
+    // Allow UI to immediately render instant file selection and active loader states before heavy processing
+    await Future.delayed(const Duration(milliseconds: 20));
+    if (currentSession != _scanSessionId) return;
 
     // Smoothly advance progress percentage while background scan is processing
     _progressSimulationTimer?.cancel();
-    _progressSimulationTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (!isScanning.value) {
+    _progressSimulationTimer = Timer.periodic(const Duration(milliseconds: 70), (timer) {
+      if (!isScanning.value || currentSession != _scanSessionId) {
         timer.cancel();
-      } else if (scanProgress.value < 0.90) {
-        scanProgress.value += 0.05;
+      } else if (scanProgress.value < 0.88) {
+        scanProgress.value += 0.03;
       }
     });
 
@@ -991,7 +999,17 @@ class DocumentUploadController extends GetxController {
         knownCities: dynamicCities,
         knownPersons: dynamicPersons,
         knownVehicles: dynamicVehicles,
+        onProgress: (p) {
+          if (currentSession == _scanSessionId) {
+            final mapped = 0.15 + (p * 0.77);
+            if (mapped > scanProgress.value) {
+              scanProgress.value = mapped;
+            }
+          }
+        },
       );
+
+      if (currentSession != _scanSessionId) return;
 
       scanProgress.value = 1.0;
       scanResult.value = result;
@@ -1029,9 +1047,11 @@ class DocumentUploadController extends GetxController {
       AppLogger.error('UPLOAD_CTRL', 'Error during document scan: $e', error: e, stackTrace: st);
       scanSummaryText.value = 'Could not auto-extract fields from this file.';
     } finally {
-      _progressSimulationTimer?.cancel();
-      scanProgress.value = 1.0;
-      isScanning.value = false;
+      if (currentSession == _scanSessionId) {
+        _progressSimulationTimer?.cancel();
+        scanProgress.value = 1.0;
+        isScanning.value = false;
+      }
     }
   }
 

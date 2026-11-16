@@ -43,10 +43,18 @@ class VehicleDocsView extends GetView<VehicleDocsController> {
 
         return RefreshIndicator(
           onRefresh: () => controller.loadVehicleDocuments(resetPage: true),
-          child: CustomScrollView(
-            controller: controller.scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (scrollInfo) {
+              if (scrollInfo.metrics.pixels >=
+                      scrollInfo.metrics.maxScrollExtent - 200 &&
+                  scrollInfo.metrics.maxScrollExtent > 100) {
+                controller.loadNextPage();
+              }
+              return false;
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
               // 1. Top Section: Vehicles Bar & Metric Cards
               SliverToBoxAdapter(
                 child: Container(
@@ -184,6 +192,7 @@ class VehicleDocsView extends GetView<VehicleDocsController> {
                 _buildServiceLogsSliverList(),
             ],
           ],
+            ),
           ),
         );
       }),

@@ -38,7 +38,7 @@ class WebSidebar extends StatelessWidget {
               Navigator.of(context).pop();
             }
             if (currentRoute != route) {
-              Get.toNamed(route);
+              Get.offNamed(route);
             }
           },
           borderRadius: BorderRadius.circular(8),
@@ -268,7 +268,7 @@ class WebSidebar extends StatelessWidget {
                           Navigator.of(context).pop();
                         }
                         if (currentRoute != AppRoutes.PROFILE) {
-                          Get.toNamed(AppRoutes.PROFILE);
+                          Get.offNamed(AppRoutes.PROFILE);
                         }
                       },
                       borderRadius: BorderRadius.circular(8),

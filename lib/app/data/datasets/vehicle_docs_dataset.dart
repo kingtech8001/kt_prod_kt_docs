@@ -664,20 +664,7 @@ class VehicleDocsDataset {
             fileOptions: const FileOptions(upsert: true),
           );
 
-      // 2. Mark previous document as archived so it leaves active views and alerts
-      final prevExtra =
-          Map<String, dynamic>.from(previousDocument.extraAttributes);
-      prevExtra['archived_reason'] = 'renewed';
-      prevExtra['archived_at'] = DateTime.now().toIso8601String();
-      await _client
-          .from('documents')
-          .update({
-            'status': 'archived',
-            'extra_attributes': prevExtra,
-          })
-          .eq('id', previousDocument.id);
-
-      // 3. Insert new active document record
+      // 2. Prepare and insert new active document record FIRST
       final nextRenewalCount =
           (previousDocument.vehicleMetadata?.renewalCount ?? 0) + 1;
 
@@ -734,14 +721,7 @@ class VehicleDocsDataset {
           .single();
       final newDocId = docRes['id'] as String;
 
-      // Update previous doc with superseded_by reference
-      prevExtra['superseded_by'] = newDocId;
-      await _client
-          .from('documents')
-          .update({'extra_attributes': prevExtra})
-          .eq('id', previousDocument.id);
-
-      // 4. Insert new vehicle document metadata with lineage reference
+      // 3. Insert new vehicle document metadata with lineage reference
       final metaPayload = newMetadata
           .copyWith(
             documentId: newDocId,
@@ -752,6 +732,20 @@ class VehicleDocsDataset {
         ..remove('id');
 
       await _client.from('vehicle_document_metadata').insert(metaPayload);
+
+      // 4. ONLY AFTER new document & metadata succeed, mark previous document as archived
+      final prevExtra =
+          Map<String, dynamic>.from(previousDocument.extraAttributes);
+      prevExtra['archived_reason'] = 'renewed';
+      prevExtra['archived_at'] = DateTime.now().toIso8601String();
+      prevExtra['superseded_by'] = newDocId;
+      await _client
+          .from('documents')
+          .update({
+            'status': 'archived',
+            'extra_attributes': prevExtra,
+          })
+          .eq('id', previousDocument.id);
 
       return DocumentModel(
         id: newDocId,
