@@ -126,6 +126,8 @@ class DocumentEditDialog extends StatelessWidget {
   final TextEditingController _premiumAmountController;
   final Rx<DateTime?> _issueDate;
   final Rx<DateTime?> _expiryDate;
+  final RxBool _isBundledTp;
+  final Rx<DateTime?> _tpExpiryDate;
 
   // Re-upload & Attachment Configuration
   final Rx<PlatformFile?> _selectedNewFile = Rx<PlatformFile?>(null);
@@ -188,7 +190,9 @@ class DocumentEditDialog extends StatelessWidget {
               : '',
         ),
         _issueDate = Rx<DateTime?>(document.vehicleMetadata?.issueDate),
-        _expiryDate = Rx<DateTime?>(document.vehicleMetadata?.expiryDate) {
+        _expiryDate = Rx<DateTime?>(document.vehicleMetadata?.expiryDate),
+        _isBundledTp = (document.vehicleMetadata?.isBundledInsurance ?? false).obs,
+        _tpExpiryDate = Rx<DateTime?>(document.vehicleMetadata?.tpExpiryDate) {
     _customFileName.value = document.fileName;
     _initializeItems();
   }
@@ -855,6 +859,7 @@ class DocumentEditDialog extends StatelessWidget {
   VehicleDocumentMetadataModel? _buildUpdatedVehicle() {
     if (!_isVehicle || _currentDoc.value.vehicleMetadata == null) return null;
     final premium = double.tryParse(_premiumAmountController.text.trim());
+    final isBundled = _isBundledTp.value;
     return _currentDoc.value.vehicleMetadata!.copyWith(
       policyOrCertNumber: _documentNumberController.text.trim().isNotEmpty
           ? _documentNumberController.text.trim()
@@ -865,6 +870,9 @@ class DocumentEditDialog extends StatelessWidget {
       premiumAmount: premium,
       issueDate: _issueDate.value,
       expiryDate: _expiryDate.value,
+      insuranceType: isBundled ? 'Bundled (1-Yr OD + 3/5-Yr TP)' : 'Comprehensive',
+      odExpiryDate: isBundled ? _expiryDate.value : null,
+      tpExpiryDate: isBundled ? _tpExpiryDate.value : null,
       notes: _descriptionController.text.trim().isNotEmpty
           ? _descriptionController.text.trim()
           : null,
@@ -1311,6 +1319,79 @@ class DocumentEditDialog extends StatelessWidget {
                             ),
                           ],
                         ),
+
+                        // Bundled Third-Party (TP) Cover Section for Vehicle Insurance
+                        Obx(() {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 10),
+                              CheckboxListTile(
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                                value: _isBundledTp.value,
+                                onChanged: (val) {
+                                  _isBundledTp.value = val ?? false;
+                                  if (_isBundledTp.value && _tpExpiryDate.value == null) {
+                                    final base = _issueDate.value ?? DateTime.now();
+                                    _tpExpiryDate.value = DateTime(base.year + 3, base.month, base.day);
+                                  }
+                                },
+                                title: const Text(
+                                  '3/5-Year Bundled Third-Party (TP) Cover',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                                subtitle: const Text(
+                                  'For new vehicle policies where TP liability remains valid for 3 or 5 years (1-Yr Own Damage + 3/5-Yr Third Party)',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                                controlAffinity: ListTileControlAffinity.leading,
+                              ),
+                              if (_isBundledTp.value)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: _tpExpiryDate.value ??
+                                            DateTime.now().add(const Duration(days: 365 * 3)),
+                                        firstDate: DateTime(2020),
+                                        lastDate: DateTime(2045),
+                                      );
+                                      if (picked != null) {
+                                        _tpExpiryDate.value = picked;
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'Third-Party (TP) Expiry Date',
+                                        prefixIcon: const Icon(Icons.verified_user_outlined, size: 18),
+                                        suffixIcon: _tpExpiryDate.value != null
+                                            ? IconButton(
+                                                icon: const Icon(Icons.clear, size: 16),
+                                                onPressed: () => _tpExpiryDate.value = null,
+                                              )
+                                            : const Icon(Icons.calendar_today, size: 16),
+                                      ),
+                                      child: Text(
+                                        _tpExpiryDate.value != null
+                                            ? AppFormatters.formatDate(_tpExpiryDate.value!)
+                                            : 'Select TP Expiry Date',
+                                        style: TextStyle(
+                                          color: _tpExpiryDate.value != null
+                                              ? AppColors.textPrimary
+                                              : AppColors.textSecondary,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        }),
                       ],
 
                       // Multi-Product Appliance Section

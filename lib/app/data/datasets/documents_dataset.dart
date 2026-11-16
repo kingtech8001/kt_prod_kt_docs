@@ -598,6 +598,26 @@ class DocumentsDataset {
     final docId = const Uuid().v4();
     if (DemoDataService.isDemoMode) {
       AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: Mocking document creation for "$title"');
+      final extraAttrs = <String, dynamic>{'storage_provider': 'demo'};
+      if (vehicleMetadata != null) {
+        if (vehicleMetadata.insuranceType != null) {
+          extraAttrs['insurance_type'] = vehicleMetadata.insuranceType;
+        }
+        if (vehicleMetadata.odExpiryDate != null) {
+          extraAttrs['od_expiry_date'] =
+              vehicleMetadata.odExpiryDate!.toIso8601String().split('T').first;
+        }
+        if (vehicleMetadata.tpExpiryDate != null) {
+          extraAttrs['tp_expiry_date'] =
+              vehicleMetadata.tpExpiryDate!.toIso8601String().split('T').first;
+        }
+        if (vehicleMetadata.previousDocumentId != null) {
+          extraAttrs['previous_document_id'] =
+              vehicleMetadata.previousDocumentId;
+        }
+        extraAttrs['renewal_count'] = vehicleMetadata.renewalCount;
+      }
+
       final newDoc = DocumentModel(
         id: docId,
         title: title,
@@ -622,12 +642,14 @@ class DocumentsDataset {
           (c) => c.id == categoryId,
           orElse: () => DemoDataService.getCategories().first,
         ).code,
+        extraAttributes: extraAttrs,
         address: address,
         utilityMetadata: utilityMetadata,
         applianceWarranty: applianceWarranty,
         personalMetadata: personalMetadata,
         vehicleMetadata: vehicleMetadata,
       );
+      DemoDataService.getAllDocuments().insert(0, newDoc);
       return newDoc;
     }
 
@@ -681,6 +703,25 @@ class DocumentsDataset {
       if (applianceWarranty != null) {
         extraAttributes['appliance_items'] =
             applianceWarranty.items.map((i) => i.toJson()).toList();
+      }
+
+      if (vehicleMetadata != null) {
+        if (vehicleMetadata.insuranceType != null) {
+          extraAttributes['insurance_type'] = vehicleMetadata.insuranceType;
+        }
+        if (vehicleMetadata.odExpiryDate != null) {
+          extraAttributes['od_expiry_date'] =
+              vehicleMetadata.odExpiryDate!.toIso8601String().split('T').first;
+        }
+        if (vehicleMetadata.tpExpiryDate != null) {
+          extraAttributes['tp_expiry_date'] =
+              vehicleMetadata.tpExpiryDate!.toIso8601String().split('T').first;
+        }
+        if (vehicleMetadata.previousDocumentId != null) {
+          extraAttributes['previous_document_id'] =
+              vehicleMetadata.previousDocumentId;
+        }
+        extraAttributes['renewal_count'] = vehicleMetadata.renewalCount;
       }
 
       final docData = {

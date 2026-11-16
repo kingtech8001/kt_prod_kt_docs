@@ -2028,7 +2028,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
                       if (picked != null) {
-                        controller.vehicleIssueDate.value = picked;
+                        controller.onVehicleIssueDateChanged(picked);
                       }
                     },
                     child: Container(
@@ -2070,7 +2070,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 Obx(() => Text(
                   controller.isVehiclePassDoc
                       ? 'Pass Expiry Date (Annual/Monthly Renewal)'
-                      : 'Expiry / Renewal Date (For Insurance/PUC/Fitness)',
+                      : (controller.isVehicleInsuranceDoc && controller.isVehicleBundledInsurance.value
+                          ? 'Own Damage (OD) Expiry Date (1-Year Term)'
+                          : 'Expiry / Renewal Date (For Insurance/PUC/Fitness)'),
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 )),
                 const SizedBox(height: 4),
@@ -2136,6 +2138,122 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               ],
             ),
           ),
+
+          // Bundled 3/5-Year Third-Party (TP) Cover Section
+          Obx(() {
+            if (!controller.isVehicleInsuranceDoc) return const SizedBox.shrink();
+            return Container(
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: controller.isVehicleBundledInsurance.value
+                    ? AppColors.primarySurface.withValues(alpha: 0.5)
+                    : AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: controller.isVehicleBundledInsurance.value
+                      ? AppColors.primary.withValues(alpha: 0.4)
+                      : AppColors.border,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    value: controller.isVehicleBundledInsurance.value,
+                    onChanged: (val) => controller.toggleVehicleBundledInsurance(val ?? false),
+                    title: const Text(
+                      '3/5-Year Bundled Third-Party (TP) Cover',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: const Text(
+                      'For new vehicle policies where TP liability remains valid for 3 or 5 years (1-Yr Own Damage + 3/5-Yr Third Party)',
+                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                  if (controller.isVehicleBundledInsurance.value) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text(
+                          'TP Cover Term:',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        ChoiceChip(
+                          label: const Text('3-Year Bundled (Car / 4W)', style: TextStyle(fontSize: 11)),
+                          selected: controller.selectedVehicleBundledYears.value == 3,
+                          onSelected: (selected) {
+                            if (selected) controller.setVehicleBundledYears(3);
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('5-Year Bundled (Two Wheeler / 2W)', style: TextStyle(fontSize: 11)),
+                          selected: controller.selectedVehicleBundledYears.value == 5,
+                          onSelected: (selected) {
+                            if (selected) controller.setVehicleBundledYears(5);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () async {
+                        final initial = controller.vehicleTpExpiryDate.value ??
+                            DateTime.now().add(const Duration(days: 365 * 3));
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: initial,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2045),
+                        );
+                        if (picked != null) {
+                          controller.vehicleTpExpiryDate.value = picked;
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.verified_user_outlined, size: 18, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  controller.vehicleTpExpiryDate.value != null
+                                      ? 'Third-Party (TP) Expiry: ${AppFormatters.formatDate(controller.vehicleTpExpiryDate.value!)}'
+                                      : 'Select Third-Party (TP) Expiry Date',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: controller.vehicleTpExpiryDate.value != null
+                                        ? AppColors.textPrimary
+                                        : AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Icon(Icons.event_busy, size: 16, color: AppColors.textMuted),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
           const SizedBox(height: 12),
           _buildResponsiveRow(
             context: context,

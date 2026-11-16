@@ -319,6 +319,47 @@ class DocumentUploadController extends GetxController {
   final vehiclePassPlazaController = TextEditingController();
   final vehicleFastagIdController = TextEditingController();
 
+  // Vehicle Insurance Bundled TP (3/5 Years) State
+  final isVehicleBundledInsurance = false.obs;
+  final vehicleTpExpiryDate = Rxn<DateTime>();
+  final selectedVehicleBundledYears = 3.obs; // 3 for cars/4W, 5 for 2-wheelers
+
+  bool get isVehicleInsuranceDoc {
+    if (!isVehicleDoc) return false;
+    final name = selectedVehicleDocTypeName.value.toLowerCase();
+    final sub = selectedSubcategory.value.toLowerCase();
+    return name.contains('insurance') || sub.contains('insurance');
+  }
+
+  void toggleVehicleBundledInsurance(bool value) {
+    isVehicleBundledInsurance.value = value;
+    if (value) {
+      final base = vehicleIssueDate.value ?? DateTime.now();
+      if (vehicleTpExpiryDate.value == null) {
+        vehicleTpExpiryDate.value = DateTime(base.year + selectedVehicleBundledYears.value, base.month, base.day);
+      }
+      if (vehicleExpiryDate.value == null && vehicleIssueDate.value != null) {
+        vehicleExpiryDate.value = DateTime(base.year + 1, base.month, base.day);
+      }
+    }
+  }
+
+  void setVehicleBundledYears(int years) {
+    selectedVehicleBundledYears.value = years;
+    final base = vehicleIssueDate.value ?? DateTime.now();
+    vehicleTpExpiryDate.value = DateTime(base.year + years, base.month, base.day);
+  }
+
+  void onVehicleIssueDateChanged(DateTime picked) {
+    vehicleIssueDate.value = picked;
+    if (vehicleExpiryDate.value == null) {
+      vehicleExpiryDate.value = DateTime(picked.year + 1, picked.month, picked.day);
+    }
+    if (isVehicleBundledInsurance.value) {
+      vehicleTpExpiryDate.value = DateTime(picked.year + selectedVehicleBundledYears.value, picked.month, picked.day);
+    }
+  }
+
   bool get isVehiclePassDoc {
     final typeName = selectedVehicleDocTypeName.value.toLowerCase();
     final typeCode = dynamicVehicleDocTypes
@@ -600,6 +641,15 @@ class DocumentUploadController extends GetxController {
     selectedVehicleId.value = vehicle.id;
     selectedVehicleNumber.value = vehicle.vehicleNumber;
     selectedVehicleName.value = vehicle.displayName;
+
+    final isTwoWheeler = vehicle.vehicleType.toLowerCase().contains('two') ||
+        vehicle.vehicleType.toLowerCase().contains('bike') ||
+        vehicle.vehicleType.toLowerCase().contains('scooter');
+    selectedVehicleBundledYears.value = isTwoWheeler ? 5 : 3;
+    if (isVehicleBundledInsurance.value && vehicleIssueDate.value != null) {
+      final base = vehicleIssueDate.value!;
+      vehicleTpExpiryDate.value = DateTime(base.year + selectedVehicleBundledYears.value, base.month, base.day);
+    }
   }
 
   void updateSelectedVehicleDocType(String docTypeName) {
@@ -1346,6 +1396,17 @@ class DocumentUploadController extends GetxController {
           vehicleExpiryDate.value = result.secondaryDate;
           filled++;
         }
+
+        if (result.vehicleFields['isBundled'] == true || result.vehicleFields['tpExpiryDate'] != null) {
+          isVehicleBundledInsurance.value = true;
+          if (result.vehicleFields['tpExpiryDate'] != null) {
+            vehicleTpExpiryDate.value = result.vehicleFields['tpExpiryDate'] as DateTime;
+          }
+          if (result.vehicleFields['bundledYears'] != null) {
+            selectedVehicleBundledYears.value = result.vehicleFields['bundledYears'] as int;
+          }
+          filled++;
+        }
       }
     }
 
@@ -1618,6 +1679,15 @@ class DocumentUploadController extends GetxController {
 
       VehicleDocumentMetadataModel? vehicleMeta;
       if (isVehicleDoc) {
+        final bool isBundled = isVehicleInsuranceDoc && isVehicleBundledInsurance.value;
+        final String? insuranceType = isVehicleInsuranceDoc
+            ? (isBundled
+                ? 'Bundled (1-Yr OD + ${selectedVehicleBundledYears.value}-Yr TP)'
+                : 'Comprehensive')
+            : null;
+        final DateTime? odExpiry = isBundled ? vehicleExpiryDate.value : null;
+        final DateTime? tpExpiry = isBundled ? vehicleTpExpiryDate.value : null;
+
         vehicleMeta = VehicleDocumentMetadataModel(
           vehicleId: selectedVehicleId.value,
           vehicleNumber: selectedVehicleNumber.value.isNotEmpty
@@ -1658,6 +1728,9 @@ class DocumentUploadController extends GetxController {
           fastagId: vehicleFastagIdController.text.trim().isNotEmpty
               ? vehicleFastagIdController.text.trim()
               : null,
+          insuranceType: insuranceType,
+          odExpiryDate: odExpiry,
+          tpExpiryDate: tpExpiry,
         );
       }
 

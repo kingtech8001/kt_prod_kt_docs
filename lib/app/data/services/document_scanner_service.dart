@@ -724,6 +724,45 @@ class DocumentScannerService {
         ? dates[1]
         : issueDate?.add(const Duration(days: 365));
 
+    // Bundled Third-Party (TP) detection (1-Yr OD + 3/5-Yr TP)
+    DateTime? tpExpiryDate;
+    bool isBundledInsurance = false;
+    int bundledYears = 3;
+
+    final isTwoWheeler = lower.contains('two wheeler') ||
+        lower.contains('motorcycle') ||
+        lower.contains('scooter') ||
+        matchedVehicle?.vehicleType.toLowerCase().contains('two') == true;
+    if (isTwoWheeler) bundledYears = 5;
+
+    final isBundledKeyword = lower.contains('bundled') ||
+        lower.contains('1 yr od') ||
+        lower.contains('1-yr od') ||
+        lower.contains('1 year od') ||
+        lower.contains('3 yr tp') ||
+        lower.contains('3-yr tp') ||
+        lower.contains('3 year tp') ||
+        lower.contains('5 yr tp') ||
+        lower.contains('5-yr tp') ||
+        lower.contains('5 year tp');
+
+    final tpMatch = RegExp(
+      r'(?:TP Expiry|Third Party.*?Valid (?:Upto|To)|TP Validity.*?To|Liability.*?Valid (?:Upto|To)|Third Party Liability.*?To)[:\s]*(\d{1,2}[-\/\.][A-Za-z0-9]+[-\/\.]\d{4})',
+      caseSensitive: false,
+    ).firstMatch(fullText);
+    if (tpMatch != null) {
+      final raw = tpMatch.group(1);
+      if (raw != null) {
+        tpExpiryDate = _tryParseDateString(raw);
+        isBundledInsurance = true;
+      }
+    } else if (isBundledKeyword) {
+      isBundledInsurance = true;
+      if (issueDate != null) {
+        tpExpiryDate = DateTime(issueDate.year + bundledYears, issueDate.month, issueDate.day);
+      }
+    }
+
     final docTitle = vehicleNumber != null
         ? '$subcategory - $vehicleNumber'
         : subcategory;
@@ -750,6 +789,9 @@ class DocumentScannerService {
         'premiumAmount': premiumAmount,
         'issueDate': issueDate,
         'expiryDate': expiryDate,
+        'isBundled': isBundledInsurance,
+        'tpExpiryDate': tpExpiryDate,
+        'bundledYears': bundledYears,
       },
       rawText: rawText,
     );

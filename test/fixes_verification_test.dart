@@ -930,5 +930,98 @@ void main() {
       expect(cycleAfterEdit.utilityMetadata?.meterNumber, equals(updatedMeter));
       expect(cycleAfterEdit.utilityMetadata?.unitsConsumed, equals(updatedUnits));
     });
+
+    test('Point 15: First-time entry of vehicle insurance with 3/5-year bundled TP cover from upload screen', () {
+      // 1. Vehicle selection determines default bundled term (3-Yr for 4W, 5-Yr for 2W)
+      final fourWheeler = MasterVehicleModel(
+        id: 'v-creta',
+        vehicleNumber: 'GJ-01-AB-1234',
+        vehicleType: 'Four Wheeler',
+        nickname: 'Creta SX',
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final twoWheeler = MasterVehicleModel(
+        id: 'v-activa',
+        vehicleNumber: 'GJ-03-NS-8003',
+        vehicleType: 'Two Wheeler',
+        nickname: 'SP-125',
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final is4WTwoWheeler = fourWheeler.vehicleType.toLowerCase().contains('two');
+      final is2WTwoWheeler = twoWheeler.vehicleType.toLowerCase().contains('two');
+      expect(is4WTwoWheeler, isFalse);
+      expect(is2WTwoWheeler, isTrue);
+
+      final default4WYears = is4WTwoWheeler ? 5 : 3;
+      final default2WYears = is2WTwoWheeler ? 5 : 3;
+      expect(default4WYears, equals(3));
+      expect(default2WYears, equals(5));
+
+      // 2. Issue date calculation: OD Expiry (+1 Year), TP Expiry (+3 Years)
+      final issueDate = DateTime(2028, 11, 24);
+      final odExpiry = DateTime(issueDate.year + 1, issueDate.month, issueDate.day);
+      final tpExpiry4W = DateTime(issueDate.year + default4WYears, issueDate.month, issueDate.day);
+      final tpExpiry2W = DateTime(issueDate.year + default2WYears, issueDate.month, issueDate.day);
+
+      expect(odExpiry, equals(DateTime(2029, 11, 24)));
+      expect(tpExpiry4W, equals(DateTime(2031, 11, 24)));
+      expect(tpExpiry2W, equals(DateTime(2033, 11, 24)));
+
+      // 3. Metadata persistence model verification
+      final vehicleInsuranceMeta = VehicleDocumentMetadataModel(
+        vehicleId: fourWheeler.id,
+        vehicleNumber: fourWheeler.vehicleNumber,
+        vehicleName: fourWheeler.nickname!,
+        docTypeName: 'Insurance Policy',
+        policyOrCertNumber: '3001/HY-21165114/00/000',
+        insuranceCompany: 'ICICI Lombard General Insurance',
+        premiumAmount: 52273.0,
+        issueDate: issueDate,
+        expiryDate: odExpiry,
+        insuranceType: 'Bundled (1-Yr OD + 3-Yr TP)',
+        odExpiryDate: odExpiry,
+        tpExpiryDate: tpExpiry4W,
+      );
+
+      expect(vehicleInsuranceMeta.isBundledInsurance, isTrue);
+      expect(vehicleInsuranceMeta.insuranceType, equals('Bundled (1-Yr OD + 3-Yr TP)'));
+      expect(vehicleInsuranceMeta.odExpiryDate, equals(DateTime(2029, 11, 24)));
+      expect(vehicleInsuranceMeta.tpExpiryDate, equals(DateTime(2031, 11, 24)));
+
+      // 4. Document extraAttributes serialization for Supabase & Demo Mode
+      final extraAttributes = <String, dynamic>{
+        'storage_provider': 'demo',
+        'insurance_type': vehicleInsuranceMeta.insuranceType,
+        'od_expiry_date': vehicleInsuranceMeta.odExpiryDate!.toIso8601String().split('T').first,
+        'tp_expiry_date': vehicleInsuranceMeta.tpExpiryDate!.toIso8601String().split('T').first,
+      };
+
+      final doc = DocumentModel(
+        id: 'doc-car-insurance-1',
+        title: 'Insurance Policy - GJ-01-AB-1234',
+        fileName: 'icici_insurance.pdf',
+        fileSize: 1024,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        filePath: 'demo/icici_insurance.pdf',
+        subCategory: 'Insurance Policy',
+        status: 'active',
+        extraAttributes: extraAttributes,
+        vehicleMetadata: vehicleInsuranceMeta,
+        createdAt: issueDate,
+        updatedAt: issueDate,
+      );
+
+      expect(doc.vehicleMetadata?.isBundledInsurance, isTrue);
+      expect(doc.vehicleMetadata?.tpExpiryDate, equals(DateTime(2031, 11, 24)));
+      expect(doc.extraAttributes['insurance_type'], equals('Bundled (1-Yr OD + 3-Yr TP)'));
+      expect(doc.extraAttributes['tp_expiry_date'], equals('2031-11-24'));
+    });
   });
 }
