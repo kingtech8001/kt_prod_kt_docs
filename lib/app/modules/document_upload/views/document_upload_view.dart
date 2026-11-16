@@ -5,6 +5,7 @@ import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
+import 'package:kt_prod_kt_docs/app/widgets/vault_mini_game.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_dropzone.dart';
 import 'package:kt_prod_kt_docs/app/widgets/web_scaffold.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
@@ -54,6 +55,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                   currentFile: controller.selectedFile.value,
                                 ),
                               ),
+                              _buildScanTriggerCard(context),
                               _buildCompressionCard(context),
                               const SizedBox(height: 20),
                               _buildSecurityBadge(),
@@ -76,6 +78,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             currentFile: controller.selectedFile.value,
                           ),
                         ),
+                        _buildScanTriggerCard(context),
                         _buildCompressionCard(context),
                         const SizedBox(height: 20),
                         _buildFormCard(context),
@@ -204,6 +207,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               ),
             );
           }),
+
+          // Smart Automation & Category Mismatch Banner
+          _buildScanAutomationBanner(context),
 
           // Category Selector
           const Text(
@@ -2272,6 +2278,535 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
         ],
       ),
     );
+  }
+
+  Widget _buildScanTriggerCard(BuildContext context) {
+    return Obx(() {
+      final file = controller.selectedFile.value;
+      if (file == null) return const SizedBox.shrink();
+
+      final isScanning = controller.isScanning.value;
+      final scanResult = controller.scanResult.value;
+      final progress = controller.scanProgress.value;
+      final showGame = controller.showScanMiniGame.value;
+
+      return Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (isScanning)
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: CircularProgressIndicator(
+                          value: progress > 0 ? progress : null,
+                          strokeWidth: 3.5,
+                          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: scanResult != null
+                          ? const Color(0xFFECFDF5)
+                          : AppColors.primarySurface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      scanResult != null
+                          ? Icons.check_circle_rounded
+                          : Icons.document_scanner_rounded,
+                      color: scanResult != null
+                          ? AppColors.success
+                          : AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isScanning
+                            ? 'Scanning in progress (${(progress * 100).toInt()}%)'
+                            : (scanResult != null
+                                ? 'Document Scanned & Extracted'
+                                : 'Document Auto-Scan'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isScanning
+                            ? 'Auto-identifying text, numbers and dates...'
+                            : (scanResult != null
+                                ? 'Key fields auto-filled to form'
+                                : 'Auto-extracts dates, numbers, amounts & types'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (isScanning)
+                  ElevatedButton.icon(
+                    icon: const Text('🎮', style: TextStyle(fontSize: 14)),
+                    label: Text(
+                      showGame ? 'Hide Game' : 'Arcade',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: showGame ? const Color(0xFF475569) : const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 2,
+                    ),
+                    onPressed: () {
+                      if (showGame) {
+                        controller.dismissMiniGame();
+                      } else {
+                        controller.openMiniGame();
+                      }
+                    },
+                  )
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF2563EB),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                        icon: const Text('🎮', style: TextStyle(fontSize: 14)),
+                        label: Text(
+                          showGame ? 'Hide Game' : 'Arcade',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        onPressed: () {
+                          if (showGame) {
+                            controller.dismissMiniGame();
+                          } else {
+                            controller.openMiniGame();
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 16),
+                        label: const Text(
+                          'Re-Scan',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        onPressed: controller.rescanDocument,
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            if (scanResult != null && !isScanning) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      controller.hasMismatch.value
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle_outline_rounded,
+                      size: 16,
+                      color: controller.hasMismatch.value
+                          ? const Color(0xFFD97706)
+                          : AppColors.success,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        controller.hasMismatch.value
+                            ? 'Mismatch: Detected as ${scanResult.detectedCategoryName}'
+                            : 'Detected: ${scanResult.detectedCategoryName} (${scanResult.detectedSubcategory})',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: controller.hasMismatch.value
+                              ? const Color(0xFFB45309)
+                              : AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildScanAutomationBanner(BuildContext context) {
+    return Obx(() {
+      final isScanning = controller.isScanning.value;
+      final showGame = controller.showScanMiniGame.value;
+      final hasMismatch = controller.hasMismatch.value;
+      final isDismissed = controller.isScanDismissed.value;
+      final scanResult = controller.scanResult.value;
+      final fieldsCount = controller.autoFilledFieldsCount.value;
+
+      if (showGame) {
+        return VaultMiniGameWidget(
+          isScanning: controller.isScanning,
+          scanResult: controller.scanResult,
+          autoFilledFieldsCount: controller.autoFilledFieldsCount,
+          onDismiss: controller.dismissMiniGame,
+          onContinueToForm: controller.dismissMiniGame,
+        );
+      }
+
+      if (isScanning) {
+        final progress = controller.scanProgress.value;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.primaryLight.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: CircularProgressIndicator(
+                      value: progress > 0 ? progress : null,
+                      strokeWidth: 3,
+                      color: AppColors.primary,
+                      backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  Text(
+                    '${(progress * 100).toInt()}%',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI Document Scanner Active (${(progress * 100).toInt()}%)',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      controller.scanSummaryText.value.isNotEmpty
+                          ? controller.scanSummaryText.value
+                          : 'Scanning document text and mapping fields...',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                icon: const Text('🎮', style: TextStyle(fontSize: 14)),
+                label: const Text(
+                  'Arcade',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: controller.openMiniGame,
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (isDismissed || scanResult == null) {
+        return const SizedBox.shrink();
+      }
+
+      if (hasMismatch) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBBF24).withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFD97706),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Document Classification Mismatch Detected',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          controller.mismatchMessage.value,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF78350F),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: Color(0xFF92400E),
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Dismiss Notice',
+                    onPressed: controller.dismissScanBanner,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                    label: Text(
+                      'Switch to ${controller.detectedCategoryName.value} & Auto-Fill',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD97706),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: controller.applyDetectedCategoryAndFields,
+                  ),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF92400E),
+                      side: const BorderSide(color: Color(0xFFD97706)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed:
+                        controller.keepSelectedCategoryAndApplyCompatible,
+                    child: Text(
+                      'Keep as ${controller.currentCategory?.name ?? "Selected Category"}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (fieldsCount > 0) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFECFDF5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFA7F3D0)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Color(0xFF059669),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'Document Verified & Auto-Filled',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF065F46),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$fieldsCount fields filled',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      controller.scanSummaryText.value,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF047857),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: Color(0xFF065F46),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Dismiss',
+                onPressed: controller.dismissScanBanner,
+              ),
+            ],
+          ),
+        );
+      }
+
+      return const SizedBox.shrink();
+    });
   }
 
   Widget _buildCompressionCard(BuildContext context) {

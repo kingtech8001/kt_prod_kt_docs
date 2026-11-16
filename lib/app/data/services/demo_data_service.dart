@@ -1330,7 +1330,11 @@ class DemoDataService {
       categoryId: previousDoc.categoryId,
       categoryName: previousDoc.categoryName,
       categoryCode: previousDoc.categoryCode,
-      subCategory: previousDoc.subCategory,
+      subCategory: previousDoc.subCategory.isNotEmpty
+          ? previousDoc.subCategory
+          : (newMetadata.docTypeName.isNotEmpty
+              ? newMetadata.docTypeName
+              : 'Insurance Policy'),
       folderId: previousDoc.folderId,
       folderName: previousDoc.folderName,
       fileName: newFileName,
@@ -1419,7 +1423,11 @@ class DemoDataService {
       categoryId: previousDoc.categoryId,
       categoryName: previousDoc.categoryName,
       categoryCode: previousDoc.categoryCode,
-      subCategory: previousDoc.subCategory,
+      subCategory: previousDoc.subCategory.isNotEmpty
+          ? previousDoc.subCategory
+          : (newMetadata.docTypeName.isNotEmpty
+              ? newMetadata.docTypeName
+              : 'Insurance Policy'),
       folderId: previousDoc.folderId,
       folderName: previousDoc.folderName,
       fileName: newFileName,

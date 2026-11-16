@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/address_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/document_scan_result.dart';
 import 'package:kt_prod_kt_docs/app/data/models/folder_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
@@ -16,6 +17,7 @@ import 'package:kt_prod_kt_docs/app/data/datasets/folder_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/settings_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/vehicle_docs_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
+import 'package:kt_prod_kt_docs/app/data/services/document_scanner_service.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehicle_dialog.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
@@ -169,6 +171,21 @@ class DocumentUploadController extends GetxController {
 
   final targetSizeController = TextEditingController();
   final maxDimensionController = TextEditingController();
+
+  // Document Automation & Intelligent Scan State
+  final isScanning = false.obs;
+  final scanResult = Rxn<DocumentScanResult>();
+  final hasMismatch = false.obs;
+  final mismatchMessage = ''.obs;
+  final detectedCategoryCode = ''.obs;
+  final detectedCategoryName = ''.obs;
+  final detectedSubcategory = ''.obs;
+  final isScanDismissed = false.obs;
+  final autoFilledFieldsCount = 0.obs;
+  final scanSummaryText = ''.obs;
+  final showScanMiniGame = false.obs;
+  final scanProgress = 0.0.obs;
+  Timer? _progressSimulationTimer;
 
   // Dynamic Master Data
   final dynamicCities = <String>[].obs;
@@ -482,6 +499,31 @@ class DocumentUploadController extends GetxController {
     if (cat != null) {
       updateSubcategoriesForCategory(cat.code);
     }
+    _recheckMismatch();
+  }
+
+  void _recheckMismatch() {
+    final result = scanResult.value;
+    if (result == null || isScanDismissed.value) return;
+
+    final currentCatCode = currentCategory?.code ?? '';
+    final detectedCatCode = result.detectedCategoryCode;
+
+    if (detectedCatCode != DocumentScannerService.catGeneral &&
+        currentCatCode.isNotEmpty &&
+        detectedCatCode != currentCatCode) {
+      hasMismatch.value = true;
+      detectedCategoryCode.value = detectedCatCode;
+      detectedCategoryName.value = result.detectedCategoryName;
+      detectedSubcategory.value = result.detectedSubcategory;
+      mismatchMessage.value =
+          "You selected '${currentCategory?.name ?? "General"}', but this document appears to be '${result.detectedCategoryName} (${result.detectedSubcategory})'.";
+    } else {
+      if (hasMismatch.value) {
+        hasMismatch.value = false;
+        applyScanResultToCurrentCategory(result);
+      }
+    }
   }
 
   void onSubcategoryChanged(String? val) {
@@ -532,12 +574,27 @@ class DocumentUploadController extends GetxController {
   }
 
   void updateSelectedVehicleDocType(String docTypeName) {
-    selectedVehicleDocTypeName.value = docTypeName;
+    final clean = docTypeName.toLowerCase().trim();
     final type = dynamicVehicleDocTypes.firstWhereOrNull(
-      (t) => t.name == docTypeName,
+      (t) =>
+          t.name.toLowerCase() == clean ||
+          t.code.toLowerCase() == clean ||
+          clean.contains(t.name.toLowerCase()) ||
+          t.name.toLowerCase().contains(clean) ||
+          (clean.contains('insurance') && t.code == 'insurance') ||
+          (clean.contains('puc') && t.code == 'puc') ||
+          (clean.contains('rc') && t.code == 'rc_book') ||
+          (clean.contains('fastag') && t.code == 'fastag'),
     );
-    selectedVehicleDocTypeId.value = type?.id;
-    selectedSubcategory.value = docTypeName;
+
+    if (type != null) {
+      selectedVehicleDocTypeName.value = type.name;
+      selectedVehicleDocTypeId.value = type.id;
+      selectedSubcategory.value = type.name;
+    } else {
+      selectedVehicleDocTypeName.value = docTypeName;
+      selectedSubcategory.value = docTypeName;
+    }
   }
 
   Future<void> openAddVehicleDialog() async {
@@ -895,6 +952,360 @@ class DocumentUploadController extends GetxController {
     AppLogger.info(
       'UPLOAD_CTRL',
       'ℹ️ [COMPRESS SKIPPED] Defaulted to Original Quality mode; skipping compression API until user selects Compressed.',
+    );
+
+    // Trigger automated document scanning & extraction
+    scanSelectedDocument();
+  }
+
+  Future<void> scanSelectedDocument() async {
+    final file = selectedFile.value;
+    if (file == null || file.bytes == null) {
+      AppLogger.warning('UPLOAD_CTRL', 'Cannot scan document: selectedFile or bytes are null');
+      return;
+    }
+
+    isScanning.value = true;
+    isScanDismissed.value = false;
+    hasMismatch.value = false;
+    mismatchMessage.value = '';
+    autoFilledFieldsCount.value = 0;
+    showScanMiniGame.value = false;
+    scanProgress.value = 0.15;
+    scanSummaryText.value = 'Scanning document and extracting key metadata...';
+
+    // Smoothly advance progress percentage while background scan is processing
+    _progressSimulationTimer?.cancel();
+    _progressSimulationTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!isScanning.value) {
+        timer.cancel();
+      } else if (scanProgress.value < 0.90) {
+        scanProgress.value += 0.05;
+      }
+    });
+
+    try {
+      final result = await DocumentScannerService.scanDocument(
+        bytes: file.bytes!,
+        fileName: file.name,
+        knownCities: dynamicCities,
+        knownPersons: dynamicPersons,
+        knownVehicles: dynamicVehicles,
+      );
+
+      scanProgress.value = 1.0;
+      scanResult.value = result;
+
+      // Check category mismatch
+      final currentCatCode = currentCategory?.code ?? '';
+      final detectedCatCode = result.detectedCategoryCode;
+
+      if (detectedCatCode != DocumentScannerService.catGeneral &&
+          currentCatCode.isNotEmpty &&
+          detectedCatCode != currentCatCode) {
+        // Mismatch detected!
+        hasMismatch.value = true;
+        detectedCategoryCode.value = detectedCatCode;
+        detectedCategoryName.value = result.detectedCategoryName;
+        detectedSubcategory.value = result.detectedSubcategory;
+        mismatchMessage.value =
+            "You selected '${currentCategory?.name ?? "General"}', but this document appears to be '${result.detectedCategoryName} (${result.detectedSubcategory})'.";
+        scanSummaryText.value =
+            "Document detected as ${result.detectedCategoryName}. Please verify category selection.";
+        AppLogger.info(
+          'UPLOAD_CTRL',
+          'Document mismatch: selected=$currentCatCode vs detected=$detectedCatCode',
+        );
+      } else {
+        // Matched or compatible! Auto-fill all fields
+        hasMismatch.value = false;
+        applyScanResultToCurrentCategory(result);
+      }
+
+      try {
+        HapticFeedback.lightImpact();
+      } catch (_) {}
+    } catch (e, st) {
+      AppLogger.error('UPLOAD_CTRL', 'Error during document scan: $e', error: e, stackTrace: st);
+      scanSummaryText.value = 'Could not auto-extract fields from this file.';
+    } finally {
+      _progressSimulationTimer?.cancel();
+      scanProgress.value = 1.0;
+      isScanning.value = false;
+    }
+  }
+
+  void applyDetectedCategoryAndFields() {
+    final result = scanResult.value;
+    if (result == null) return;
+
+    final targetCat = categories.firstWhereOrNull(
+      (c) => c.code == result.detectedCategoryCode,
+    );
+
+    if (targetCat != null) {
+      selectedCategoryId.value = targetCat.id;
+      updateSubcategoriesForCategory(targetCat.code);
+
+      // Also match subcategory if possible
+      if (result.detectedSubcategory.isNotEmpty) {
+        onSubcategoryChanged(result.detectedSubcategory);
+      }
+    }
+
+    hasMismatch.value = false;
+    applyScanResultToCurrentCategory(result);
+  }
+
+  void keepSelectedCategoryAndApplyCompatible() {
+    hasMismatch.value = false;
+    final result = scanResult.value;
+    if (result != null) {
+      applyScanResultToCurrentCategory(result, compatibleOnly: true);
+    }
+  }
+
+  void dismissScanBanner() {
+    isScanDismissed.value = true;
+    hasMismatch.value = false;
+  }
+
+  void dismissMiniGame() {
+    showScanMiniGame.value = false;
+  }
+
+  void openMiniGame() {
+    showScanMiniGame.value = true;
+  }
+
+  Future<void> rescanDocument() async {
+    isScanDismissed.value = false;
+    await scanSelectedDocument();
+  }
+
+  void applyScanResultToCurrentCategory(DocumentScanResult result, {bool compatibleOnly = false}) {
+    int filled = 0;
+
+    // 1. Title
+    if (result.title != null && result.title!.isNotEmpty) {
+      titleController.text = result.title!;
+      filled++;
+    }
+
+    // 2. Document / Invoice / Policy / ID Number
+    if (result.documentNumber != null && result.documentNumber!.isNotEmpty) {
+      documentNumberController.text = result.documentNumber!;
+      filled++;
+    }
+
+    // 3. Address Fields
+    if (result.city != null && result.city!.isNotEmpty) {
+      final matchedCity = dynamicCities.firstWhereOrNull(
+        (c) => c.toLowerCase() == result.city!.toLowerCase(),
+      );
+      if (matchedCity != null) {
+        selectedCity.value = matchedCity;
+        filled++;
+      }
+    }
+
+    if (result.postalCode != null && result.postalCode!.isNotEmpty) {
+      postalCodeController.text = result.postalCode!;
+      filled++;
+    }
+
+    if (result.areaLocality != null && result.areaLocality!.isNotEmpty) {
+      areaLocalityController.text = result.areaLocality!;
+      filled++;
+    }
+
+    // 4. Domain Specific Fields
+    if (!compatibleOnly) {
+      if (isUtilityBill) {
+        if (result.utilityFields['providerName'] != null) {
+          final pName = result.utilityFields['providerName'].toString();
+          final available = availableProvidersForSelectedType;
+          final match = available.firstWhereOrNull(
+            (p) => p.toLowerCase().contains(pName.toLowerCase()) || pName.toLowerCase().contains(p.toLowerCase()),
+          );
+          if (match != null) {
+            onUtilityProviderChanged(match);
+          } else {
+            onUtilityProviderChanged('Other');
+            utilityProviderController.text = pName;
+          }
+          filled++;
+        }
+
+        if (result.utilityFields['consumerNumber'] != null) {
+          consumerNumberController.text = result.utilityFields['consumerNumber'].toString();
+          filled++;
+        }
+
+        if (result.utilityFields['meterNumber'] != null) {
+          meterNumberController.text = result.utilityFields['meterNumber'].toString();
+          filled++;
+        }
+
+        if (result.amount != null && result.amount! > 0) {
+          billAmountController.text = result.amount!.toStringAsFixed(0);
+          filled++;
+        }
+
+        if (result.primaryDate != null) {
+          billDate.value = result.primaryDate!;
+          filled++;
+        }
+
+        if (result.secondaryDate != null) {
+          dueDate.value = result.secondaryDate!;
+          filled++;
+        }
+      } else if (isApplianceWarranty) {
+        if (result.applianceFields['storeVendorName'] != null) {
+          storeVendorNameController.text = result.applianceFields['storeVendorName'].toString();
+          filled++;
+        }
+
+        if (result.documentNumber != null) {
+          invoiceNumberController.text = result.documentNumber!;
+          filled++;
+        }
+
+        if (result.amount != null && result.amount! > 0) {
+          purchaseAmountController.text = result.amount!.toStringAsFixed(0);
+          filled++;
+        }
+
+        if (result.primaryDate != null) {
+          onPurchaseDateChanged(result.primaryDate!);
+          filled++;
+        }
+
+        // Appliance Items
+        if (result.applianceFields['items'] is List &&
+            (result.applianceFields['items'] as List).isNotEmpty &&
+            applianceItems.isNotEmpty) {
+          final item = applianceItems.first;
+          final firstItemData = (result.applianceFields['items'] as List).first as Map<String, dynamic>;
+
+          if (firstItemData['productName'] != null) {
+            item.productNameController.text = firstItemData['productName'].toString();
+            filled++;
+          }
+
+          if (firstItemData['brand'] != null) {
+            final b = firstItemData['brand'].toString();
+            final matchedBrand = dynamicBrands.firstWhereOrNull((x) => x.toLowerCase() == b.toLowerCase());
+            if (matchedBrand != null) {
+              item.selectedBrand.value = matchedBrand;
+            } else {
+              item.selectedBrand.value = 'Other';
+              item.customBrandController.text = b;
+            }
+            filled++;
+          }
+
+          if (firstItemData['modelNumber'] != null) {
+            item.modelNumberController.text = firstItemData['modelNumber'].toString();
+            filled++;
+          }
+
+          if (firstItemData['serialNumber'] != null) {
+            item.serialNumberController.text = firstItemData['serialNumber'].toString();
+            filled++;
+          }
+
+          if (firstItemData['purchaseAmount'] != null) {
+            item.purchaseAmountController.text = (firstItemData['purchaseAmount'] as double).toStringAsFixed(0);
+          }
+        }
+      } else if (isPersonalDoc) {
+        if (result.documentNumber != null) {
+          personalIdNumberController.text = result.documentNumber!;
+          filled++;
+        }
+
+        if (result.personalFields['issuingAuthority'] != null) {
+          personalIssuingAuthorityController.text = result.personalFields['issuingAuthority'].toString();
+          filled++;
+        }
+
+        if (result.primaryDate != null) {
+          personalIssueDate.value = result.primaryDate;
+          filled++;
+        }
+
+        if (result.secondaryDate != null) {
+          personalExpiryDate.value = result.secondaryDate;
+          filled++;
+        }
+
+        if (result.personalFields['personName'] != null) {
+          final pName = result.personalFields['personName'].toString();
+          final matchedPerson = dynamicPersons.firstWhereOrNull(
+            (p) => p.fullName.toLowerCase() == pName.toLowerCase(),
+          );
+          if (matchedPerson != null) {
+            onPersonChanged(matchedPerson.fullName);
+            filled++;
+          }
+        }
+      } else if (isVehicleDoc) {
+        if (result.detectedSubcategory.isNotEmpty) {
+          updateSelectedVehicleDocType(result.detectedSubcategory);
+          filled++;
+        }
+
+        if (result.vehicleFields['vehicleNumber'] != null) {
+          final vNum = result.vehicleFields['vehicleNumber'].toString();
+          final matchedVehicle = dynamicVehicles.firstWhereOrNull(
+            (v) => v.vehicleNumber.replaceAll('-', '').replaceAll(' ', '').toUpperCase() ==
+                vNum.replaceAll('-', '').replaceAll(' ', '').toUpperCase(),
+          );
+          if (matchedVehicle != null) {
+            updateSelectedVehicle(matchedVehicle);
+            filled++;
+          } else {
+            selectedVehicleNumber.value = vNum;
+            selectedVehicleName.value = 'Vehicle ($vNum)';
+            filled++;
+          }
+        }
+
+        if (result.documentNumber != null) {
+          vehiclePolicyOrCertNumberController.text = result.documentNumber!;
+          filled++;
+        }
+
+        if (result.vehicleFields['insuranceCompany'] != null) {
+          vehicleInsuranceCompanyController.text = result.vehicleFields['insuranceCompany'].toString();
+          filled++;
+        }
+
+        if (result.amount != null && result.amount! > 0) {
+          vehiclePremiumAmountController.text = result.amount!.toStringAsFixed(0);
+          filled++;
+        }
+
+        if (result.primaryDate != null) {
+          vehicleIssueDate.value = result.primaryDate;
+          filled++;
+        }
+
+        if (result.secondaryDate != null) {
+          vehicleExpiryDate.value = result.secondaryDate;
+          filled++;
+        }
+      }
+    }
+
+    autoFilledFieldsCount.value = filled;
+    scanSummaryText.value =
+        'Verified as ${result.detectedCategoryName}. Auto-filled $filled fields from document.';
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      'Applied scan results: $filled fields auto-populated for category "${currentCategory?.name}"',
     );
   }
 
@@ -1308,6 +1719,7 @@ class DocumentUploadController extends GetxController {
     vehicleFastagIdController.dispose();
     targetSizeController.dispose();
     maxDimensionController.dispose();
+    _progressSimulationTimer?.cancel();
     super.onClose();
   }
 }

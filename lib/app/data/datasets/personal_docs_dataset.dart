@@ -662,10 +662,22 @@ class PersonalDocsDataset {
         extraAttrs['tpa_name'] = newMetadata.tpaName;
       }
 
+      final resolvedCategoryId = (previousDocument.categoryId != null &&
+              previousDocument.categoryId!.isNotEmpty)
+          ? previousDocument.categoryId!
+          : await _getIdentityDocsCategoryId();
+
+      final resolvedSubCategory = previousDocument.subCategory.isNotEmpty
+          ? previousDocument.subCategory
+          : (newMetadata.docTypeName.isNotEmpty
+              ? newMetadata.docTypeName
+              : 'Personal Document');
+
       final newDocPayload = {
         'title': newTitle,
         'description': newDescription ?? previousDocument.description,
-        'category_id': previousDocument.categoryId,
+        'category_id': resolvedCategoryId,
+        'sub_category': resolvedSubCategory,
         'folder_id': previousDocument.folderId,
         'file_name': fileName,
         'file_path': storagePath,
@@ -675,6 +687,7 @@ class PersonalDocsDataset {
         'document_number':
             newMetadata.idNumber ?? previousDocument.documentNumber,
         'status': 'active',
+        'uploaded_by': _client.auth.currentUser?.id,
         'extra_attributes': extraAttrs,
       };
 
@@ -708,10 +721,10 @@ class PersonalDocsDataset {
         id: newDocId,
         title: newTitle,
         description: newDescription ?? previousDocument.description,
-        categoryId: previousDocument.categoryId,
+        categoryId: resolvedCategoryId,
         categoryName: previousDocument.categoryName,
         categoryCode: previousDocument.categoryCode,
-        subCategory: previousDocument.subCategory,
+        subCategory: resolvedSubCategory,
         folderId: previousDocument.folderId,
         folderName: previousDocument.folderName,
         fileName: fileName,

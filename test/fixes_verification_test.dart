@@ -266,6 +266,8 @@ void main() {
 
       // Verify the new document is active and points to previous document
       expect(renewedDoc.status, equals('active'));
+      expect(renewedDoc.subCategory, isNotEmpty);
+      expect(renewedDoc.subCategory, equals('PUC Certificate'));
       expect(renewedDoc.vehicleMetadata?.previousDocumentId, equals('puc-old'));
       expect(renewedDoc.vehicleMetadata?.renewalCount, equals(1));
 
@@ -409,6 +411,8 @@ void main() {
       // Verify new renewed document attributes & lineage
       expect(renewedDoc.id, isNot(equals(initialPolicy.id)));
       expect(renewedDoc.status, equals('active'));
+      expect(renewedDoc.subCategory, isNotEmpty);
+      expect(renewedDoc.subCategory, equals('Health Insurance / Mediclaim'));
       expect(renewedDoc.personalMetadata?.previousDocumentId, equals('health-policy-1'));
       expect(renewedDoc.personalMetadata?.renewalCount, equals(1));
       expect(renewedDoc.personalMetadata?.personName, equals('Vikram Sarabhai'));
