@@ -35,6 +35,9 @@ class SettingsController extends GetxController {
   final phoneController = TextEditingController();
 
   // Master Data Observables
+  final locations = <MasterLocationModel>[].obs;
+  final isLocationsLoading = false.obs;
+
   final cities = <MasterCityModel>[].obs;
   final isCitiesLoading = false.obs;
 
@@ -57,6 +60,17 @@ class SettingsController extends GetxController {
   final isCategoriesLoading = false.obs;
 
   // Dialog Form Input Controllers
+  final locationNameController = TextEditingController();
+  final locationPremiseNameController = TextEditingController();
+  final locationFlatHouseNoController = TextEditingController();
+  final locationBuildingNameController = TextEditingController();
+  final locationStreetAddressController = TextEditingController();
+  final locationAreaLocalityController = TextEditingController();
+  final locationCityController = TextEditingController(text: 'Rajkot');
+  final locationStateController = TextEditingController(text: 'Gujarat');
+  final locationPostalCodeController = TextEditingController();
+  final locationCountryController = TextEditingController(text: 'India');
+
   final cityNameController = TextEditingController();
   final cityStateController = TextEditingController();
 
@@ -91,6 +105,18 @@ class SettingsController extends GetxController {
       profile.value?.role == 'admin' || profile.value?.role == 'super_admin';
 
   // ================= FILTERED LISTS (SEARCH) =================
+
+  List<MasterLocationModel> get filteredLocations {
+    final query = searchQuery.value.trim().toLowerCase();
+    if (query.isEmpty) return locations;
+    return locations.where((l) {
+      return l.name.toLowerCase().contains(query) ||
+          l.city.toLowerCase().contains(query) ||
+          l.areaLocality.toLowerCase().contains(query) ||
+          (l.postalCode != null && l.postalCode!.toLowerCase().contains(query)) ||
+          l.fullAddress.toLowerCase().contains(query);
+    }).toList();
+  }
 
   List<MasterCityModel> get filteredCities {
     final query = searchQuery.value.trim().toLowerCase();
@@ -183,6 +209,7 @@ class SettingsController extends GetxController {
 
   Future<void> loadAllMasterData() async {
     await Future.wait([
+      loadLocations(),
       loadCities(),
       loadBrands(),
       loadApplianceSubcategories(),
@@ -205,6 +232,394 @@ class SettingsController extends GetxController {
   void switchTab(int index) {
     selectedTabIndex.value = index;
     clearSearch();
+  }
+
+  // ================= LOCATIONS & PREMISES =================
+
+  Future<void> loadLocations() async {
+    isLocationsLoading.value = true;
+    try {
+      final list = await _dataset.getLocations(activeOnly: false);
+      locations.assignAll(list);
+    } catch (e, st) {
+      AppLogger.error('SETTINGS_CTRL', 'Error loading locations: $e', error: e, stackTrace: st);
+    } finally {
+      isLocationsLoading.value = false;
+    }
+  }
+
+  void openAddLocationDialog() {
+    locationNameController.clear();
+    locationPremiseNameController.clear();
+    locationFlatHouseNoController.clear();
+    locationBuildingNameController.clear();
+    locationStreetAddressController.clear();
+    locationAreaLocalityController.clear();
+    locationCityController.text = 'Rajkot';
+    locationStateController.text = 'Gujarat';
+    locationPostalCodeController.clear();
+    locationCountryController.text = 'India';
+    dialogErrorMessage.value = '';
+    isSubmitting.value = false;
+
+    _showLocationDialog(
+      title: 'Add Location & Premises',
+      icon: Icons.store_mall_directory_rounded,
+      confirmButtonText: 'Save Location',
+      onConfirm: () async {
+        final name = locationNameController.text.trim();
+        final city = locationCityController.text.trim();
+        final areaLocality = locationAreaLocalityController.text.trim();
+        final pincode = locationPostalCodeController.text.trim();
+        final state = locationStateController.text.trim().isNotEmpty
+            ? locationStateController.text.trim()
+            : 'Gujarat';
+        final country = locationCountryController.text.trim().isNotEmpty
+            ? locationCountryController.text.trim()
+            : 'India';
+
+        if (name.isEmpty) {
+          dialogErrorMessage.value = 'Location / Premise name is required.';
+          return;
+        }
+        if (city.isEmpty) {
+          dialogErrorMessage.value = 'City is required.';
+          return;
+        }
+
+        isSubmitting.value = true;
+        dialogErrorMessage.value = '';
+        try {
+          await _dataset.addLocation(
+            name: name,
+            premiseName: locationPremiseNameController.text.trim().isNotEmpty
+                ? locationPremiseNameController.text.trim()
+                : null,
+            flatHouseNo: locationFlatHouseNoController.text.trim().isNotEmpty
+                ? locationFlatHouseNoController.text.trim()
+                : null,
+            buildingName: locationBuildingNameController.text.trim().isNotEmpty
+                ? locationBuildingNameController.text.trim()
+                : null,
+            streetAddress: locationStreetAddressController.text.trim().isNotEmpty
+                ? locationStreetAddressController.text.trim()
+                : null,
+            areaLocality: areaLocality.isNotEmpty ? areaLocality : name,
+            city: city,
+            state: state,
+            postalCode: pincode.isNotEmpty ? pincode : null,
+            country: country,
+            displayOrder: locations.length + 1,
+          );
+          Get.back();
+          AppSnackbar.showSuccess('Location Saved', 'Location "$name" saved successfully with full address.');
+          loadLocations();
+        } catch (e) {
+          dialogErrorMessage.value = 'Failed to save location: $e';
+        } finally {
+          isSubmitting.value = false;
+        }
+      },
+    );
+  }
+
+  void openEditLocationDialog(MasterLocationModel location) {
+    locationNameController.text = location.name;
+    locationPremiseNameController.text = location.premiseName ?? '';
+    locationFlatHouseNoController.text = location.flatHouseNo ?? '';
+    locationBuildingNameController.text = location.buildingName ?? '';
+    locationStreetAddressController.text = location.streetAddress ?? '';
+    locationAreaLocalityController.text = location.areaLocality;
+    locationCityController.text = location.city;
+    locationStateController.text = location.state;
+    locationPostalCodeController.text = location.postalCode ?? '';
+    locationCountryController.text = location.country;
+    dialogErrorMessage.value = '';
+    isSubmitting.value = false;
+
+    _showLocationDialog(
+      title: 'Edit Location & Premises',
+      icon: Icons.edit_location_alt_rounded,
+      confirmButtonText: 'Update Location',
+      onConfirm: () async {
+        final name = locationNameController.text.trim();
+        final city = locationCityController.text.trim();
+        final areaLocality = locationAreaLocalityController.text.trim();
+        final pincode = locationPostalCodeController.text.trim();
+        final state = locationStateController.text.trim().isNotEmpty
+            ? locationStateController.text.trim()
+            : 'Gujarat';
+        final country = locationCountryController.text.trim().isNotEmpty
+            ? locationCountryController.text.trim()
+            : 'India';
+
+        if (name.isEmpty) {
+          dialogErrorMessage.value = 'Location / Premise name is required.';
+          return;
+        }
+        if (city.isEmpty) {
+          dialogErrorMessage.value = 'City is required.';
+          return;
+        }
+
+        isSubmitting.value = true;
+        dialogErrorMessage.value = '';
+        try {
+          await _dataset.updateLocation(
+            id: location.id,
+            name: name,
+            premiseName: locationPremiseNameController.text.trim().isNotEmpty
+                ? locationPremiseNameController.text.trim()
+                : null,
+            flatHouseNo: locationFlatHouseNoController.text.trim().isNotEmpty
+                ? locationFlatHouseNoController.text.trim()
+                : null,
+            buildingName: locationBuildingNameController.text.trim().isNotEmpty
+                ? locationBuildingNameController.text.trim()
+                : null,
+            streetAddress: locationStreetAddressController.text.trim().isNotEmpty
+                ? locationStreetAddressController.text.trim()
+                : null,
+            areaLocality: areaLocality.isNotEmpty ? areaLocality : name,
+            city: city,
+            state: state,
+            postalCode: pincode.isNotEmpty ? pincode : null,
+            country: country,
+            isActive: location.isActive,
+            displayOrder: location.displayOrder,
+          );
+          Get.back();
+          AppSnackbar.showSuccess('Location Updated', 'Location "$name" updated successfully.');
+          loadLocations();
+        } catch (e) {
+          dialogErrorMessage.value = 'Failed to update location: $e';
+        } finally {
+          isSubmitting.value = false;
+        }
+      },
+    );
+  }
+
+  void _showLocationDialog({
+    required String title,
+    required IconData icon,
+    required String confirmButtonText,
+    required Future<void> Function() onConfirm,
+  }) {
+    AppDialog.show(
+      _buildDialogContainer(
+        title: title,
+        icon: icon,
+        maxWidth: 540,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Location / Premise Name *',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: locationNameController,
+                decoration: const InputDecoration(hintText: 'e.g. RK Iconic Office 1118, Corporate HQ, Home'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Flat / Office / Unit No',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: locationFlatHouseNoController,
+                          decoration: const InputDecoration(hintText: 'e.g. B-1118, Unit 42'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Building / Tower / Complex',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: locationBuildingNameController,
+                          decoration: const InputDecoration(hintText: 'e.g. RK Iconic, Corporate Heights'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Street Address / Road',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: locationStreetAddressController,
+                decoration: const InputDecoration(hintText: 'e.g. 150 Feet Ring Road, Main Road'),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Area / Locality',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: locationAreaLocalityController,
+                decoration: const InputDecoration(hintText: 'e.g. Sheetal Park, Nana Mava, Bodakdev'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'City *',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: locationCityController,
+                          decoration: const InputDecoration(hintText: 'e.g. Rajkot, Ahmedabad'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Pincode *',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: locationPostalCodeController,
+                          decoration: const InputDecoration(hintText: 'e.g. 360005, 380015'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'State',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: locationStateController,
+                          decoration: const InputDecoration(hintText: 'e.g. Gujarat, Maharashtra'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Country',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: locationCountryController,
+                          decoration: const InputDecoration(hintText: 'e.g. India'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        onConfirm: onConfirm,
+        confirmButtonText: confirmButtonText,
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  Future<void> toggleLocationActive(MasterLocationModel location) async {
+    try {
+      await _dataset.updateLocation(
+        id: location.id,
+        name: location.name,
+        premiseName: location.premiseName,
+        flatHouseNo: location.flatHouseNo,
+        buildingName: location.buildingName,
+        streetAddress: location.streetAddress,
+        areaLocality: location.areaLocality,
+        city: location.city,
+        state: location.state,
+        postalCode: location.postalCode,
+        country: location.country,
+        isActive: !location.isActive,
+        displayOrder: location.displayOrder,
+      );
+      loadLocations();
+    } catch (e) {
+      AppSnackbar.showError('Update Failed', 'Failed to update location status.');
+    }
+  }
+
+  void confirmDeleteLocation(MasterLocationModel location) {
+    AppDialog.show(
+      _buildDialogContainer(
+        title: 'Delete Location',
+        icon: Icons.delete_outline_rounded,
+        content: Text(
+          'Are you sure you want to permanently delete location "${location.name}" (${location.city})? Any existing bills linked to this address will retain their recorded address details.',
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
+        confirmButtonText: 'Delete Location',
+        onConfirm: () async {
+          isSubmitting.value = true;
+          try {
+            await _dataset.deleteLocation(location.id);
+            Get.back();
+            AppSnackbar.showSuccess('Deleted', 'Location removed successfully.');
+            loadLocations();
+          } catch (e) {
+            dialogErrorMessage.value = 'Failed to delete: $e';
+          } finally {
+            isSubmitting.value = false;
+          }
+        },
+      ),
+      barrierDismissible: false,
+    );
   }
 
   // ================= CITIES =================

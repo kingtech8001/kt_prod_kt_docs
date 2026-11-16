@@ -90,6 +90,141 @@ class SettingsDataset {
 
   // ================= CITIES & LOCATIONS =================
 
+  /// Fetches list of master locations & premises with full address details.
+  Future<List<MasterLocationModel>> getLocations({bool activeOnly = false}) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getLocations();
+    }
+    AppLogger.debug('SETTINGS_DATASET', 'Fetching locations (activeOnly: $activeOnly)');
+    try {
+      var query = _client.from('master_locations').select();
+      if (activeOnly) {
+        query = query.eq('is_active', true);
+      }
+      final response = await query
+          .order('display_order', ascending: true)
+          .order('name', ascending: true);
+      final list = (response as List)
+          .map((json) => MasterLocationModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return list;
+    } catch (e, st) {
+      AppLogger.error('SETTINGS_DATASET', 'Error fetching locations: $e', error: e, stackTrace: st);
+      return [];
+    }
+  }
+
+  /// Adds a new master location record with full address (city, pincode, country).
+  Future<MasterLocationModel> addLocation({
+    required String name,
+    String? premiseName,
+    String? flatHouseNo,
+    String? buildingName,
+    String? streetAddress,
+    required String areaLocality,
+    required String city,
+    String state = 'Gujarat',
+    String? postalCode,
+    String country = 'India',
+    int displayOrder = 0,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      final loc = MasterLocationModel(
+        id: 'loc-demo-${DateTime.now().millisecondsSinceEpoch}',
+        name: name,
+        premiseName: premiseName,
+        flatHouseNo: flatHouseNo,
+        buildingName: buildingName,
+        streetAddress: streetAddress,
+        areaLocality: areaLocality,
+        city: city,
+        state: state,
+        postalCode: postalCode,
+        country: country,
+        isActive: true,
+        displayOrder: displayOrder,
+      );
+      DemoDataService.getLocations().add(loc);
+      return loc;
+    }
+    AppLogger.debug('SETTINGS_DATASET', 'Adding location: $name, $city');
+    try {
+      final response = await _client
+          .from('master_locations')
+          .insert({
+            'name': name,
+            'premise_name': premiseName,
+            'flat_house_no': flatHouseNo,
+            'building_name': buildingName,
+            'street_address': streetAddress,
+            'area_locality': areaLocality,
+            'city': city,
+            'state': state,
+            'postal_code': postalCode,
+            'country': country,
+            'is_active': true,
+            'display_order': displayOrder,
+          })
+          .select()
+          .single();
+      return MasterLocationModel.fromJson(response);
+    } catch (e, st) {
+      AppLogger.error('SETTINGS_DATASET', 'Error adding location: $e', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
+  /// Updates an existing master location record.
+  Future<void> updateLocation({
+    required String id,
+    required String name,
+    String? premiseName,
+    String? flatHouseNo,
+    String? buildingName,
+    String? streetAddress,
+    required String areaLocality,
+    required String city,
+    required String state,
+    String? postalCode,
+    required String country,
+    required bool isActive,
+    int displayOrder = 0,
+  }) async {
+    if (DemoDataService.isDemoMode) return;
+    AppLogger.debug('SETTINGS_DATASET', 'Updating location: $id');
+    try {
+      await _client.from('master_locations').update({
+        'name': name,
+        'premise_name': premiseName,
+        'flat_house_no': flatHouseNo,
+        'building_name': buildingName,
+        'street_address': streetAddress,
+        'area_locality': areaLocality,
+        'city': city,
+        'state': state,
+        'postal_code': postalCode,
+        'country': country,
+        'is_active': isActive,
+        'display_order': displayOrder,
+      }).eq('id', id);
+    } catch (e, st) {
+      AppLogger.error('SETTINGS_DATASET', 'Error updating location: $e', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
+  /// Deletes a master location record.
+  Future<void> deleteLocation(String id) async {
+    if (DemoDataService.isDemoMode) return;
+    AppLogger.debug('SETTINGS_DATASET', 'Deleting location: $id');
+    try {
+      await _client.from('master_locations').delete().eq('id', id);
+    } catch (e, st) {
+      AppLogger.error('SETTINGS_DATASET', 'Error deleting location: $e', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
   /// Fetches list of cities.
   Future<List<MasterCityModel>> getCities({bool activeOnly = false}) async {
     if (DemoDataService.isDemoMode) {

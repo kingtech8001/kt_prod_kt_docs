@@ -107,6 +107,57 @@ class DemoDataService {
     ];
   }
 
+  // --- Master Locations & Premises ---
+  static final List<MasterLocationModel> _demoLocations = [
+    MasterLocationModel(
+      id: 'loc-1',
+      name: 'RK Iconic Office 1118',
+      premiseName: 'RK Iconic, B-1118',
+      flatHouseNo: 'B-1118',
+      buildingName: 'RK Iconic',
+      streetAddress: '150 Feet Ring Road',
+      areaLocality: 'Sheetal Park / Raiya Road',
+      city: 'Rajkot',
+      state: 'Gujarat',
+      postalCode: '360005',
+      country: 'India',
+      isActive: true,
+      displayOrder: 1,
+    ),
+    MasterLocationModel(
+      id: 'loc-2',
+      name: 'Corporate Head Office',
+      premiseName: 'King Technology HQ',
+      flatHouseNo: '4th Floor',
+      buildingName: 'Corporate Heights',
+      streetAddress: 'Main Road',
+      areaLocality: 'Nana Mava',
+      city: 'Rajkot',
+      state: 'Gujarat',
+      postalCode: '360001',
+      country: 'India',
+      isActive: true,
+      displayOrder: 2,
+    ),
+    MasterLocationModel(
+      id: 'loc-3',
+      name: 'Jalgaon Branch Office',
+      premiseName: 'Jalgaon Office',
+      flatHouseNo: 'Unit 12',
+      buildingName: 'Commercial Plaza',
+      streetAddress: 'Station Road',
+      areaLocality: 'City Center',
+      city: 'Jalgaon',
+      state: 'Maharashtra',
+      postalCode: '425001',
+      country: 'India',
+      isActive: true,
+      displayOrder: 3,
+    ),
+  ];
+
+  static List<MasterLocationModel> getLocations() => _demoLocations;
+
   // --- Master Cities ---
   static List<MasterCityModel> getCities() {
     return [

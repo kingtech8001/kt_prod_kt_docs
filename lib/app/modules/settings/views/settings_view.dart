@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/modules/settings/controllers/settings_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
@@ -43,13 +44,14 @@ class SettingsView extends GetView<SettingsController> {
                   const SizedBox(height: AppConstants.paddingLarge),
 
                   // 2. Tab Content Section
-                  if (selectedTab == 0) _buildCitiesTab(context),
-                  if (selectedTab == 1) _buildBrandsTab(context),
-                  if (selectedTab == 2) _buildApplianceCategoriesTab(context),
-                  if (selectedTab == 3) _buildUtilityProvidersTab(context),
-                  if (selectedTab == 4) _buildPersonsTab(context),
-                  if (selectedTab == 5) _buildPersonalDocTypesTab(context),
-                  if (selectedTab == 6) _buildDocCategoriesTab(context),
+                  if (selectedTab == 0) _buildLocationsTab(context),
+                  if (selectedTab == 1) _buildCitiesTab(context),
+                  if (selectedTab == 2) _buildBrandsTab(context),
+                  if (selectedTab == 3) _buildApplianceCategoriesTab(context),
+                  if (selectedTab == 4) _buildUtilityProvidersTab(context),
+                  if (selectedTab == 5) _buildPersonsTab(context),
+                  if (selectedTab == 6) _buildPersonalDocTypesTab(context),
+                  if (selectedTab == 7) _buildDocCategoriesTab(context),
                 ],
               ),
             ),
@@ -96,19 +98,21 @@ class SettingsView extends GetView<SettingsController> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Row(
                 children: [
-                  _buildTabButton(0, 'Cities & Locations', Icons.location_city),
+                  _buildTabButton(0, 'Locations & Premises', Icons.store_mall_directory_outlined),
                   const SizedBox(width: 8),
-                  _buildTabButton(1, 'Appliance Brands', Icons.branding_watermark_outlined),
+                  _buildTabButton(1, 'Cities', Icons.location_city),
                   const SizedBox(width: 8),
-                  _buildTabButton(2, 'Appliance Categories', Icons.kitchen_outlined),
+                  _buildTabButton(2, 'Appliance Brands', Icons.branding_watermark_outlined),
                   const SizedBox(width: 8),
-                  _buildTabButton(3, 'Utility Providers', Icons.bolt_outlined),
+                  _buildTabButton(3, 'Appliance Categories', Icons.kitchen_outlined),
                   const SizedBox(width: 8),
-                  _buildTabButton(4, 'Persons & Members', Icons.people_alt_outlined),
+                  _buildTabButton(4, 'Utility Providers', Icons.bolt_outlined),
                   const SizedBox(width: 8),
-                  _buildTabButton(5, 'Personal Doc Types', Icons.badge_outlined),
+                  _buildTabButton(5, 'Persons & Members', Icons.people_alt_outlined),
                   const SizedBox(width: 8),
-                  _buildTabButton(6, 'Document Categories', Icons.folder_outlined),
+                  _buildTabButton(6, 'Personal Doc Types', Icons.badge_outlined),
+                  const SizedBox(width: 8),
+                  _buildTabButton(7, 'Document Categories', Icons.folder_outlined),
                 ],
               ),
             ),
@@ -179,7 +183,149 @@ class SettingsView extends GetView<SettingsController> {
     });
   }
 
-  // ================= TAB 0: CITIES & LOCATIONS =================
+  // ================= TAB 0: LOCATIONS & PREMISES =================
+  Widget _buildLocationsTab(BuildContext context) {
+    return Obx(() {
+      final list = controller.filteredLocations;
+      return _buildConfigSection(
+        context: context,
+        title: 'Master Locations & Premises (Full Address)',
+        subtitle:
+            'Store full premises addresses with Flat/Unit, Building, Street, Area, City, Pincode, and Country. Mandatory for utility bills.',
+        onAdd: controller.openAddLocationDialog,
+        addButtonText: 'Add New Location',
+        isLoading: controller.isLocationsLoading.value,
+        itemCount: list.length,
+        itemBuilder: (ctx, index) {
+          final loc = list[index];
+          return _buildLocationItemTile(loc);
+        },
+      );
+    });
+  }
+
+  Widget _buildLocationItemTile(MasterLocationModel loc) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: loc.isActive ? AppColors.primarySurface : AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+        ),
+        child: Icon(
+          Icons.store_mall_directory_rounded,
+          color: loc.isActive ? AppColors.primary : AppColors.textMuted,
+          size: 20,
+        ),
+      ),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              loc.name,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: loc.isActive ? AppColors.textPrimary : AppColors.textMuted,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: loc.isActive
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : AppColors.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              loc.isActive ? 'ACTIVE' : 'INACTIVE',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: loc.isActive ? AppColors.success : AppColors.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              loc.fullAddress,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                _buildAddressBadge('City', loc.city),
+                if (loc.postalCode != null && loc.postalCode!.isNotEmpty)
+                  _buildAddressBadge('Pincode', loc.postalCode!),
+                _buildAddressBadge('State', loc.state),
+                _buildAddressBadge('Country', loc.country),
+              ],
+            ),
+          ],
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            tooltip: 'Edit Location',
+            color: AppColors.textSecondary,
+            onPressed: () => controller.openEditLocationDialog(loc),
+          ),
+          Switch(
+            value: loc.isActive,
+            onChanged: (v) => controller.toggleLocationActive(loc),
+            activeThumbColor: AppColors.success,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18),
+            tooltip: 'Delete Location',
+            color: AppColors.error,
+            onPressed: () => controller.confirmDeleteLocation(loc),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressBadge(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  // ================= TAB 1: CITIES =================
   Widget _buildCitiesTab(BuildContext context) {
     return Obx(() {
       final list = controller.filteredCities;

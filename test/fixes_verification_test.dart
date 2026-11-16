@@ -604,5 +604,80 @@ void main() {
       expect(gasAccount.isPaid, isTrue);
       expect(gasAccount.latestBillAmount, equals(890.0));
     });
+
+    test('Point 12: Mandatory Utility Location & Settings Full Address Integration', () {
+      // 1. Create a MasterLocationModel with full address attributes
+      final rkLocation = MasterLocationModel(
+        id: 'loc-rk-iconic-1118',
+        name: 'RK Iconic Office 1118',
+        premiseName: 'RK Iconic, B-1118',
+        flatHouseNo: 'B-1118',
+        buildingName: 'RK Iconic',
+        streetAddress: '150 Feet Ring Road',
+        areaLocality: 'Sheetal Park / Raiya Road',
+        city: 'Rajkot',
+        state: 'Gujarat',
+        postalCode: '360005',
+        country: 'India',
+        isActive: true,
+        displayOrder: 1,
+      );
+
+      // Verify fullAddress formats nicely with city, pincode, state, and country
+      expect(
+        rkLocation.fullAddress,
+        equals('B-1118, RK Iconic, 150 Feet Ring Road, Sheetal Park / Raiya Road, Rajkot - 360005, Gujarat, India'),
+      );
+
+      // Verify concise summary format
+      expect(
+        rkLocation.summary,
+        equals('RK Iconic Office 1118 (Rajkot - 360005, India)'),
+      );
+
+      // 2. AddressModel derived from selected location
+      final docAddress = AddressModel(
+        premiseName: rkLocation.premiseName ?? rkLocation.name,
+        flatHouseNo: rkLocation.flatHouseNo,
+        buildingName: rkLocation.buildingName,
+        streetAddress: rkLocation.streetAddress,
+        areaLocality: rkLocation.areaLocality,
+        city: rkLocation.city,
+        state: rkLocation.state,
+        postalCode: rkLocation.postalCode,
+        country: rkLocation.country,
+      );
+
+      expect(docAddress.premiseName, equals('RK Iconic, B-1118'));
+      expect(docAddress.city, equals('Rajkot'));
+      expect(docAddress.postalCode, equals('360005'));
+      expect(docAddress.country, equals('India'));
+      expect(docAddress.formattedAddress, contains('Rajkot'));
+      expect(docAddress.formattedAddress, contains('360005'));
+
+      // 3. Validation Logic: Location is mandatory for utility bills
+      bool validateUtilityUpload({
+        required bool isUtilityBill,
+        MasterLocationModel? selectedLocation,
+        String? manualPremise,
+        String? manualLocality,
+      }) {
+        if (!isUtilityBill) return true;
+        final hasLocation = selectedLocation != null;
+        final hasManual = (manualPremise != null && manualPremise.trim().isNotEmpty) ||
+            (manualLocality != null && manualLocality.trim().isNotEmpty);
+        return hasLocation || hasManual;
+      }
+
+      // Without location or manual premise -> Fails validation
+      expect(validateUtilityUpload(isUtilityBill: true), isFalse);
+      expect(validateUtilityUpload(isUtilityBill: true, manualPremise: '   '), isFalse);
+
+      // With selected location -> Passes validation
+      expect(validateUtilityUpload(isUtilityBill: true, selectedLocation: rkLocation), isTrue);
+
+      // Non-utility bills don't mandate premises
+      expect(validateUtilityUpload(isUtilityBill: false), isTrue);
+    });
   });
 }

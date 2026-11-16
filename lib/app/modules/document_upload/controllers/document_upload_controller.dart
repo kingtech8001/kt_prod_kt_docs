@@ -206,14 +206,38 @@ class DocumentUploadController extends GetxController {
   final selectedSubcategory = ''.obs;
   final selectedFolderId = RxnString();
 
-  // Address Fields
+  // Address & Location Fields
+  final dynamicLocations = <MasterLocationModel>[].obs;
+  final selectedLocationId = RxnString();
+  final selectedLocation = Rxn<MasterLocationModel>();
   final premiseNameController = TextEditingController();
   final flatHouseNoController = TextEditingController();
   final buildingNameController = TextEditingController();
+  final streetAddressController = TextEditingController();
   final areaLocalityController = TextEditingController();
   final selectedCity = 'Ahmedabad'.obs;
   final stateController = TextEditingController(text: 'Gujarat');
   final postalCodeController = TextEditingController();
+
+  void onLocationSelected(String? locationId) {
+    selectedLocationId.value = locationId;
+    if (locationId == null || locationId.isEmpty) {
+      selectedLocation.value = null;
+      return;
+    }
+    final loc = dynamicLocations.firstWhereOrNull((l) => l.id == locationId);
+    selectedLocation.value = loc;
+    if (loc != null) {
+      selectedCity.value = loc.city;
+      areaLocalityController.text = loc.areaLocality;
+      premiseNameController.text = loc.premiseName ?? loc.name;
+      flatHouseNoController.text = loc.flatHouseNo ?? '';
+      buildingNameController.text = loc.buildingName ?? '';
+      streetAddressController.text = loc.streetAddress ?? '';
+      stateController.text = loc.state;
+      postalCodeController.text = loc.postalCode ?? '';
+    }
+  }
 
   // Utility Bill Specific Fields
   final dynamicUtilityProviders = <MasterUtilityProviderModel>[].obs;
@@ -377,6 +401,11 @@ class DocumentUploadController extends GetxController {
 
   Future<void> loadMasterData() async {
     try {
+      final lList = await _settingsDataset.getLocations(activeOnly: true);
+      if (lList.isNotEmpty) {
+        dynamicLocations.assignAll(lList);
+      }
+
       final cList = await _settingsDataset.getCities(activeOnly: true);
       if (cList.isNotEmpty) {
         dynamicCities.assignAll(cList.map((c) => c.name));
@@ -1407,6 +1436,18 @@ class DocumentUploadController extends GetxController {
       }
     }
 
+    // Location is strictly mandatory for utility bills
+    if (isUtilityBill) {
+      final hasSelectedLoc = selectedLocation.value != null;
+      final hasManualLoc = areaLocalityController.text.trim().isNotEmpty ||
+          premiseNameController.text.trim().isNotEmpty;
+      if (!hasSelectedLoc && !hasManualLoc) {
+        formErrorMessage.value =
+            'Location & Premises is mandatory for utility bills. Please select a saved location from settings.';
+        return;
+      }
+    }
+
     isSubmitting.value = true;
     AppLogger.info(
       'UPLOAD_CTRL',
@@ -1420,27 +1461,40 @@ class DocumentUploadController extends GetxController {
       AddressModel? address;
       if (showCityFilter &&
           (selectedCity.value.isNotEmpty ||
-              areaLocalityController.text.isNotEmpty)) {
+              areaLocalityController.text.isNotEmpty ||
+              selectedLocation.value != null)) {
+        final loc = selectedLocation.value;
         address = AddressModel(
-          premiseName: premiseNameController.text.trim().isNotEmpty
-              ? premiseNameController.text.trim()
-              : null,
-          flatHouseNo: flatHouseNoController.text.trim().isNotEmpty
-              ? flatHouseNoController.text.trim()
-              : null,
-          buildingName: buildingNameController.text.trim().isNotEmpty
-              ? buildingNameController.text.trim()
-              : null,
-          areaLocality: areaLocalityController.text.trim().isNotEmpty
-              ? areaLocalityController.text.trim()
-              : 'General',
-          city: selectedCity.value,
-          state: stateController.text.trim().isNotEmpty
-              ? stateController.text.trim()
-              : 'Gujarat',
-          postalCode: postalCodeController.text.trim().isNotEmpty
-              ? postalCodeController.text.trim()
-              : null,
+          premiseName: loc?.premiseName ??
+              (premiseNameController.text.trim().isNotEmpty
+                  ? premiseNameController.text.trim()
+                  : (loc?.name)),
+          flatHouseNo: loc?.flatHouseNo ??
+              (flatHouseNoController.text.trim().isNotEmpty
+                  ? flatHouseNoController.text.trim()
+                  : null),
+          buildingName: loc?.buildingName ??
+              (buildingNameController.text.trim().isNotEmpty
+                  ? buildingNameController.text.trim()
+                  : null),
+          streetAddress: loc?.streetAddress ??
+              (streetAddressController.text.trim().isNotEmpty
+                  ? streetAddressController.text.trim()
+                  : null),
+          areaLocality: loc?.areaLocality ??
+              (areaLocalityController.text.trim().isNotEmpty
+                  ? areaLocalityController.text.trim()
+                  : (loc?.name ?? 'General')),
+          city: loc?.city ?? selectedCity.value,
+          state: loc?.state ??
+              (stateController.text.trim().isNotEmpty
+                  ? stateController.text.trim()
+                  : 'Gujarat'),
+          postalCode: loc?.postalCode ??
+              (postalCodeController.text.trim().isNotEmpty
+                  ? postalCodeController.text.trim()
+                  : null),
+          country: loc?.country ?? 'India',
         );
       }
 
@@ -1712,6 +1766,7 @@ class DocumentUploadController extends GetxController {
     premiseNameController.dispose();
     flatHouseNoController.dispose();
     buildingNameController.dispose();
+    streetAddressController.dispose();
     areaLocalityController.dispose();
     stateController.dispose();
     postalCodeController.dispose();

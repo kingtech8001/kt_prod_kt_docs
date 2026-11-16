@@ -2179,109 +2179,343 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
   }
 
   Widget _buildAddressSection(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.location_on_outlined,
-                color: AppColors.primary,
-                size: 20,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Location & Address Information (For City Filtering)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
+    return Obx(() {
+      final isUtility = controller.isUtilityBill;
+      final hasLocationSelected = controller.selectedLocation.value != null;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isUtility && !hasLocationSelected
+                ? AppColors.utilityAmber.withValues(alpha: 0.7)
+                : AppColors.border,
+            width: isUtility && !hasLocationSelected ? 1.5 : 1.0,
           ),
-          const SizedBox(height: 12),
-          _buildResponsiveRow(
-            context: context,
-            firstFlex: 2,
-            secondFlex: 3,
-            first: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                const Text(
-                  'City *',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                Icon(
+                  Icons.location_on_outlined,
+                  color: isUtility ? AppColors.utilityAmber : AppColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isUtility
+                        ? 'Location & Premises (Mandatory for Utility Bills)'
+                        : 'Location & Address Information (For City Filtering)',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Obx(
-                  () => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
+                if (isUtility)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: controller.selectedCity.value,
-                        items:
-                            (controller.dynamicCities.isNotEmpty
-                                    ? controller.dynamicCities
-                                    : AppConstants.supportedCities
-                                          .where((c) => c != 'All Cities')
-                                          .toList())
-                                .map(
-                                  (city) => DropdownMenuItem(
-                                    value: city,
-                                    child: Text(city),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            controller.selectedCity.value = val;
-                          }
-                        },
+                    decoration: BoxDecoration(
+                      color: AppColors.utilityAmber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: AppColors.utilityAmber.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: const Text(
+                      'MANDATORY',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.utilityAmber,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
-                ),
               ],
             ),
-            second: Column(
+            const SizedBox(height: 12),
+
+            // 1. Saved Location Selector from Settings
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Area / Locality / Premises',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isUtility
+                          ? 'Select Saved Location / Premises *'
+                          : 'Select Saved Location / Premises (Optional)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isUtility && !hasLocationSelected
+                            ? AppColors.error
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Get.toNamed(AppRoutes.SETTINGS),
+                      borderRadius: BorderRadius.circular(4),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.settings_outlined,
+                              size: 13,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Manage in Settings',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                TextField(
-                  controller: controller.areaLocalityController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. SG Highway, Bodakdev, Corporate HQ',
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isUtility && !hasLocationSelected
+                          ? AppColors.utilityAmber
+                          : AppColors.border,
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: controller.selectedLocationId.value,
+                      hint: const Text(
+                        'Choose location (e.g. RK Iconic Office 1118, Corporate HQ)...',
+                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text(
+                            '-- None / Manual Address Entry --',
+                            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                          ),
+                        ),
+                        ...controller.dynamicLocations.map(
+                          (loc) => DropdownMenuItem<String>(
+                            value: loc.id,
+                            child: Text(
+                              loc.summary,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) => controller.onLocationSelected(val),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
+
+            // 2. Full Address Confirmation Spotlight Card when location is selected
+            if (hasLocationSelected) ...[
+              Builder(
+                builder: (context) {
+                  final loc = controller.selectedLocation.value!;
+                  return Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.success,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                loc.name,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Text(
+                                '${loc.city} • ${loc.postalCode ?? "No PIN"}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Full Address: ${loc.fullAddress}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              'City: ${loc.city} • Pincode: ${loc.postalCode ?? "N/A"} • Country: ${loc.country}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const Spacer(),
+                            InkWell(
+                              onTap: () => controller.onLocationSelected(null),
+                              child: const Text(
+                                'Change / Manual',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ] else ...[
+              // 3. Fallback / Manual City and Locality fields
+              const SizedBox(height: 14),
+              _buildResponsiveRow(
+                context: context,
+                firstFlex: 2,
+                secondFlex: 3,
+                first: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'City *',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: controller.selectedCity.value,
+                          items: (controller.dynamicCities.isNotEmpty
+                                  ? controller.dynamicCities
+                                  : AppConstants.supportedCities
+                                      .where((c) => c != 'All Cities')
+                                      .toList())
+                              .map(
+                                (city) => DropdownMenuItem(
+                                  value: city,
+                                  child: Text(city),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              controller.selectedCity.value = val;
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                second: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isUtility
+                          ? 'Premises / Area Locality *'
+                          : 'Area / Locality / Premises',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: controller.areaLocalityController,
+                      decoration: InputDecoration(
+                        hintText: isUtility
+                            ? 'e.g. RK Iconic Office 1118, Sheetal Park'
+                            : 'e.g. SG Highway, Bodakdev, Corporate HQ',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildScanTriggerCard(BuildContext context) {
