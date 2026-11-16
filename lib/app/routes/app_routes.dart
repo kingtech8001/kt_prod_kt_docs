@@ -9,9 +9,12 @@ class AppRoutes {
   static const String DASHBOARD = '/dashboard';
   static const String DOCUMENTS = '/documents';
   static const String UTILITY_BILLS = '/utility-bills';
+  static const String UTILITY_ACCOUNT_DETAIL = '/utility-bills/account';
   static const String APPLIANCES = '/appliances';
   static const String PERSONAL_DOCS = '/personal-docs';
+  static const String PERSONAL_DOC_DETAIL = '/personal-docs/detail';
   static const String VEHICLE_DOCS = '/vehicle-docs';
+  static const String VEHICLE_DETAIL = '/vehicle-docs/detail';
   static const String UPLOAD = '/upload';
   static const String DOCUMENT_DETAIL = '/document/:id';
   static const String FOLDERS = '/folders';

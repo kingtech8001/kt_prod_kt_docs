@@ -141,6 +141,7 @@ class PersonalDocumentMetadataModel {
   final String? documentId;
   final String? personId;
   final String personName;
+  final String? relationship;
   final String? docTypeId;
   final String docTypeName;
   final String? idNumber;
@@ -163,6 +164,7 @@ class PersonalDocumentMetadataModel {
     this.documentId,
     this.personId,
     required this.personName,
+    this.relationship,
     this.docTypeId,
     required this.docTypeName,
     this.idNumber,
@@ -180,6 +182,8 @@ class PersonalDocumentMetadataModel {
     this.createdAt,
     this.updatedAt,
   });
+
+  String? get policyNumber => idNumber;
 
   bool get isExpired {
     if (expiryDate == null) return false;
@@ -241,6 +245,7 @@ class PersonalDocumentMetadataModel {
       documentId: json['document_id'] as String?,
       personId: json['person_id'] as String?,
       personName: json['person_name'] as String? ?? 'Unknown Person',
+      relationship: json['relationship'] as String?,
       docTypeId: json['doc_type_id'] as String?,
       docTypeName: json['doc_type_name'] as String? ?? 'Identity Document',
       idNumber: json['id_number'] as String?,
@@ -304,6 +309,7 @@ class PersonalDocumentMetadataModel {
     String? documentId,
     String? personId,
     String? personName,
+    String? relationship,
     String? docTypeId,
     String docTypeName = '',
     String? idNumber,
@@ -326,6 +332,7 @@ class PersonalDocumentMetadataModel {
       documentId: documentId ?? this.documentId,
       personId: personId ?? this.personId,
       personName: personName ?? this.personName,
+      relationship: relationship ?? this.relationship,
       docTypeId: docTypeId ?? this.docTypeId,
       docTypeName: docTypeName.isNotEmpty ? docTypeName : this.docTypeName,
       idNumber: idNumber ?? this.idNumber,

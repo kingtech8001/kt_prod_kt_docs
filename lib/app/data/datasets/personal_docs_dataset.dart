@@ -439,6 +439,93 @@ class PersonalDocsDataset {
     }
   }
 
+  /// Updates personal document metadata and title/description.
+  Future<void> updatePersonalDocumentMetadata({
+    required String documentId,
+    required String title,
+    String? description,
+    required String personName,
+    String? relationship,
+    required String docTypeName,
+    String? idNumber,
+    String? issuingAuthority,
+    DateTime? issueDate,
+    DateTime? expiryDate,
+    String? insuranceCompany,
+    String? policyType,
+    double? sumInsured,
+    double? premiumAmount,
+    String? tpaName,
+    String? notes,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      final all = DemoDataService.getAllDocuments();
+      final index = all.indexWhere((d) => d.id == documentId);
+      if (index != -1) {
+        final doc = all[index];
+        final oldMeta = doc.personalMetadata;
+        final newMeta = PersonalDocumentMetadataModel(
+          id: oldMeta?.id,
+          documentId: documentId,
+          personName: personName,
+          docTypeName: docTypeName,
+          idNumber: idNumber,
+          issuingAuthority: issuingAuthority,
+          issueDate: issueDate,
+          expiryDate: expiryDate,
+          insuranceCompany: insuranceCompany,
+          policyType: policyType,
+          sumInsured: sumInsured,
+          premiumAmount: premiumAmount,
+          tpaName: tpaName,
+          notes: notes,
+          previousDocumentId: oldMeta?.previousDocumentId,
+          renewalCount: oldMeta?.renewalCount ?? 0,
+        );
+        all[index] = doc.copyWith(
+          title: title,
+          description: description,
+          subCategory: docTypeName,
+          personalMetadata: newMeta,
+        );
+      }
+      return;
+    }
+
+    AppLogger.debug('PERSONAL_DOCS_DATASET', 'Updating personal doc metadata: $documentId');
+    try {
+      await _client.from('documents').update({
+        'title': title,
+        'description': description,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', documentId);
+
+      await _client.from('personal_document_metadata').update({
+        'person_name': personName,
+        'relationship': relationship,
+        'doc_type_name': docTypeName,
+        'id_number': idNumber,
+        'issuing_authority': issuingAuthority,
+        'issue_date': issueDate?.toIso8601String(),
+        'expiry_date': expiryDate?.toIso8601String(),
+        'insurance_company': insuranceCompany,
+        'policy_type': policyType,
+        'sum_insured': sumInsured,
+        'premium_amount': premiumAmount,
+        'tpa_name': tpaName,
+        'notes': notes,
+      }).eq('document_id', documentId);
+    } catch (e, st) {
+      AppLogger.error(
+        'PERSONAL_DOCS_DATASET',
+        'Error updating personal doc metadata: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
   /// Generates a signed preview URL for viewing or downloading.
   Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {

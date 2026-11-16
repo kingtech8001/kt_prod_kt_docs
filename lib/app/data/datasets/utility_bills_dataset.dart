@@ -365,6 +365,134 @@ class UtilityBillsDataset {
     }
   }
 
+  /// Updates account / connection details across all bills belonging to this consumer number,
+  /// including premise name, provider, meter number, and full physical address.
+  Future<void> updateConnectionAccountDetails({
+    required String oldConsumerNumber,
+    required String newConsumerNumber,
+    String? meterNumber,
+    required String providerName,
+    required String utilityType,
+    String? premiseName,
+    String? flatHouseNo,
+    String? buildingName,
+    String? streetAddress,
+    required String areaLocality,
+    required String city,
+    String state = 'Gujarat',
+    String? postalCode,
+    String country = 'India',
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      final all = DemoDataService.getAllDocuments();
+      for (int i = 0; i < all.length; i++) {
+        final doc = all[i];
+        if (doc.utilityMetadata?.consumerNumber == oldConsumerNumber) {
+          final oldMeta = doc.utilityMetadata!;
+          final newMeta = UtilityMetadataModel(
+            id: oldMeta.id,
+            documentId: oldMeta.documentId,
+            utilityType: utilityType,
+            providerName: providerName,
+            consumerNumber: newConsumerNumber,
+            meterNumber: meterNumber,
+            billDate: oldMeta.billDate,
+            dueDate: oldMeta.dueDate,
+            billingPeriodStart: oldMeta.billingPeriodStart,
+            billingPeriodEnd: oldMeta.billingPeriodEnd,
+            billAmount: oldMeta.billAmount,
+            paymentStatus: oldMeta.paymentStatus,
+            paymentDate: oldMeta.paymentDate,
+            paymentReferenceId: oldMeta.paymentReferenceId,
+            unitsConsumed: oldMeta.unitsConsumed,
+          );
+          final newAddress = AddressModel(
+            id: doc.address?.id,
+            documentId: doc.id,
+            premiseName: premiseName,
+            flatHouseNo: flatHouseNo,
+            buildingName: buildingName,
+            streetAddress: streetAddress,
+            areaLocality: areaLocality,
+            city: city,
+            state: state,
+            postalCode: postalCode,
+            country: country,
+          );
+          all[i] = doc.copyWith(
+            subCategory: utilityType,
+            utilityMetadata: newMeta,
+            address: newAddress,
+          );
+        }
+      }
+      return;
+    }
+
+    AppLogger.debug(
+      'UTILITY_DATASET',
+      'Updating connection account: $oldConsumerNumber -> $newConsumerNumber',
+    );
+    try {
+      // 1. Update utility_metadata for all bills of this consumer
+      await _client
+          .from('utility_metadata')
+          .update({
+            'consumer_number': newConsumerNumber,
+            'meter_number': meterNumber,
+            'provider_name': providerName,
+            'utility_type': utilityType,
+          })
+          .eq('consumer_number', oldConsumerNumber);
+
+      // 2. Fetch the document IDs for this consumer
+      final docIdRows = await _client
+          .from('utility_metadata')
+          .select('document_id')
+          .eq('consumer_number', newConsumerNumber);
+
+      final docIds = (docIdRows as List)
+          .map((r) => r['document_id'] as String)
+          .toList();
+
+      if (docIds.isNotEmpty) {
+        // 3. Update addresses
+        await _client
+            .from('document_addresses')
+            .update({
+              'premise_name': premiseName,
+              'flat_house_no': flatHouseNo,
+              'building_name': buildingName,
+              'street_address': streetAddress,
+              'area_locality': areaLocality,
+              'city': city,
+              'state': state,
+              'postal_code': postalCode,
+              'country': country,
+            })
+            .inFilter('document_id', docIds);
+
+        // 4. Update documents subcategory
+        await _client
+            .from('documents')
+            .update({
+              'sub_category': utilityType,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .inFilter('id', docIds);
+      }
+      AppLogger.info('UTILITY_DATASET', 'Connection account details updated successfully.');
+    } catch (e, st) {
+      AppLogger.error(
+        'UTILITY_DATASET',
+        'Error updating connection account: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
   /// Soft deletes a document (moves to trash) and writes an audit log.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {

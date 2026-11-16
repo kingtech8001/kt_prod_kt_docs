@@ -316,72 +316,96 @@ class VehicleDocsView extends GetView<VehicleDocsController> {
             builder: (context, constraints) {
               final isNarrow = constraints.maxWidth < 650;
 
-              final identityWidget = Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border:
-                          Border.all(color: AppColors.primary, width: 1.5),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.directions_car,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          vehicle.vehicleNumber,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                            color: AppColors.textPrimary,
+              final identityWidget = InkWell(
+                onTap: () async {
+                  await Get.toNamed(
+                    AppRoutes.VEHICLE_DETAIL,
+                    arguments: vehicle,
+                  );
+                  controller.loadMasterData();
+                  controller.loadVehicleDocuments(resetPage: true);
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border:
+                            Border.all(color: AppColors.primary, width: 1.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.directions_car,
+                            color: AppColors.primary,
+                            size: 18,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          vehicle.nickname ??
-                              vehicle.modelName ??
-                              'Registered Vehicle',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                          const SizedBox(width: 6),
+                          Text(
+                            vehicle.vehicleNumber,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${vehicle.vehicleType} • ${vehicle.brandMake ?? ""} ${vehicle.modelName ?? ""} • Fuel: ${vehicle.fuelType ?? "Petrol"}'
-                          '${vehicle.ownerName != null ? " • Owner: ${vehicle.ownerName}" : ""}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  vehicle.nickname ??
+                                      vehicle.modelName ??
+                                      'Registered Vehicle',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.open_in_new_rounded,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${vehicle.vehicleType} • ${vehicle.brandMake ?? ""} ${vehicle.modelName ?? ""} • Fuel: ${vehicle.fuelType ?? "Petrol"}'
+                            '${vehicle.ownerName != null ? " • Owner: ${vehicle.ownerName}" : ""}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               );
 
               final actionsWidget = Wrap(
@@ -389,6 +413,26 @@ class VehicleDocsView extends GetView<VehicleDocsController> {
                 runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await Get.toNamed(
+                        AppRoutes.VEHICLE_DETAIL,
+                        arguments: vehicle,
+                      );
+                      controller.loadMasterData();
+                      controller.loadVehicleDocuments(resetPage: true);
+                    },
+                    icon: const Icon(Icons.info_outline_rounded, size: 15),
+                    label: const Text('Details & History'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
                   if (controller.canEdit)
                     OutlinedButton.icon(
                       onPressed: () =>
@@ -1609,37 +1653,50 @@ class _VehicleDocumentCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Vehicle Plate Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.3),
+                    InkWell(
+                      onTap: () {
+                        final v = controller.masterVehicles.firstWhereOrNull(
+                          (m) =>
+                              m.vehicleNumber.toUpperCase() ==
+                              (meta?.vehicleNumber ?? '').toUpperCase(),
+                        );
+                        if (v != null) {
+                          Get.toNamed(AppRoutes.VEHICLE_DETAIL, arguments: v);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.directions_car,
-                            size: 13,
-                            color: AppColors.primary,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            meta?.vehicleNumber ?? 'VEHICLE',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.directions_car,
+                              size: 13,
                               color: AppColors.primary,
-                              letterSpacing: 0.5,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              meta?.vehicleNumber ?? 'VEHICLE',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 

@@ -18,9 +18,13 @@ import 'package:kt_prod_kt_docs/app/modules/favorites/views/favorites_view.dart'
 import 'package:kt_prod_kt_docs/app/modules/folders/bindings/folders_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/folders/views/folders_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/personal_docs/bindings/personal_docs_binding.dart';
+import 'package:kt_prod_kt_docs/app/modules/personal_docs/bindings/personal_doc_detail_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/personal_docs/views/personal_docs_view.dart';
+import 'package:kt_prod_kt_docs/app/modules/personal_docs/views/personal_doc_detail_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/bindings/vehicle_docs_binding.dart';
+import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/bindings/vehicle_detail_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/vehicle_docs_view.dart';
+import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/vehicle_detail_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/profile/bindings/profile_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/profile/views/profile_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/settings/bindings/settings_binding.dart';
@@ -30,7 +34,9 @@ import 'package:kt_prod_kt_docs/app/modules/trash/views/trash_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/users/bindings/users_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/users/views/users_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/bindings/utility_bills_binding.dart';
+import 'package:kt_prod_kt_docs/app/modules/utility_bills/bindings/utility_connection_detail_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/utility_bills_view.dart';
+import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/utility_connection_detail_view.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/routes/auth_middleware.dart';
 
@@ -76,6 +82,12 @@ class AppPages {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
+      name: AppRoutes.UTILITY_ACCOUNT_DETAIL,
+      page: () => const UtilityConnectionDetailView(),
+      binding: UtilityConnectionDetailBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
       name: AppRoutes.APPLIANCES,
       page: () => const ApplianceVaultView(),
       binding: ApplianceVaultBinding(),
@@ -88,9 +100,21 @@ class AppPages {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
+      name: AppRoutes.PERSONAL_DOC_DETAIL,
+      page: () => const PersonalDocDetailView(),
+      binding: PersonalDocDetailBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
       name: AppRoutes.VEHICLE_DOCS,
       page: () => const VehicleDocsView(),
       binding: VehicleDocsBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.VEHICLE_DETAIL,
+      page: () => const VehicleDetailView(),
+      binding: VehicleDetailBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

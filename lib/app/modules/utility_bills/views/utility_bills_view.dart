@@ -859,40 +859,51 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          connection.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.textPrimary,
+                  InkWell(
+                    onTap: () async {
+                      await Get.toNamed(
+                        AppRoutes.UTILITY_ACCOUNT_DETAIL,
+                        arguments: connection,
+                      );
+                      controller.loadUtilityBills(isReset: true);
+                    },
+                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            connection.displayName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: AppColors.primary,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceMuted,
-                          borderRadius: BorderRadius.circular(
-                            AppConstants.radiusSmall,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
                           ),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Text(
-                          '${connection.totalCyclesCount} ${connection.totalCyclesCount == 1 ? "cycle" : "cycles"}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceMuted,
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.radiusSmall,
+                            ),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            '${connection.totalCyclesCount} ${connection.totalCyclesCount == 1 ? "cycle" : "cycles"}',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1102,48 +1113,58 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
         // 2. Connection & Premise Info
         Expanded(
           flex: 3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      connection.displayName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(
-                        AppConstants.radiusSmall,
-                      ),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(
-                      '${connection.totalCyclesCount} ${connection.totalCyclesCount == 1 ? "cycle" : "cycles"}',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
+          child: InkWell(
+            onTap: () async {
+              await Get.toNamed(
+                AppRoutes.UTILITY_ACCOUNT_DETAIL,
+                arguments: connection,
+              );
+              controller.loadUtilityBills(isReset: true);
+            },
+            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        connection.displayName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusSmall,
+                        ),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Text(
+                        '${connection.totalCyclesCount} ${connection.totalCyclesCount == 1 ? "cycle" : "cycles"}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 3),
               Text(
                 '${connection.providerName} • Consumer #: ${connection.consumerNumber}${connection.meterNumber != null && connection.meterNumber!.isNotEmpty ? " • Meter: ${connection.meterNumber}" : ""}',
@@ -1178,6 +1199,7 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
             ],
           ),
         ),
+      ),
 
         // 3. Latest Cycle Spotlight
         Expanded(

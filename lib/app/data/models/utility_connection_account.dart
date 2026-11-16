@@ -12,7 +12,13 @@ class UtilityConnectionAccount {
   final String utilityType;
   final String? premiseName;
   final String? flatHouseNo;
+  final String? buildingName;
+  final String? streetAddress;
+  final String? areaLocality;
   final String? city;
+  final String? postalCode;
+  final String state;
+  final String country;
   final DocumentModel latestBill;
   final List<DocumentModel> historicalBills; // All bills for this connection, sorted newest first
 
@@ -24,7 +30,13 @@ class UtilityConnectionAccount {
     required this.utilityType,
     this.premiseName,
     this.flatHouseNo,
+    this.buildingName,
+    this.streetAddress,
+    this.areaLocality,
     this.city,
+    this.postalCode,
+    this.state = 'Gujarat',
+    this.country = 'India',
     required this.latestBill,
     required this.historicalBills,
   });
@@ -53,6 +65,33 @@ class UtilityConnectionAccount {
       return title;
     }
     return '$providerName ($consumerNumber)';
+  }
+
+  /// Formatted full physical address of the premises
+  String get fullAddress {
+    final parts = <String>[];
+    if (flatHouseNo != null && flatHouseNo!.trim().isNotEmpty) {
+      parts.add(flatHouseNo!.trim());
+    }
+    if (buildingName != null && buildingName!.trim().isNotEmpty) {
+      parts.add(buildingName!.trim());
+    }
+    if (streetAddress != null && streetAddress!.trim().isNotEmpty) {
+      parts.add(streetAddress!.trim());
+    }
+    if (areaLocality != null && areaLocality!.trim().isNotEmpty) {
+      parts.add(areaLocality!.trim());
+    }
+    if (city != null && city!.trim().isNotEmpty) {
+      if (postalCode != null && postalCode!.trim().isNotEmpty) {
+        parts.add('${city!.trim()} - ${postalCode!.trim()}');
+      } else {
+        parts.add(city!.trim());
+      }
+    }
+    if (state.trim().isNotEmpty) parts.add(state.trim());
+    if (country.trim().isNotEmpty) parts.add(country.trim());
+    return parts.isNotEmpty ? parts.join(', ') : (city ?? 'Rajkot, Gujarat, India');
   }
 
   /// Icon representing the utility category
@@ -128,10 +167,16 @@ class UtilityConnectionAccount {
       final latest = groupDocs.first;
       final meta = latest.utilityMetadata!;
 
-      // Find the best premise_name and flat_house_no among all bills in this group
+      // Find the best address details among all bills in this group
       String? bestPremise;
       String? bestFlat;
+      String? bestBuilding;
+      String? bestStreet;
+      String? bestArea;
       String? bestCity;
+      String? bestPostal;
+      String bestState = 'Gujarat';
+      String bestCountry = 'India';
       String? bestMeter;
 
       for (final d in groupDocs) {
@@ -141,8 +186,26 @@ class UtilityConnectionAccount {
         if (bestFlat == null && d.address?.flatHouseNo != null && d.address!.flatHouseNo!.trim().isNotEmpty) {
           bestFlat = d.address!.flatHouseNo!.trim();
         }
+        if (bestBuilding == null && d.address?.buildingName != null && d.address!.buildingName!.trim().isNotEmpty) {
+          bestBuilding = d.address!.buildingName!.trim();
+        }
+        if (bestStreet == null && d.address?.streetAddress != null && d.address!.streetAddress!.trim().isNotEmpty) {
+          bestStreet = d.address!.streetAddress!.trim();
+        }
+        if (bestArea == null && d.address?.areaLocality != null && d.address!.areaLocality.trim().isNotEmpty) {
+          bestArea = d.address!.areaLocality.trim();
+        }
         if (bestCity == null && d.address?.city != null && d.address!.city.trim().isNotEmpty) {
           bestCity = d.address!.city.trim();
+        }
+        if (bestPostal == null && d.address?.postalCode != null && d.address!.postalCode!.trim().isNotEmpty) {
+          bestPostal = d.address!.postalCode!.trim();
+        }
+        if (d.address?.state != null && d.address!.state.trim().isNotEmpty) {
+          bestState = d.address!.state.trim();
+        }
+        if (d.address?.country != null && d.address!.country.trim().isNotEmpty) {
+          bestCountry = d.address!.country.trim();
         }
         if (bestMeter == null && d.utilityMetadata?.meterNumber != null && d.utilityMetadata!.meterNumber!.trim().isNotEmpty) {
           bestMeter = d.utilityMetadata!.meterNumber!.trim();
@@ -158,7 +221,13 @@ class UtilityConnectionAccount {
           utilityType: meta.utilityType,
           premiseName: bestPremise,
           flatHouseNo: bestFlat,
+          buildingName: bestBuilding,
+          streetAddress: bestStreet,
+          areaLocality: bestArea,
           city: bestCity ?? latest.address?.city,
+          postalCode: bestPostal ?? latest.address?.postalCode,
+          state: bestState,
+          country: bestCountry,
           latestBill: latest,
           historicalBills: groupDocs,
         ),

@@ -545,37 +545,48 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            if (doc.isGoogleAttachment) ...[
-                              const GoogleDriveLogo(size: 14),
-                              const SizedBox(width: 4),
-                            ],
-                            Expanded(
-                              child: Text(
-                                meta?.personName ?? 'General',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  color: AppColors.textPrimary,
+                    child: InkWell(
+                      onTap: () async {
+                        await Get.toNamed(
+                          AppRoutes.PERSONAL_DOC_DETAIL,
+                          arguments: doc,
+                        );
+                        controller.loadPersonalDocuments(resetPage: true);
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              if (doc.isGoogleAttachment) ...[
+                                const GoogleDriveLogo(size: 14),
+                                const SizedBox(width: 4),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  meta?.personName ?? 'General',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: AppColors.primary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          meta?.docTypeName ?? doc.subCategory,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
+                            ],
                           ),
-                        ),
-                      ],
+                          Text(
+                            meta?.docTypeName ?? doc.subCategory,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   IconButton(
@@ -611,14 +622,23 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                               const SizedBox(width: 5),
                             ],
                             Expanded(
-                              child: Text(
-                                doc.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                              child: InkWell(
+                                onTap: () async {
+                                  await Get.toNamed(
+                                    AppRoutes.PERSONAL_DOC_DETAIL,
+                                    arguments: doc,
+                                  );
+                                  controller.loadPersonalDocuments(resetPage: true);
+                                },
+                                child: Text(
+                                  doc.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (doc.isGoogleAttachment) ...[
@@ -797,41 +817,53 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      if (doc.isGoogleAttachment) ...[
-                        const GoogleDriveLogo(size: 16),
-                        const SizedBox(width: 6),
-                      ],
-                      Expanded(
-                        child: Text(
-                          doc.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+              child: InkWell(
+                onTap: () async {
+                  await Get.toNamed(
+                    AppRoutes.PERSONAL_DOC_DETAIL,
+                    arguments: doc,
+                  );
+                  controller.loadPersonalDocuments(resetPage: true);
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (doc.isGoogleAttachment) ...[
+                          const GoogleDriveLogo(size: 16),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(
+                            doc.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: AppColors.primary,
+                              decoration: TextDecoration.underline,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      if (doc.isGoogleAttachment) ...[
-                        const SizedBox(width: 6),
-                        const GoogleDriveBadge(compact: true),
+                        if (doc.isGoogleAttachment) ...[
+                          const SizedBox(width: 6),
+                          const GoogleDriveBadge(compact: true),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${meta?.personName ?? "Unknown"} • ${meta?.docTypeName ?? doc.subCategory}${meta?.idNumber != null ? " • ID: ${meta!.idNumber}" : ""}${insCompany != null && insCompany.isNotEmpty ? " • $insCompany" : ""}${sumInsured != null ? " • ₹${AppFormatters.formatCurrency(sumInsured)}" : ""} • ${AppFormatters.formatFileSize(doc.fileSize)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      '${meta?.personName ?? "Unknown"} • ${meta?.docTypeName ?? doc.subCategory}${meta?.idNumber != null ? " • ID: ${meta!.idNumber}" : ""}${insCompany != null && insCompany.isNotEmpty ? " • $insCompany" : ""}${sumInsured != null ? " • ₹${AppFormatters.formatCurrency(sumInsured)}" : ""} • ${AppFormatters.formatFileSize(doc.fileSize)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             if (meta?.expiryDate != null)

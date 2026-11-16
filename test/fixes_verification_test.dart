@@ -679,5 +679,172 @@ void main() {
       // Non-utility bills don't mandate premises
       expect(validateUtilityUpload(isUtilityBill: false), isTrue);
     });
+
+    test('Point 13: Dedicated Inside Screens with Editable Details & History for Utility Accounts, Vehicles, and Insurance', () async {
+      // -------------------------------------------------------------
+      // 1. Utility Connection Account Details & Editable Full Address
+      // -------------------------------------------------------------
+      final doc1 = DocumentModel(
+        id: 'util-rk-cycle-1',
+        title: 'Torrent Power - Oct 2026',
+        fileName: 'torrent_oct.pdf',
+        fileSize: 1024,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        filePath: 'mock/torrent_oct.pdf',
+        subCategory: 'Electricity / Light',
+        status: 'active',
+        createdAt: DateTime(2026, 10, 15),
+        updatedAt: DateTime(2026, 10, 15),
+        utilityMetadata: UtilityMetadataModel(
+          documentId: 'util-rk-cycle-1',
+          utilityType: 'Electricity / Light',
+          providerName: 'PGVCL',
+          consumerNumber: 'CN-1118-TEST',
+          meterNumber: 'MTR-1118',
+          billDate: DateTime(2026, 10, 15),
+          dueDate: DateTime(2026, 10, 30),
+          billAmount: 3500.0,
+          paymentStatus: 'pending',
+        ),
+        address: AddressModel(
+          premiseName: 'RK Iconic Office',
+          flatHouseNo: 'B-1118',
+          buildingName: 'RK Iconic',
+          streetAddress: '150 Feet Ring Road',
+          areaLocality: 'Raiya Road',
+          city: 'Rajkot',
+          state: 'Gujarat',
+          postalCode: '360005',
+          country: 'India',
+        ),
+      );
+
+      final doc2 = DocumentModel(
+        id: 'util-rk-cycle-2',
+        title: 'Torrent Power - Sep 2026',
+        fileName: 'torrent_sep.pdf',
+        fileSize: 1024,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        filePath: 'mock/torrent_sep.pdf',
+        subCategory: 'Electricity / Light',
+        status: 'active',
+        createdAt: DateTime(2026, 9, 15),
+        updatedAt: DateTime(2026, 9, 15),
+        utilityMetadata: UtilityMetadataModel(
+          documentId: 'util-rk-cycle-2',
+          utilityType: 'Electricity / Light',
+          providerName: 'PGVCL',
+          consumerNumber: 'CN-1118-TEST',
+          meterNumber: 'MTR-1118',
+          billDate: DateTime(2026, 9, 15),
+          dueDate: DateTime(2026, 9, 30),
+          billAmount: 3200.0,
+          paymentStatus: 'paid',
+        ),
+        address: AddressModel(
+          premiseName: 'RK Iconic Office',
+          flatHouseNo: 'B-1118',
+          buildingName: 'RK Iconic',
+          streetAddress: '150 Feet Ring Road',
+          areaLocality: 'Raiya Road',
+          city: 'Rajkot',
+          state: 'Gujarat',
+          postalCode: '360005',
+          country: 'India',
+        ),
+      );
+
+      final accounts = UtilityConnectionAccount.groupFromDocuments([doc1, doc2]);
+      expect(accounts.length, equals(1));
+      final account = accounts.first;
+
+      // Verify full address fields were extracted properly
+      expect(account.flatHouseNo, equals('B-1118'));
+      expect(account.buildingName, equals('RK Iconic'));
+      expect(account.streetAddress, equals('150 Feet Ring Road'));
+      expect(account.areaLocality, equals('Raiya Road'));
+      expect(account.city, equals('Rajkot'));
+      expect(account.postalCode, equals('360005'));
+      expect(account.state, equals('Gujarat'));
+      expect(account.country, equals('India'));
+      expect(account.fullAddress, contains('B-1118'));
+      expect(account.fullAddress, contains('Rajkot - 360005'));
+      expect(account.totalCyclesCount, equals(2));
+
+      // -------------------------------------------------------------
+      // 2. Vehicle Specifications Editing & Document Lineage
+      // -------------------------------------------------------------
+      final vehicle = MasterVehicleModel(
+        id: 'veh-sp125',
+        vehicleNumber: 'GJ03NS8003',
+        nickname: 'SP-125',
+        brandMake: 'Honda',
+        modelName: 'SP 125 Disc',
+        vehicleType: 'Two Wheeler',
+        fuelType: 'Petrol',
+        ownerName: 'Maheshbhai Vallabhbhai Gandhi',
+        chassisNumber: 'ME4JC915KLR123456',
+        engineNumber: 'JC91E9123456',
+        registrationDate: DateTime(2022, 5, 20),
+        createdAt: DateTime(2022, 5, 20),
+        updatedAt: DateTime(2022, 5, 20),
+      );
+
+      // Verify vehicle copyWith updates editable specifications cleanly
+      final updatedVehicle = vehicle.copyWith(
+        nickname: 'Honda SP-125 BS6',
+        ownerName: 'Mihir Maheshbhai Gandhi',
+        updatedAt: DateTime(2026, 11, 16),
+      );
+      expect(updatedVehicle.nickname, equals('Honda SP-125 BS6'));
+      expect(updatedVehicle.ownerName, equals('Mihir Maheshbhai Gandhi'));
+      expect(updatedVehicle.vehicleNumber, equals('GJ03NS8003'));
+      expect(updatedVehicle.brandMake, equals('Honda'));
+
+      // -------------------------------------------------------------
+      // 3. Health Insurance / Personal Document Details & Renewal Lineage
+      // -------------------------------------------------------------
+      final initialPolicy = PersonalDocumentMetadataModel(
+        id: 'meta-health-2025',
+        documentId: 'doc-health-2025',
+        personName: 'Maheshbhai Gandhi',
+        relationship: 'Father',
+        docTypeName: 'Health Insurance Policy',
+        idNumber: 'P/123456/01/2025',
+        insuranceCompany: 'Star Health & Allied Insurance',
+        policyType: 'Family Floater',
+        sumInsured: 1000000.0,
+        premiumAmount: 24500.0,
+        tpaName: 'In-House TPA',
+        issueDate: DateTime(2025, 4, 1),
+        expiryDate: DateTime(2026, 3, 31),
+        renewalCount: 0,
+      );
+
+      // Verify policyNumber alias matches idNumber
+      expect(initialPolicy.policyNumber, equals('P/123456/01/2025'));
+      expect(initialPolicy.isInsurance, isTrue);
+      expect(initialPolicy.isRenewable, isTrue);
+
+      // Simulate renewal activation
+      final renewedPolicy = initialPolicy.copyWith(
+        id: 'meta-health-2026',
+        documentId: 'doc-health-2026',
+        idNumber: 'P/123456/01/2026',
+        previousDocumentId: 'doc-health-2025',
+        renewalCount: 1,
+        issueDate: DateTime(2026, 4, 1),
+        expiryDate: DateTime(2027, 3, 31),
+        premiumAmount: 26800.0,
+      );
+
+      expect(renewedPolicy.renewalCount, equals(1));
+      expect(renewedPolicy.previousDocumentId, equals('doc-health-2025'));
+      expect(renewedPolicy.policyNumber, equals('P/123456/01/2026'));
+      expect(renewedPolicy.premiumAmount, equals(26800.0));
+      expect(renewedPolicy.expiryDate, equals(DateTime(2027, 3, 31)));
+    });
   });
 }
