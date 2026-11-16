@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/utility_bills_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
+import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/upload_next_utility_bill_dialog.dart';
+import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/utility_connection_history_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -26,6 +29,8 @@ class UtilityBillsController extends GetxController {
   final totalCount = 0.obs;
 
   final utilityBills = <DocumentModel>[].obs;
+  final connectionAccounts = <UtilityConnectionAccount>[].obs;
+  final isGroupedView = true.obs;
   final dynamicCities = <String>[].obs;
   final dynamicUtilityTypes = <String>[].obs;
 
@@ -112,6 +117,7 @@ class UtilityBillsController extends GetxController {
       );
 
       utilityBills.assignAll(res.documents);
+      connectionAccounts.assignAll(UtilityConnectionAccount.groupFromDocuments(utilityBills));
       totalCount.value = res.totalCount;
       totalBillsAmount.value = res.totalAmount;
       pendingBillsAmount.value = res.pendingAmount;
@@ -155,6 +161,7 @@ class UtilityBillsController extends GetxController {
       } else {
         currentPage.value = nextPage;
         utilityBills.addAll(res.documents);
+        connectionAccounts.assignAll(UtilityConnectionAccount.groupFromDocuments(utilityBills));
         totalCount.value = res.totalCount;
         if (res.documents.length < pageSize ||
             utilityBills.length >= totalCount.value) {
@@ -496,6 +503,85 @@ class UtilityBillsController extends GetxController {
     if (updated == true) {
       await loadUtilityBills();
     }
+  }
+
+  /// Opens the specialized dialog to log the next month/cycle bill for an existing connection account.
+  Future<void> openUploadNextBillDialog(UtilityConnectionAccount connection) async {
+    final success = await UploadNextUtilityBillDialog.show(
+      connection: connection,
+      onLogBill: ({
+        required consumerNumber,
+        meterNumber,
+        required providerName,
+        required utilityType,
+        premiseName,
+        flatHouseNo,
+        city,
+        required title,
+        description,
+        required billAmount,
+        required billDate,
+        dueDate,
+        required paymentStatus,
+        paymentDate,
+        paymentReferenceId,
+        required fileBytes,
+        required fileName,
+      }) async {
+        try {
+          await _dataset.logNextUtilityBill(
+            consumerNumber: consumerNumber,
+            meterNumber: meterNumber,
+            providerName: providerName,
+            utilityType: utilityType,
+            premiseName: premiseName,
+            flatHouseNo: flatHouseNo,
+            city: city,
+            title: title,
+            description: description,
+            billAmount: billAmount,
+            billDate: billDate,
+            dueDate: dueDate,
+            paymentStatus: paymentStatus,
+            paymentDate: paymentDate,
+            paymentReferenceId: paymentReferenceId,
+            fileBytes: fileBytes,
+            fileName: fileName,
+          );
+        } catch (e, st) {
+          AppLogger.error(
+            'UTILITY_CTRL',
+            'Error logging next utility bill: $e',
+            error: e,
+            stackTrace: st,
+          );
+          rethrow;
+        }
+      },
+    );
+
+    if (success == true) {
+      await loadUtilityBills(isReset: true);
+      AppSnackbar.showSuccess(
+        'Bill Logged',
+        'New bill cycle logged for ${connection.displayName}.',
+      );
+    }
+  }
+
+  /// Opens the chronological Billing History dialog for a connection account.
+  Future<void> openBillingHistoryDialog(UtilityConnectionAccount connection) async {
+    await UtilityConnectionHistoryDialog.show(
+      connection: connection,
+      loadHistory: () async {
+        return _dataset.getUtilityConnectionHistory(connection.consumerNumber);
+      },
+      onPreview: (d) => previewDocument(d),
+      onDownload: (d) => downloadDocument(d),
+      onTogglePayment: (d) async {
+        await togglePaymentStatus(d);
+      },
+    );
   }
 }
 

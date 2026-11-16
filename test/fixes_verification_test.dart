@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/address_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
+import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
@@ -432,6 +435,174 @@ void main() {
       expect(history.length, equals(2));
       expect(history.first.id, equals(renewedDoc.id)); // newest first
       expect(history.last.id, equals(initialPolicy.id)); // older archived
+    });
+
+    test('Point 11: Utility Connection-Grouped Account Architecture, History & Next Bill Logging', () {
+      final now = DateTime.now();
+      final augBill = DocumentModel(
+        id: 'bill-aug-2026',
+        title: 'PGVCL Electricity Bill - Aug 2026',
+        fileName: 'pgvcl_aug.pdf',
+        fileSize: 45000,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        filePath: 'mock/pgvcl_aug.pdf',
+        subCategory: 'Electricity / Light',
+        status: 'active',
+        createdAt: now.subtract(const Duration(days: 60)),
+        updatedAt: now.subtract(const Duration(days: 60)),
+        utilityMetadata: UtilityMetadataModel(
+          documentId: 'bill-aug-2026',
+          utilityType: 'Electricity / Light',
+          providerName: 'PGVCL',
+          consumerNumber: '61647126444',
+          meterNumber: 'MTR-1118',
+          billDate: DateTime(2026, 8, 10),
+          dueDate: DateTime(2026, 8, 25),
+          billAmount: 3450.0,
+          paymentStatus: 'paid',
+        ),
+        address: AddressModel(
+          premiseName: 'RK Iconic, B-1118',
+          flatHouseNo: 'B-1118',
+          areaLocality: 'RK Iconic, B-1118',
+          city: 'Rajkot',
+        ),
+      );
+
+      final sepBill = DocumentModel(
+        id: 'bill-sep-2026',
+        title: 'PGVCL Electricity Bill - Sep 2026',
+        fileName: 'pgvcl_sep.pdf',
+        fileSize: 46000,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        filePath: 'mock/pgvcl_sep.pdf',
+        subCategory: 'Electricity / Light',
+        status: 'active',
+        createdAt: now.subtract(const Duration(days: 30)),
+        updatedAt: now.subtract(const Duration(days: 30)),
+        utilityMetadata: UtilityMetadataModel(
+          documentId: 'bill-sep-2026',
+          utilityType: 'Electricity / Light',
+          providerName: 'PGVCL',
+          consumerNumber: '61647126444',
+          meterNumber: 'MTR-1118',
+          billDate: DateTime(2026, 9, 10),
+          dueDate: DateTime(2026, 9, 25),
+          billAmount: 3820.0,
+          paymentStatus: 'paid',
+        ),
+        address: AddressModel(
+          premiseName: 'RK Iconic, B-1118',
+          flatHouseNo: 'B-1118',
+          areaLocality: 'RK Iconic, B-1118',
+          city: 'Rajkot',
+        ),
+      );
+
+      final octBill = DocumentModel(
+        id: 'bill-oct-2026',
+        title: 'PGVCL Electricity Bill - Oct 2026',
+        fileName: 'pgvcl_oct.pdf',
+        fileSize: 48000,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        filePath: 'mock/pgvcl_oct.pdf',
+        subCategory: 'Electricity / Light',
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+        utilityMetadata: UtilityMetadataModel(
+          documentId: 'bill-oct-2026',
+          utilityType: 'Electricity / Light',
+          providerName: 'PGVCL',
+          consumerNumber: '61647126444',
+          meterNumber: 'MTR-1118',
+          billDate: DateTime(2026, 10, 10),
+          dueDate: DateTime(2026, 10, 25),
+          billAmount: 4120.0,
+          paymentStatus: 'pending',
+        ),
+        address: AddressModel(
+          premiseName: 'RK Iconic, B-1118',
+          flatHouseNo: 'B-1118',
+          areaLocality: 'RK Iconic, B-1118',
+          city: 'Rajkot',
+        ),
+      );
+
+      final gasBill = DocumentModel(
+        id: 'bill-gas-sep-2026',
+        title: 'Gujarat Gas Bill - Sep 2026',
+        fileName: 'gas_sep.pdf',
+        fileSize: 32000,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        filePath: 'mock/gas_sep.pdf',
+        subCategory: 'Gas Bill (PNG / Piped)',
+        status: 'active',
+        createdAt: now.subtract(const Duration(days: 15)),
+        updatedAt: now.subtract(const Duration(days: 15)),
+        utilityMetadata: UtilityMetadataModel(
+          documentId: 'bill-gas-sep-2026',
+          utilityType: 'Gas Bill (PNG / Piped)',
+          providerName: 'Gujarat Gas Ltd',
+          consumerNumber: 'GUJ-GAS-9912',
+          billDate: DateTime(2026, 9, 15),
+          dueDate: DateTime(2026, 9, 30),
+          billAmount: 890.0,
+          paymentStatus: 'paid',
+        ),
+        address: AddressModel(
+          premiseName: 'Home - Krishna Park',
+          flatHouseNo: 'Plot 42',
+          areaLocality: 'Home - Krishna Park',
+          city: 'Rajkot',
+        ),
+      );
+
+      final allRawBills = [augBill, sepBill, octBill, gasBill];
+
+      // 1. Group into connection accounts
+      final accounts = UtilityConnectionAccount.groupFromDocuments(allRawBills);
+
+      // Verify two distinct connection accounts are created
+      expect(accounts.length, equals(2));
+
+      // 2. Verify RK Iconic Office 1118 Connection Account
+      final rkIconicAccount = accounts.firstWhere(
+        (a) => a.consumerNumber == '61647126444',
+      );
+      expect(rkIconicAccount.displayName, equals('RK Iconic, B-1118'));
+      expect(rkIconicAccount.providerName, equals('PGVCL'));
+      expect(rkIconicAccount.utilityType, equals('Electricity / Light'));
+      expect(rkIconicAccount.city, equals('Rajkot'));
+      expect(rkIconicAccount.meterNumber, equals('MTR-1118'));
+      expect(rkIconicAccount.totalCyclesCount, equals(3));
+
+      // 3. Verify Latest Bill Spotlight (Oct 2026)
+      expect(rkIconicAccount.latestBill.id, equals('bill-oct-2026'));
+      expect(rkIconicAccount.latestBillAmount, equals(4120.0));
+      expect(rkIconicAccount.isPaid, isFalse); // Oct bill is pending
+      expect(rkIconicAccount.latestDueDate, equals(DateTime(2026, 10, 25)));
+
+      // 4. Verify Historical Order (newest cycle first: Oct -> Sep -> Aug)
+      expect(rkIconicAccount.historicalBills.map((b) => b.id).toList(), equals([
+        'bill-oct-2026',
+        'bill-sep-2026',
+        'bill-aug-2026',
+      ]));
+
+      // 5. Verify Gas Connection Account
+      final gasAccount = accounts.firstWhere(
+        (a) => a.consumerNumber == 'GUJ-GAS-9912',
+      );
+      expect(gasAccount.displayName, equals('Home - Krishna Park'));
+      expect(gasAccount.providerName, equals('Gujarat Gas Ltd'));
+      expect(gasAccount.totalCyclesCount, equals(1));
+      expect(gasAccount.isPaid, isTrue);
+      expect(gasAccount.latestBillAmount, equals(890.0));
     });
   });
 }

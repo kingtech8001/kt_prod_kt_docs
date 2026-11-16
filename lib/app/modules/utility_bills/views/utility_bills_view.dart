@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/controllers/utility_bills_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
@@ -70,7 +71,86 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
                   hasScrollBody: false,
                   child: _buildEmptyState(),
                 )
-              else ...[
+              else if (controller.isGroupedView.value) ...[
+                // Grouped By Connection Accounts (e.g. RK Iconic Office 1118 - PGVCL)
+                SliverPadding(
+                  padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final connection = controller.connectionAccounts[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: AppConstants.paddingMedium,
+                          ),
+                          child: RepaintBoundary(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(
+                                  AppConstants.radiusMedium,
+                                ),
+                                border: Border.all(
+                                  color: connection.isOverdue
+                                      ? AppColors.error.withValues(alpha: 0.4)
+                                      : AppColors.border,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.all(
+                                AppConstants.paddingMedium,
+                              ),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isMobile = constraints.maxWidth <
+                                      AppConstants.tabletBreakpoint;
+
+                                  if (isMobile) {
+                                    return _buildMobileConnectionTile(
+                                      context,
+                                      connection,
+                                    );
+                                  }
+
+                                  return _buildDesktopConnectionTile(
+                                    context,
+                                    connection,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      childCount: controller.connectionAccounts.length,
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppConstants.paddingMedium,
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Showing ${controller.connectionAccounts.length} active utility connection accounts (${controller.utilityBills.length} cycles total)',
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Flat All Cycles List
                 SliverPadding(
                   padding: const EdgeInsets.all(AppConstants.paddingLarge),
                   sliver: SliverList(
@@ -316,6 +396,106 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              // View Mode Toggle (By Connection vs All Cycles)
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => controller.isGroupedView.value = true,
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(AppConstants.radiusSmall),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: controller.isGroupedView.value
+                              ? AppColors.primary
+                              : Colors.transparent,
+                          borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(AppConstants.radiusSmall),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.folder_shared_outlined,
+                              size: 15,
+                              color: controller.isGroupedView.value
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'By Connection',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: controller.isGroupedView.value
+                                    ? Colors.white
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => controller.isGroupedView.value = false,
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(AppConstants.radiusSmall),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: !controller.isGroupedView.value
+                              ? AppColors.primary
+                              : Colors.transparent,
+                          borderRadius: const BorderRadius.horizontal(
+                            right: Radius.circular(AppConstants.radiusSmall),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.receipt_long_outlined,
+                              size: 15,
+                              color: !controller.isGroupedView.value
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'All Cycles',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: !controller.isGroupedView.value
+                                    ? Colors.white
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // Utility Type Dropdown
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -486,7 +666,9 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
-                  '${controller.totalCount.value} ${controller.totalCount.value == 1 ? "bill" : "bills"}',
+                  controller.isGroupedView.value
+                      ? '${controller.connectionAccounts.length} ${controller.connectionAccounts.length == 1 ? "account" : "accounts"}'
+                      : '${controller.totalCount.value} ${controller.totalCount.value == 1 ? "bill" : "bills"}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -641,6 +823,524 @@ class UtilityBillsView extends GetView<UtilityBillsController> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileConnectionTile(
+    BuildContext context,
+    UtilityConnectionAccount connection,
+  ) {
+    final latest = connection.latestBill;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: connection.accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                border: Border.all(
+                  color: connection.accentColor.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Icon(
+                connection.iconData,
+                color: connection.accentColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: AppConstants.paddingSmall),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          connection.displayName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceMuted,
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.radiusSmall,
+                          ),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          '${connection.totalCyclesCount} ${connection.totalCyclesCount == 1 ? "cycle" : "cycles"}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${connection.providerName} • #${connection.consumerNumber}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (connection.city != null && connection.city!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 12,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          connection.city!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Latest Bill Spotlight Box
+        Container(
+          padding: const EdgeInsets.all(AppConstants.paddingSmall),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'LATEST BILL',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textMuted,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        if (latest.isGoogleAttachment) ...[
+                          const SizedBox(width: 4),
+                          const GoogleDriveLogo(size: 13),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      latest.title,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Due: ${AppFormatters.formatDate(connection.latestDueDate)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: connection.isOverdue
+                            ? AppColors.error
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    AppFormatters.formatCurrency(connection.latestBillAmount),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  StatusBadge(
+                    label: connection.isPaid
+                        ? 'PAID'
+                        : (connection.isOverdue ? 'OVERDUE' : 'PENDING'),
+                    type: connection.isPaid
+                        ? StatusBadgeType.success
+                        : (connection.isOverdue
+                            ? StatusBadgeType.error
+                            : StatusBadgeType.warning),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Action Buttons Row
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.radiusSmall,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.post_add_rounded, size: 15),
+                label: const Text('Next Bill', style: TextStyle(fontSize: 12)),
+                onPressed: () => controller.openUploadNextBillDialog(connection),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.radiusSmall,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.history_rounded, size: 15),
+                label: Text(
+                  'History (${connection.totalCyclesCount})',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onPressed: () => controller.openBillingHistoryDialog(connection),
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 18),
+              tooltip: 'Preview Latest Bill',
+              onPressed: () => controller.previewDocument(latest),
+            ),
+            IconButton(
+              icon: const Icon(Icons.download_outlined, size: 18),
+              tooltip: 'Download Latest Bill',
+              onPressed: () => controller.downloadDocument(latest),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopConnectionTile(
+    BuildContext context,
+    UtilityConnectionAccount connection,
+  ) {
+    final latest = connection.latestBill;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 1. Utility Type Icon
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: connection.accentColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+            border: Border.all(
+              color: connection.accentColor.withValues(alpha: 0.25),
+            ),
+          ),
+          child: Icon(
+            connection.iconData,
+            color: connection.accentColor,
+            size: 26,
+          ),
+        ),
+        const SizedBox(width: AppConstants.paddingMedium),
+
+        // 2. Connection & Premise Info
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      connection.displayName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall,
+                      ),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(
+                      '${connection.totalCyclesCount} ${connection.totalCyclesCount == 1 ? "cycle" : "cycles"}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${connection.providerName} • Consumer #: ${connection.consumerNumber}${connection.meterNumber != null && connection.meterNumber!.isNotEmpty ? " • Meter: ${connection.meterNumber}" : ""}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (connection.city != null && connection.city!.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 13,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      connection.city!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // 3. Latest Cycle Spotlight
+        Expanded(
+          flex: 3,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+              border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'LATEST BILL',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                          if (latest.isGoogleAttachment) ...[
+                            const SizedBox(width: 4),
+                            const GoogleDriveLogo(size: 13),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        latest.title,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Due: ${AppFormatters.formatDate(connection.latestDueDate)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: connection.isOverdue
+                              ? AppColors.error
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppFormatters.formatCurrency(connection.latestBillAmount),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    StatusBadge(
+                      label: connection.isPaid
+                          ? 'PAID'
+                          : (connection.isOverdue ? 'OVERDUE' : 'PENDING'),
+                      type: connection.isPaid
+                          ? StatusBadgeType.success
+                          : (connection.isOverdue
+                              ? StatusBadgeType.error
+                              : StatusBadgeType.warning),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: AppConstants.paddingMedium),
+
+        // 4. Action Buttons
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Upload Next Bill Button
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                ),
+              ),
+              icon: const Icon(Icons.post_add_rounded, size: 16),
+              label: const Text(
+                'Upload Next Bill',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              onPressed: () => controller.openUploadNextBillDialog(connection),
+            ),
+            const SizedBox(width: 8),
+
+            // Billing History Button
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.border),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                ),
+              ),
+              icon: const Icon(Icons.history_rounded, size: 16),
+              label: Text(
+                'History (${connection.totalCyclesCount})',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              onPressed: () => controller.openBillingHistoryDialog(connection),
+            ),
+            const SizedBox(width: 4),
+
+            // Preview Latest
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 19),
+              tooltip: 'Preview Latest Bill',
+              onPressed: () => controller.previewDocument(latest),
+            ),
+
+            // Download Latest
+            IconButton(
+              icon: const Icon(Icons.download_outlined, size: 19),
+              tooltip: 'Download Latest Bill',
+              onPressed: () => controller.downloadDocument(latest),
+            ),
+
+            // Toggle Payment
+            IconButton(
+              icon: Icon(
+                connection.isPaid
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: connection.isPaid ? AppColors.success : AppColors.textMuted,
+                size: 19,
+              ),
+              tooltip: connection.isPaid ? 'Mark as Pending' : 'Mark as Paid',
+              onPressed: () => controller.confirmPaymentStatus(latest),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

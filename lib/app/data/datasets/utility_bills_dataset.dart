@@ -1,12 +1,15 @@
 import 'dart:typed_data';
 import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
+import 'package:kt_prod_kt_docs/app/data/models/address_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
+import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -470,5 +473,227 @@ class UtilityBillsDataset {
           DateTime.now().add(const Duration(days: 7)).toIso8601String(),
     });
     return token;
+  }
+
+  /// Logs a new monthly/bi-monthly bill cycle for an existing utility connection.
+  Future<DocumentModel> logNextUtilityBill({
+    required String consumerNumber,
+    String? meterNumber,
+    required String providerName,
+    required String utilityType,
+    String? premiseName,
+    String? flatHouseNo,
+    String? city,
+    required String title,
+    String? description,
+    required double billAmount,
+    required DateTime billDate,
+    DateTime? dueDate,
+    required String paymentStatus, // 'pending' or 'paid'
+    DateTime? paymentDate,
+    String? paymentReferenceId,
+    required Uint8List fileBytes,
+    required String fileName,
+  }) async {
+    final catId = await _getUtilityCategoryId();
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'pdf';
+    final mimeType = ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+    final storagePath = 'utility_bills/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+    if (DemoDataService.isDemoMode) {
+      final mockId = 'doc-util-${DateTime.now().millisecondsSinceEpoch}';
+      final newDoc = DocumentModel(
+        id: mockId,
+        title: title,
+        description: description,
+        categoryId: catId,
+        categoryName: 'Utility Bills',
+        categoryCode: 'utility_bills',
+        subCategory: utilityType,
+        fileName: fileName,
+        filePath: 'mock/$fileName',
+        fileType: ext,
+        mimeType: mimeType,
+        fileSize: fileBytes.length,
+        status: 'active',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        utilityMetadata: UtilityMetadataModel(
+          documentId: mockId,
+          utilityType: utilityType,
+          providerName: providerName,
+          consumerNumber: consumerNumber,
+          meterNumber: meterNumber,
+          billDate: billDate,
+          dueDate: dueDate,
+          billAmount: billAmount,
+          paymentStatus: paymentStatus,
+          paymentDate: paymentDate,
+          paymentReferenceId: paymentReferenceId,
+        ),
+        address: AddressModel(
+          premiseName: premiseName,
+          flatHouseNo: flatHouseNo,
+          areaLocality: premiseName ?? '',
+          city: city ?? 'Rajkot',
+          state: 'Gujarat',
+          country: 'India',
+        ),
+      );
+      DemoDataService.getAllDocuments().insert(0, newDoc);
+      return newDoc;
+    }
+
+    // 1. Upload new bill binary to Supabase Storage
+    await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+          storagePath,
+          fileBytes,
+          fileOptions: const FileOptions(upsert: true),
+        );
+
+    // 2. Insert main document record
+    final docPayload = {
+      'title': title,
+      'description': description,
+      'category_id': catId,
+      'sub_category': utilityType,
+      'file_name': fileName,
+      'file_path': storagePath,
+      'file_type': ext,
+      'mime_type': mimeType,
+      'file_size': fileBytes.length,
+      'document_number': consumerNumber,
+      'status': 'active',
+      'uploaded_by': _client.auth.currentUser?.id,
+      'extra_attributes': {
+        'storage_provider': 'supabase',
+      },
+    };
+
+    final docRes = await _client.from('documents').insert(docPayload).select().single();
+    final newDocId = docRes['id'] as String;
+
+    // 3. Insert utility metadata
+    final utilPayload = {
+      'document_id': newDocId,
+      'utility_type': utilityType,
+      'provider_name': providerName,
+      'consumer_number': consumerNumber,
+      'meter_number': meterNumber,
+      'bill_date': billDate.toIso8601String().split('T').first,
+      if (dueDate != null) 'due_date': dueDate.toIso8601String().split('T').first,
+      'bill_amount': billAmount,
+      'payment_status': paymentStatus,
+      if (paymentDate != null) 'payment_date': paymentDate.toIso8601String().split('T').first,
+      if (paymentReferenceId != null && paymentReferenceId.isNotEmpty) 'payment_reference_id': paymentReferenceId,
+    };
+    await _client.from('utility_metadata').insert(utilPayload);
+
+    // 4. Insert address if available
+    if (city != null || premiseName != null || flatHouseNo != null) {
+      final addrPayload = {
+        'document_id': newDocId,
+        'premise_name': premiseName,
+        'flat_house_no': flatHouseNo,
+        'city': city ?? 'Rajkot',
+        'state': 'Gujarat',
+        'country': 'India',
+      };
+      await _client.from('document_addresses').insert(addrPayload);
+    }
+
+    return DocumentModel(
+      id: newDocId,
+      title: title,
+      description: description,
+      categoryId: catId,
+      categoryName: 'Utility Bills',
+      categoryCode: 'utility_bills',
+      subCategory: utilityType,
+      fileName: fileName,
+      filePath: storagePath,
+      fileType: ext,
+      mimeType: mimeType,
+      fileSize: fileBytes.length,
+      documentNumber: consumerNumber,
+      status: 'active',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      utilityMetadata: UtilityMetadataModel(
+        documentId: newDocId,
+        utilityType: utilityType,
+        providerName: providerName,
+        consumerNumber: consumerNumber,
+        meterNumber: meterNumber,
+        billDate: billDate,
+        dueDate: dueDate,
+        billAmount: billAmount,
+        paymentStatus: paymentStatus,
+        paymentDate: paymentDate,
+        paymentReferenceId: paymentReferenceId,
+      ),
+      address: AddressModel(
+        premiseName: premiseName,
+        flatHouseNo: flatHouseNo,
+        areaLocality: premiseName ?? '',
+        city: city ?? 'Rajkot',
+        state: 'Gujarat',
+        country: 'India',
+      ),
+    );
+  }
+
+  /// Fetches all bill cycles for a specific consumer account, sorted newest first.
+  Future<List<DocumentModel>> getUtilityConnectionHistory(String consumerNumber) async {
+    if (DemoDataService.isDemoMode) {
+      final clean = consumerNumber.trim().toLowerCase();
+      final docs = DemoDataService.getAllDocuments().where((d) {
+        final cNum = d.utilityMetadata?.consumerNumber.trim().toLowerCase() ?? '';
+        return cNum.isNotEmpty && cNum == clean;
+      }).toList();
+      docs.sort((a, b) {
+        final aDate = a.utilityMetadata?.billDate ?? a.createdAt;
+        final bDate = b.utilityMetadata?.billDate ?? b.createdAt;
+        return bDate.compareTo(aDate);
+      });
+      return docs;
+    }
+
+    try {
+      final response = await _client
+          .from('documents')
+          .select('''
+            *,
+            document_categories(id, name, code, color_hex, icon),
+            folders(id, name),
+            profiles:uploaded_by(id, full_name, email),
+            document_addresses(*),
+            utility_metadata!inner(*),
+            document_favorites(document_id, user_id)
+          ''')
+          .eq('utility_metadata.consumer_number', consumerNumber)
+          .isFilter('deleted_at', null)
+          .order('created_at', ascending: false);
+
+      final list = (response as List)
+          .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+      list.sort((a, b) {
+        final aDate = a.utilityMetadata?.billDate ?? a.createdAt;
+        final bDate = b.utilityMetadata?.billDate ?? b.createdAt;
+        return bDate.compareTo(aDate);
+      });
+
+      return list;
+    } catch (e, st) {
+      AppLogger.error(
+        'UTILITY_DATASET',
+        'Error fetching utility connection history for $consumerNumber: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return [];
+    }
   }
 }

@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'dart:typed_data';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
+import 'package:kt_prod_kt_docs/app/data/services/document_scanner_service.dart';
+import 'package:kt_prod_kt_docs/app/widgets/web_dropzone.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
@@ -74,6 +79,11 @@ class RenewPersonalDocDialog extends StatelessWidget {
     final selectedIssueDate = Rx<DateTime>(defaultNewIssue);
     final selectedExpiryDate = Rx<DateTime>(defaultNewExpiry);
 
+    // Scanning & Autofill Reactive State
+    final isScanning = false.obs;
+    final scanProgress = 0.0.obs;
+    final scanAutoFilledSummary = ''.obs;
+
     // Insurance-specific state
     final selectedPolicyType = Rx<String>(meta?.policyType ?? 'Family Floater');
     final selectedSumInsured = Rx<double?>(meta?.sumInsured ?? 500000);
@@ -104,6 +114,104 @@ class RenewPersonalDocDialog extends StatelessWidget {
 
     final isSubmitting = false.obs;
     final errorMessage = ''.obs;
+
+    Future<void> scanAndAutofill(Uint8List bytes, String fileName) async {
+      isScanning.value = true;
+      scanProgress.value = 0.15;
+      scanAutoFilledSummary.value = '';
+
+      Timer? timer = Timer.periodic(const Duration(milliseconds: 70), (t) {
+        if (!isScanning.value) {
+          t.cancel();
+        } else if (scanProgress.value < 0.88) {
+          scanProgress.value += 0.03;
+        }
+      });
+
+      try {
+        await Future.delayed(const Duration(milliseconds: 20));
+
+        final result = await DocumentScannerService.scanDocument(
+          bytes: bytes,
+          fileName: fileName,
+          onProgress: (p) {
+            final mapped = 0.15 + (p * 0.77);
+            if (mapped > scanProgress.value) {
+              scanProgress.value = mapped;
+            }
+          },
+        );
+
+        scanProgress.value = 1.0;
+
+        int autoFilledCount = 0;
+        final List<String> filledFields = [];
+
+        // 1. Policy Number
+        final extractedNum = result.documentNumber ?? result.personalFields['idNumber'];
+        if (extractedNum != null && extractedNum.toString().trim().isNotEmpty) {
+          policyNumberController.text = extractedNum.toString().trim();
+          autoFilledCount++;
+          filledFields.add('Policy #');
+        }
+
+        // 2. Issue Date
+        if (result.primaryDate != null) {
+          selectedIssueDate.value = result.primaryDate!;
+          autoFilledCount++;
+          filledFields.add('Issue Date');
+        }
+
+        // 3. Expiry Date
+        if (result.secondaryDate != null) {
+          selectedExpiryDate.value = result.secondaryDate!;
+          autoFilledCount++;
+          filledFields.add('Expiry Date');
+        } else if (result.primaryDate != null) {
+          selectedExpiryDate.value = DateTime(
+            result.primaryDate!.year + 1,
+            result.primaryDate!.month,
+            result.primaryDate!.day,
+          );
+        }
+
+        // 4. Insurance Company
+        final extractedCompany = result.personalFields['insuranceCompany'] ?? result.personalFields['issuingAuthority'];
+        if (extractedCompany != null && extractedCompany.toString().trim().isNotEmpty) {
+          insuranceCompanyController.text = extractedCompany.toString().trim();
+          autoFilledCount++;
+          filledFields.add('Company');
+        }
+
+        // 5. Premium Amount
+        final extractedPremium = result.amount ?? result.personalFields['premiumAmount'];
+        if (extractedPremium != null && extractedPremium > 0) {
+          premiumController.text = extractedPremium.toStringAsFixed(0);
+          autoFilledCount++;
+          filledFields.add('Premium');
+        }
+
+        // 6. Sum Insured
+        final extractedSum = result.personalFields['sumInsured'];
+        if (extractedSum != null && extractedSum is num && extractedSum > 0) {
+          sumInsuredController.text = extractedSum.toStringAsFixed(0);
+          selectedSumInsured.value = extractedSum.toDouble();
+          autoFilledCount++;
+          filledFields.add('Sum Insured');
+        }
+
+        if (autoFilledCount > 0) {
+          scanAutoFilledSummary.value =
+              'Auto-filled $autoFilledCount fields (${filledFields.join(', ')}) from document';
+        }
+      } catch (e) {
+        AppLogger.error('RENEW_PERSONAL', 'Document scan failed: $e');
+      } finally {
+        timer.cancel();
+        scanProgress.value = 1.0;
+        isScanning.value = false;
+      }
+    }
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -266,7 +374,15 @@ class RenewPersonalDocDialog extends StatelessWidget {
                     const SizedBox(height: 14),
 
                     // C. New Document Upload Area
-                    _buildFileUploadArea(selectedNewFile, selectedNewBytes),
+                    _buildFileUploadArea(
+                      selectedNewFile: selectedNewFile,
+                      selectedNewBytes: selectedNewBytes,
+                      isScanning: isScanning,
+                      scanProgress: scanProgress,
+                      scanAutoFilledSummary: scanAutoFilledSummary,
+                      onScan: scanAndAutofill,
+                      errorMessage: errorMessage,
+                    ),
 
                     const SizedBox(height: 18),
 
@@ -955,116 +1071,234 @@ class RenewPersonalDocDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildFileUploadArea(
-    Rx<PlatformFile?> selectedNewFile,
-    Rx<Uint8List?> selectedNewBytes,
-  ) {
+  Widget _buildFileUploadArea({
+    required Rx<PlatformFile?> selectedNewFile,
+    required Rx<Uint8List?> selectedNewBytes,
+    required RxBool isScanning,
+    required RxDouble scanProgress,
+    required RxString scanAutoFilledSummary,
+    required Future<void> Function(Uint8List bytes, String fileName) onScan,
+    required RxString errorMessage,
+  }) {
     return Obx(() {
       final file = selectedNewFile.value;
+      final scanning = isScanning.value;
+      final progress = scanProgress.value;
 
       if (file != null) {
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.successLight.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.success),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: scanning
+                    ? AppColors.primarySurface
+                    : AppColors.successLight.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: scanning ? AppColors.primary : AppColors.success,
+                  width: scanning ? 1.5 : 1.0,
                 ),
-                child: const Icon(Icons.picture_as_pdf,
-                    color: AppColors.success, size: 24),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      file.name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+              child: Row(
+                children: [
+                  if (scanning)
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CircularProgressIndicator(
+                            value: progress > 0 ? progress : null,
+                            strokeWidth: 3,
+                            color: AppColors.primary,
+                            backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDark,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: const Icon(Icons.picture_as_pdf,
+                          color: AppColors.success, size: 24),
                     ),
-                    Text(
-                      'Ready to upload • ${AppFormatters.formatFileSize(file.size)}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.success),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          file.name,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          scanning
+                              ? 'Scanning & analyzing document metadata...'
+                              : 'Ready to upload • ${AppFormatters.formatFileSize(file.size)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: scanning ? FontWeight.w600 : FontWeight.normal,
+                            color: scanning ? AppColors.primary : AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!scanning) ...[
+                    IconButton(
+                      onPressed: () {
+                        final b = selectedNewBytes.value;
+                        if (b != null) onScan(b, file.name);
+                      },
+                      icon: const Icon(Icons.refresh_rounded, color: AppColors.primary, size: 20),
+                      tooltip: 'Re-scan document',
+                    ),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.swap_horiz, size: 16),
+                      label: const Text('Change File'),
+                      onPressed: () => _pickNewDocument(
+                        selectedNewFile: selectedNewFile,
+                        selectedNewBytes: selectedNewBytes,
+                        onScan: onScan,
+                        errorMessage: errorMessage,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (scanAutoFilledSummary.value.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.successLight.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, color: AppColors.success, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        scanAutoFilledSummary.value,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF065F46),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.swap_horiz, size: 16),
-                label: const Text('Change File'),
-                onPressed: () =>
-                    _pickNewDocument(selectedNewFile, selectedNewBytes),
-              ),
-            ],
-          ),
+          ],
         );
       }
 
-      return InkWell(
-        onTap: () => _pickNewDocument(selectedNewFile, selectedNewBytes),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-                color: AppColors.primaryLight,
-                width: 1.5,
-                style: BorderStyle.solid),
+      return DropTarget(
+        onDragDone: (detail) async {
+          if (detail.files.isNotEmpty) {
+            errorMessage.value = '';
+            try {
+              final f = detail.files.first;
+              final bytes = await f.readAsBytes();
+              final pf = DroppedPlatformFile(
+                name: f.name,
+                size: bytes.lengthInBytes,
+                bytes: bytes,
+                uri: f.path.isNotEmpty ? Uri.tryParse(f.path) : null,
+              );
+              pf.bytes = bytes;
+              selectedNewFile.value = pf;
+              selectedNewBytes.value = bytes;
+              onScan(bytes, pf.name);
+            } catch (e) {
+              errorMessage.value = 'Failed to load dropped file: $e';
+            }
+          }
+        },
+        child: InkWell(
+          onTap: () => _pickNewDocument(
+            selectedNewFile: selectedNewFile,
+            selectedNewBytes: selectedNewBytes,
+            onScan: onScan,
+            errorMessage: errorMessage,
           ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: AppColors.primaryLight,
+                  width: 1.5,
+                  style: BorderStyle.solid),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.cloud_upload_outlined,
+                      size: 28, color: AppColors.primary),
                 ),
-                child: const Icon(Icons.cloud_upload_outlined,
-                    size: 28, color: AppColors.primary),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Upload New Policy Certificate (Required)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                const SizedBox(height: 10),
+                const Text(
+                  'Upload New Policy Certificate (Required)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Click or drag & drop new policy document (PDF, PNG, JPG up to 25 MB)',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ],
+                const SizedBox(height: 4),
+                const Text(
+                  'Click or drag & drop new policy document (PDF, PNG, JPG up to 25 MB) • Auto-scans fields',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
           ),
         ),
       );
     });
   }
 
-  Future<void> _pickNewDocument(
-    Rx<PlatformFile?> selectedNewFile,
-    Rx<Uint8List?> selectedNewBytes,
-  ) async {
+  Future<void> _pickNewDocument({
+    required Rx<PlatformFile?> selectedNewFile,
+    required Rx<Uint8List?> selectedNewBytes,
+    required Future<void> Function(Uint8List bytes, String fileName) onScan,
+    required RxString errorMessage,
+  }) async {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -1076,13 +1310,10 @@ class RenewPersonalDocDialog extends StatelessWidget {
         final bytes = chosen.bytes ?? await chosen.loadBytes();
         selectedNewFile.value = chosen;
         selectedNewBytes.value = bytes;
+        onScan(bytes, chosen.name);
       }
     } catch (e) {
-      Get.snackbar(
-        'File Selection Failed',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      errorMessage.value = 'Failed to choose file: $e';
     }
   }
 

@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'dart:typed_data';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
+import 'package:kt_prod_kt_docs/app/data/services/document_scanner_service.dart';
+import 'package:kt_prod_kt_docs/app/widgets/web_dropzone.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_formatters.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
@@ -73,6 +78,12 @@ class RenewVehicleDocDialog extends StatelessWidget {
     final selectedIssueDate = Rx<DateTime>(defaultNewIssue);
     final selectedExpiryDate = Rx<DateTime>(defaultNewExpiry);
 
+    // Scanning & Autofill Reactive State
+    final isScanning = false.obs;
+    final scanProgress = 0.0.obs;
+    final scanAutoFilledSummary = ''.obs;
+    final scanMismatchWarning = ''.obs;
+
     // Bundled TP Coverage State
     final isBundledTpActive = (meta?.isBundledInsurance ?? false).obs;
     final selectedTpExpiry = Rx<DateTime?>(meta?.tpExpiryDate);
@@ -95,6 +106,108 @@ class RenewVehicleDocDialog extends StatelessWidget {
 
     final isSubmitting = false.obs;
     final errorMessage = ''.obs;
+
+    Future<void> scanAndAutofill(Uint8List bytes, String fileName) async {
+      isScanning.value = true;
+      scanProgress.value = 0.15;
+      scanAutoFilledSummary.value = '';
+      scanMismatchWarning.value = '';
+
+      Timer? timer = Timer.periodic(const Duration(milliseconds: 70), (t) {
+        if (!isScanning.value) {
+          t.cancel();
+        } else if (scanProgress.value < 0.88) {
+          scanProgress.value += 0.03;
+        }
+      });
+
+      try {
+        await Future.delayed(const Duration(milliseconds: 20));
+
+        final result = await DocumentScannerService.scanDocument(
+          bytes: bytes,
+          fileName: fileName,
+          onProgress: (p) {
+            final mapped = 0.15 + (p * 0.77);
+            if (mapped > scanProgress.value) {
+              scanProgress.value = mapped;
+            }
+          },
+        );
+
+        scanProgress.value = 1.0;
+
+        int autoFilledCount = 0;
+        final List<String> filledFields = [];
+
+        // 1. Policy / Certificate Number
+        final extractedNum = result.documentNumber ?? result.vehicleFields['policyOrCertNumber'];
+        if (extractedNum != null && extractedNum.toString().trim().isNotEmpty) {
+          certNumberController.text = extractedNum.toString().trim();
+          autoFilledCount++;
+          filledFields.add('Policy #');
+        }
+
+        // 2. Issue Date
+        if (result.primaryDate != null) {
+          selectedIssueDate.value = result.primaryDate!;
+          autoFilledCount++;
+          filledFields.add('Issue Date');
+        }
+
+        // 3. Expiry Date
+        if (result.secondaryDate != null) {
+          selectedExpiryDate.value = result.secondaryDate!;
+          autoFilledCount++;
+          filledFields.add('Expiry Date');
+        } else if (result.primaryDate != null) {
+          selectedExpiryDate.value = isPuc
+              ? DateTime(result.primaryDate!.year, result.primaryDate!.month + 6, result.primaryDate!.day)
+              : DateTime(result.primaryDate!.year + 1, result.primaryDate!.month, result.primaryDate!.day);
+        }
+
+        // 4. Insurance Underwriter
+        if (isInsurance) {
+          final extractedCompany = result.vehicleFields['insuranceCompany'];
+          if (extractedCompany != null && extractedCompany.toString().trim().isNotEmpty) {
+            insuranceCompanyController.text = extractedCompany.toString().trim();
+            autoFilledCount++;
+            filledFields.add('Underwriter');
+          }
+        }
+
+        // 5. Premium Amount
+        final extractedPremium = result.amount ?? result.vehicleFields['premiumAmount'];
+        if (extractedPremium != null && extractedPremium > 0) {
+          premiumController.text = extractedPremium.toStringAsFixed(0);
+          autoFilledCount++;
+          filledFields.add('Premium');
+        }
+
+        // 6. Cross-verify vehicle registration if extracted
+        final docVehicle = result.vehicleFields['vehicleNumber'];
+        final lockedVehicle = meta?.vehicleNumber;
+        if (docVehicle != null && lockedVehicle != null) {
+          final cleanDocVeh = docVehicle.toString().replaceAll('-', '').replaceAll(' ', '').toUpperCase();
+          final cleanLockedVeh = lockedVehicle.replaceAll('-', '').replaceAll(' ', '').toUpperCase();
+          if (cleanDocVeh != cleanLockedVeh) {
+            scanMismatchWarning.value =
+                'Notice: Scanned document mentions vehicle "$docVehicle", while this record is for "$lockedVehicle". Please verify details.';
+          }
+        }
+
+        if (autoFilledCount > 0) {
+          scanAutoFilledSummary.value =
+              'Auto-filled $autoFilledCount fields (${filledFields.join(', ')}) from document';
+        }
+      } catch (e) {
+        AppLogger.error('RENEW_VEHICLE', 'Document scan failed: $e');
+      } finally {
+        timer.cancel();
+        scanProgress.value = 1.0;
+        isScanning.value = false;
+      }
+    }
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -191,6 +304,11 @@ class RenewVehicleDocDialog extends StatelessWidget {
                     _buildFileUploadSection(
                       selectedNewFile: selectedNewFile,
                       selectedNewBytes: selectedNewBytes,
+                      isScanning: isScanning,
+                      scanProgress: scanProgress,
+                      scanAutoFilledSummary: scanAutoFilledSummary,
+                      scanMismatchWarning: scanMismatchWarning,
+                      onScan: scanAndAutofill,
                       errorMessage: errorMessage,
                     ),
 
@@ -526,104 +644,254 @@ class RenewVehicleDocDialog extends StatelessWidget {
     );
   }
 
-  /// File picker section for uploading the new certificate / policy
+  /// File picker section for uploading the new certificate / policy with instant scan & autofill
   Widget _buildFileUploadSection({
     required Rx<PlatformFile?> selectedNewFile,
     required Rx<Uint8List?> selectedNewBytes,
+    required RxBool isScanning,
+    required RxDouble scanProgress,
+    required RxString scanAutoFilledSummary,
+    required RxString scanMismatchWarning,
+    required Future<void> Function(Uint8List bytes, String fileName) onScan,
     required RxString errorMessage,
   }) {
     return Obx(() {
       final file = selectedNewFile.value;
+      final scanning = isScanning.value;
+      final progress = scanProgress.value;
+
       if (file != null) {
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: scanning
+                    ? AppColors.primarySurface
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: scanning
+                      ? AppColors.primary
+                      : AppColors.primary.withValues(alpha: 0.5),
+                  width: scanning ? 1.5 : 1.0,
                 ),
-                child: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.primary, size: 22),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      file.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              child: Row(
+                children: [
+                  if (scanning)
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CircularProgressIndicator(
+                            value: progress > 0 ? progress : null,
+                            strokeWidth: 3,
+                            color: AppColors.primary,
+                            backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDark,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
                     ),
-                    Text(
-                      AppFormatters.formatFileSize(file.size),
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          scanning
+                              ? '${AppFormatters.formatFileSize(file.size)} • Scanning & analyzing metadata...'
+                              : '${AppFormatters.formatFileSize(file.size)} • Ready for renewal',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: scanning ? FontWeight.w600 : FontWeight.normal,
+                            color: scanning ? AppColors.primary : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!scanning) ...[
+                    IconButton(
+                      onPressed: () {
+                        final b = selectedNewBytes.value;
+                        if (b != null) onScan(b, file.name);
+                      },
+                      icon: const Icon(Icons.refresh_rounded, color: AppColors.primary, size: 20),
+                      tooltip: 'Re-scan document',
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        selectedNewFile.value = null;
+                        selectedNewBytes.value = null;
+                        scanAutoFilledSummary.value = '';
+                        scanMismatchWarning.value = '';
+                      },
+                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                      tooltip: 'Remove file',
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (scanAutoFilledSummary.value.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.successLight.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, color: AppColors.success, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        scanAutoFilledSummary.value,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF065F46),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () {
-                  selectedNewFile.value = null;
-                  selectedNewBytes.value = null;
-                },
-                icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-                tooltip: 'Remove file',
+            if (scanMismatchWarning.value.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        scanMismatchWarning.value,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+          ],
         );
       }
 
-      return InkWell(
-        onTap: () async {
-          errorMessage.value = '';
-          try {
-            final result = await FilePicker.pickFiles(
-              type: FileType.custom,
-              allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
-            );
-            if (result.isNotEmpty) {
-              final chosen = result.first;
-              final bytes = chosen.bytes ?? await chosen.loadBytes();
-              selectedNewFile.value = chosen;
+      return DropTarget(
+        onDragDone: (detail) async {
+          if (detail.files.isNotEmpty) {
+            errorMessage.value = '';
+            try {
+              final f = detail.files.first;
+              final bytes = await f.readAsBytes();
+              final pf = DroppedPlatformFile(
+                name: f.name,
+                size: bytes.lengthInBytes,
+                bytes: bytes,
+                uri: f.path.isNotEmpty ? Uri.tryParse(f.path) : null,
+              );
+              pf.bytes = bytes;
+              selectedNewFile.value = pf;
               selectedNewBytes.value = bytes;
+              onScan(bytes, pf.name);
+            } catch (e) {
+              errorMessage.value = 'Failed to load dropped file: $e';
             }
-          } catch (e) {
-            errorMessage.value = 'Failed to choose file: $e';
           }
         },
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceVariant.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border, style: BorderStyle.solid),
-          ),
-          child: const Center(
-            child: Column(
-              children: [
-                Icon(Icons.cloud_upload_outlined, color: AppColors.primary, size: 32),
-                SizedBox(height: 8),
-                Text(
-                  'Select or Drop New Certificate / Policy File',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'PDF, PNG, or JPG (Up to 25 MB)',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                ),
-              ],
+        child: InkWell(
+          onTap: () async {
+            errorMessage.value = '';
+            try {
+              final result = await FilePicker.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+              );
+              if (result.isNotEmpty) {
+                final chosen = result.first;
+                final bytes = chosen.bytes ?? await chosen.loadBytes();
+                selectedNewFile.value = chosen;
+                selectedNewBytes.value = bytes;
+                onScan(bytes, chosen.name);
+              }
+            } catch (e) {
+              errorMessage.value = 'Failed to choose file: $e';
+            }
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+            ),
+            child: const Center(
+              child: Column(
+                children: [
+                  Icon(Icons.cloud_upload_outlined, color: AppColors.primary, size: 32),
+                  SizedBox(height: 8),
+                  Text(
+                    'Select or Drop New Certificate / Policy File',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'PDF, PNG, or JPG (Up to 25 MB) • Auto-scans and fills metadata',
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
