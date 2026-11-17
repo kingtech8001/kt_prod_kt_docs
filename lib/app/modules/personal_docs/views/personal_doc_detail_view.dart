@@ -185,14 +185,18 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                         ),
                         const SizedBox(width: 10),
                         StatusBadge(
-                          label: isExpired
-                              ? 'EXPIRED'
-                              : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE'),
-                          type: isExpired
-                              ? StatusBadgeType.error
-                              : (isExpiringSoon
-                                  ? StatusBadgeType.warning
-                                  : StatusBadgeType.success),
+                          label: meta?.expiryDate == null
+                              ? 'NO EXPIRY (LIFETIME)'
+                              : (isExpired
+                                  ? 'EXPIRED'
+                                  : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE')),
+                          type: meta?.expiryDate == null
+                              ? StatusBadgeType.success
+                              : (isExpired
+                                  ? StatusBadgeType.error
+                                  : (isExpiringSoon
+                                      ? StatusBadgeType.warning
+                                      : StatusBadgeType.success)),
                         ),
                       ],
                     ),
@@ -234,15 +238,15 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     label: const Text('Download'),
                     onPressed: () => controller.downloadDocument(doc),
                   ),
-                  if (controller.isInsurance)
+                  if (controller.canEdit)
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
-                      icon: const Icon(Icons.autorenew_rounded, size: 16),
-                      label: const Text('Renew Policy'),
+                      icon: const Icon(Icons.post_add_rounded, size: 16),
+                      label: Text(controller.isInsurance ? 'Renew Policy' : 'Re-upload / New Version'),
                       onPressed: () => controller.openRenewDialog(doc),
                     ),
                 ],
@@ -364,13 +368,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     width: colWidth,
                     onSelected: (dt) => controller.issueDate.value = dt,
                   ),
-                  _buildDatePickerField(
-                    context: context,
-                    label: 'Expiry / Renewal Due Date',
-                    date: controller.expiryDate.value,
-                    width: colWidth,
-                    onSelected: (dt) => controller.expiryDate.value = dt,
-                  ),
+                  _buildValidityExpirySection(context, colWidth),
 
                   // If insurance or financial policy
                   if (controller.isInsurance) ...[
@@ -538,6 +536,203 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
     );
   }
 
+  Widget _buildValidityExpirySection(BuildContext context, double width) {
+    return SizedBox(
+      width: width,
+      child: Obx(() {
+        final hasExpiry = controller.hasExpiryDate.value;
+        final expiry = controller.expiryDate.value;
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: hasExpiry
+                ? AppColors.surfaceMuted
+                : AppColors.successLight.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+            border: Border.all(
+              color: hasExpiry
+                  ? AppColors.border
+                  : AppColors.success.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Toggle Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        hasExpiry
+                            ? Icons.event_available_rounded
+                            : Icons.verified_user_rounded,
+                        size: 18,
+                        color: hasExpiry
+                            ? AppColors.primary
+                            : AppColors.success,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Validity / Expiry Date',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        hasExpiry ? 'Has Expiry' : 'No Expiry (Lifetime)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: hasExpiry
+                              ? AppColors.primary
+                              : AppColors.success,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Switch(
+                        value: hasExpiry,
+                        onChanged: controller.toggleHasExpiry,
+                        activeTrackColor: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 6),
+
+              if (!hasExpiry) ...[
+                // Banner for documents without expiry date (Aadhaar Card, PAN Card, Voter ID, etc.)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: AppColors.success, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'No Expiry Date (Lifetime Validity) — e.g. Aadhaar Card, PAN Card, Voter ID.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                // Expiry Date Picker & Presets for Driving License, Passport, Insurance
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: expiry ?? DateTime.now().add(const Duration(days: 365 * 10)),
+                      firstDate: DateTime(1980),
+                      lastDate: DateTime.now().add(const Duration(days: 365 * 30)),
+                    );
+                    if (picked != null) {
+                      controller.expiryDate.value = picked;
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.event_outlined, size: 16, color: AppColors.textSecondary),
+                            const SizedBox(width: 8),
+                            Text(
+                              expiry != null ? AppFormatters.formatDate(expiry) : 'Select Validity Date',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: expiry != null ? AppColors.textPrimary : AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (expiry != null)
+                          Text(
+                            expiry.isBefore(DateTime.now())
+                                ? 'Expired'
+                                : 'Valid for ${expiry.difference(DateTime.now()).inDays}d',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: expiry.isBefore(DateTime.now())
+                                  ? AppColors.error
+                                  : AppColors.primary,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text(
+                      'Presets:',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                    ),
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      label: const Text('+1 Yr', style: TextStyle(fontSize: 10)),
+                      onPressed: () => controller.setExpiryPreset(1),
+                    ),
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      label: const Text('+5 Yrs', style: TextStyle(fontSize: 10)),
+                      onPressed: () => controller.setExpiryPreset(5),
+                    ),
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      label: const Text('+10 Yrs (Passport)', style: TextStyle(fontSize: 10)),
+                      onPressed: () => controller.setExpiryPreset(10),
+                    ),
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      label: const Text('+20 Yrs (License)', style: TextStyle(fontSize: 10)),
+                      onPressed: () => controller.setExpiryPreset(20),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _buildHistoryTimelineCard(BuildContext context, DocumentModel doc) {
     final history = controller.renewalHistory;
 
@@ -570,15 +765,15 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                   ),
                 ],
               ),
-              if (controller.isInsurance)
+              if (controller.canEdit)
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
-                  icon: const Icon(Icons.autorenew_rounded, size: 16),
-                  label: const Text('Renew / Upload Next Term'),
+                  icon: const Icon(Icons.post_add_rounded, size: 16),
+                  label: Text(controller.isInsurance ? 'Renew / Upload Next Term' : 'Re-upload / Upload New Version'),
                   onPressed: () => controller.openRenewDialog(doc),
                 ),
             ],
@@ -717,10 +912,18 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
           ),
           const SizedBox(width: AppConstants.paddingMedium),
           StatusBadge(
-            label: isExpired ? 'EXPIRED' : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE'),
-            type: isExpired
-                ? StatusBadgeType.error
-                : (isExpiringSoon ? StatusBadgeType.warning : StatusBadgeType.success),
+            label: meta?.expiryDate == null
+                ? 'NO EXPIRY (LIFETIME)'
+                : (isExpired
+                    ? 'EXPIRED'
+                    : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE')),
+            type: meta?.expiryDate == null
+                ? StatusBadgeType.success
+                : (isExpired
+                    ? StatusBadgeType.error
+                    : (isExpiringSoon
+                        ? StatusBadgeType.warning
+                        : StatusBadgeType.success)),
           ),
           const SizedBox(width: AppConstants.paddingMedium),
           Wrap(

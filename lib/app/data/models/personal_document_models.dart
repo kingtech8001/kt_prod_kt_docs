@@ -183,6 +183,8 @@ class PersonalDocumentMetadataModel {
     this.updatedAt,
   });
 
+  bool get hasExpiry => expiryDate != null;
+
   String? get policyNumber => idNumber;
 
   bool get isExpired {
@@ -211,7 +213,8 @@ class PersonalDocumentMetadataModel {
   bool get isRenewable =>
       isInsurance ||
       docTypeName.toLowerCase().contains('passport') ||
-      docTypeName.toLowerCase().contains('license');
+      docTypeName.toLowerCase().contains('license') ||
+      docTypeName.toLowerCase().contains('licence');
 
   int? get daysUntilExpiry {
     if (expiryDate == null) return null;
@@ -221,7 +224,7 @@ class PersonalDocumentMetadataModel {
   }
 
   String get expiryStatusLabel {
-    if (expiryDate == null) return 'No Expiry';
+    if (expiryDate == null) return 'Lifetime (No Expiry)';
     if (isExpired) {
       final days = -daysUntilExpiry!;
       return days == 0 ? 'Expired Today' : 'Expired $days d ago';
@@ -233,7 +236,7 @@ class PersonalDocumentMetadataModel {
   }
 
   Color get statusBadgeColor {
-    if (expiryDate == null) return AppColors.textSecondary;
+    if (expiryDate == null) return AppColors.success;
     if (isExpired) return AppColors.error;
     if (isExpiringSoon) return AppColors.warning;
     return AppColors.success;
@@ -285,8 +288,7 @@ class PersonalDocumentMetadataModel {
       if (idNumber != null) 'id_number': idNumber,
       if (issueDate != null)
         'issue_date': issueDate!.toIso8601String().split('T').first,
-      if (expiryDate != null)
-        'expiry_date': expiryDate!.toIso8601String().split('T').first,
+      'expiry_date': expiryDate?.toIso8601String().split('T').first,
       if (issuingAuthority != null) 'issuing_authority': issuingAuthority,
       if (notes != null) 'notes': notes,
     };
@@ -315,6 +317,7 @@ class PersonalDocumentMetadataModel {
     String? idNumber,
     DateTime? issueDate,
     DateTime? expiryDate,
+    bool clearExpiryDate = false,
     String? issuingAuthority,
     String? insuranceCompany,
     String? policyType,
@@ -337,7 +340,7 @@ class PersonalDocumentMetadataModel {
       docTypeName: docTypeName.isNotEmpty ? docTypeName : this.docTypeName,
       idNumber: idNumber ?? this.idNumber,
       issueDate: issueDate ?? this.issueDate,
-      expiryDate: expiryDate ?? this.expiryDate,
+      expiryDate: clearExpiryDate ? null : (expiryDate ?? this.expiryDate),
       issuingAuthority: issuingAuthority ?? this.issuingAuthority,
       insuranceCompany: insuranceCompany ?? this.insuranceCompany,
       policyType: policyType ?? this.policyType,

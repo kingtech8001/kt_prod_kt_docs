@@ -85,7 +85,7 @@ class PersonalDocHistoryDialog extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${meta?.docTypeName ?? "Personal Document"} Renewal History',
+                          '${meta?.docTypeName ?? "Personal Document"} Version & Renewal History',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -214,6 +214,15 @@ class PersonalDocHistoryDialog extends StatelessWidget {
                                     color: isCurrentActive
                                         ? docMeta.statusBadgeColor
                                         : AppColors.textSecondary,
+                                  ),
+                                )
+                              else
+                                const Text(
+                                  'Lifetime Validity (No Expiry)',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.success,
                                   ),
                                 ),
                             ],

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/personal_docs_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/modules/personal_docs/views/widgets/renew_personal_doc_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -39,6 +40,17 @@ class PersonalDocDetailController extends GetxController {
 
   final issueDate = Rxn<DateTime>();
   final expiryDate = Rxn<DateTime>();
+  final hasExpiryDate = false.obs;
+
+  // Role Permissions
+  bool get canEdit {
+    try {
+      final role = AuthService.to.currentProfile.value?.role.toLowerCase();
+      return role == 'admin' || role == 'super_admin' || role == 'editor';
+    } catch (_) {
+      return true;
+    }
+  }
 
   // Lineage / History
   final renewalHistory = <DocumentModel>[].obs;
@@ -89,6 +101,32 @@ class PersonalDocDetailController extends GetxController {
 
     issueDate.value = meta?.issueDate;
     expiryDate.value = meta?.expiryDate;
+    hasExpiryDate.value = meta?.expiryDate != null;
+  }
+
+  void toggleHasExpiry(bool value) {
+    hasExpiryDate.value = value;
+    if (value && expiryDate.value == null) {
+      final now = DateTime.now();
+      final type = docTypeNameController.text.toLowerCase();
+      if (type.contains('license') || type.contains('licence')) {
+        expiryDate.value = DateTime(now.year + 10, now.month, now.day);
+      } else if (type.contains('passport')) {
+        expiryDate.value = DateTime(now.year + 10, now.month, now.day);
+      } else if (type.contains('insurance') || type.contains('mediclaim')) {
+        expiryDate.value = DateTime(now.year + 1, now.month, now.day);
+      } else {
+        expiryDate.value = DateTime(now.year + 5, now.month, now.day);
+      }
+    } else if (!value) {
+      expiryDate.value = null;
+    }
+  }
+
+  void setExpiryPreset(int years) {
+    hasExpiryDate.value = true;
+    final base = issueDate.value ?? DateTime.now();
+    expiryDate.value = DateTime(base.year + years, base.month, base.day);
   }
 
   Future<void> _fetchDocById(String id) async {
@@ -170,6 +208,7 @@ class PersonalDocDetailController extends GetxController {
     try {
       final sumInsured = double.tryParse(sumInsuredController.text.trim());
       final premium = double.tryParse(premiumAmountController.text.trim());
+      final effectiveExpiry = hasExpiryDate.value ? expiryDate.value : null;
 
       await _dataset.updatePersonalDocumentMetadata(
         documentId: current.id,
@@ -189,7 +228,7 @@ class PersonalDocDetailController extends GetxController {
             ? issuingAuthorityController.text.trim()
             : null,
         issueDate: issueDate.value,
-        expiryDate: expiryDate.value,
+        expiryDate: effectiveExpiry,
         insuranceCompany: insuranceCompanyController.text.trim().isNotEmpty
             ? insuranceCompanyController.text.trim()
             : null,
@@ -220,7 +259,8 @@ class PersonalDocDetailController extends GetxController {
                 ? issuingAuthorityController.text.trim()
                 : null,
             issueDate: issueDate.value,
-            expiryDate: expiryDate.value,
+            expiryDate: effectiveExpiry,
+            clearExpiryDate: !hasExpiryDate.value,
             insuranceCompany: insuranceCompanyController.text.trim().isNotEmpty
                 ? insuranceCompanyController.text.trim()
                 : null,
@@ -251,7 +291,7 @@ class PersonalDocDetailController extends GetxController {
                 ? issuingAuthorityController.text.trim()
                 : null,
             issueDate: issueDate.value,
-            expiryDate: expiryDate.value,
+            expiryDate: effectiveExpiry,
             insuranceCompany: insuranceCompanyController.text.trim().isNotEmpty
                 ? insuranceCompanyController.text.trim()
                 : null,
@@ -380,8 +420,8 @@ class PersonalDocDetailController extends GetxController {
     if (success == true) {
       await reloadData();
       AppSnackbar.showSuccess(
-        'Renewal Activated',
-        'Policy / document renewed successfully with active validity.',
+        'Document Re-uploaded / Renewed',
+        '${doc.personalMetadata?.docTypeName ?? "Document"} updated successfully with new version logged in history.',
       );
     }
   }

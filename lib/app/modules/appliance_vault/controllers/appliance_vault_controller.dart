@@ -3,6 +3,9 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/appliance_vault_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
+import 'package:kt_prod_kt_docs/app/modules/appliance_vault/views/widgets/appliance_history_dialog.dart';
+import 'package:kt_prod_kt_docs/app/modules/appliance_vault/views/widgets/renew_appliance_warranty_dialog.dart';
+import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
@@ -413,5 +416,63 @@ class ApplianceVaultController extends GetxController {
     if (updated == true) {
       await loadApplianceVault(resetPage: true);
     }
+  }
+
+  /// Opens the full comprehensive appliance details screen (like utility bills & personal docs).
+  Future<void> openApplianceDetail(DocumentModel doc) async {
+    await Get.toNamed(AppRoutes.APPLIANCE_DETAIL, arguments: doc);
+    await loadApplianceVault(resetPage: false);
+  }
+
+  /// Backwards-compatible alias for opening details.
+  void openApplianceDetailDialog(DocumentModel doc) {
+    openApplianceDetail(doc);
+  }
+
+  /// Opens the warranty renewal / AMC / extended warranty dialog.
+  Future<void> openRenewWarrantyDialog(DocumentModel doc) async {
+    final renewed = await RenewApplianceWarrantyDialog.show(
+      previousDocument: doc,
+      onRenew: ({
+        required previousDocument,
+        required newWarranty,
+        required newTitle,
+        required fileBytes,
+        required fileName,
+        newDescription,
+      }) async {
+        await _dataset.renewApplianceWarranty(
+          previousDocument: previousDocument,
+          newWarranty: newWarranty,
+          newTitle: newTitle,
+          fileBytes: fileBytes,
+          fileName: fileName,
+          newDescription: newDescription,
+        );
+      },
+    );
+
+    if (renewed == true) {
+      AppSnackbar.showSuccess(
+        'Warranty Renewed',
+        'Successfully renewed / extended warranty for "${doc.title}".',
+      );
+      await loadApplianceVault(resetPage: true);
+    }
+  }
+
+  /// Opens the appliance version & warranty renewal history dialog.
+  void openApplianceHistoryDialog(DocumentModel doc) {
+    ApplianceHistoryDialog.show(
+      document: doc,
+      loadHistory: () => _dataset.getApplianceHistory(
+        documentId: doc.id,
+        serialNumber: doc.applianceWarranty?.serialNumber,
+        invoiceNumber: doc.applianceWarranty?.invoiceNumber,
+        productName: doc.applianceWarranty?.productName,
+      ),
+      onPreview: previewDocument,
+      onDownload: downloadDocument,
+    );
   }
 }

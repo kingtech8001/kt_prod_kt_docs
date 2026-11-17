@@ -483,6 +483,48 @@ class DocumentsDataset {
         } catch (_) {}
       }
 
+      if (applianceWarranty != null) {
+        Map<String, dynamic> extras;
+        if (docUpdates['extra_attributes'] != null) {
+          extras = Map<String, dynamic>.from(docUpdates['extra_attributes'] as Map);
+        } else {
+          try {
+            final currentDoc = await _client
+                .from('documents')
+                .select('extra_attributes')
+                .eq('id', documentId)
+                .maybeSingle();
+            extras = currentDoc?['extra_attributes'] != null
+                ? Map<String, dynamic>.from(currentDoc!['extra_attributes'] as Map)
+                : <String, dynamic>{};
+          } catch (_) {
+            extras = <String, dynamic>{};
+          }
+        }
+        if (applianceWarranty.items.isNotEmpty) {
+          extras['appliance_items'] =
+              applianceWarranty.items.map((i) => i.toJson()).toList();
+        }
+        extras['warranty_type'] = applianceWarranty.warrantyType;
+        if (applianceWarranty.policyNumber != null) {
+          extras['policy_number'] = applianceWarranty.policyNumber;
+        }
+        if (applianceWarranty.amcProvider != null) {
+          extras['amc_provider'] = applianceWarranty.amcProvider;
+        }
+        if (applianceWarranty.renewalAmount != null) {
+          extras['renewal_amount'] = applianceWarranty.renewalAmount;
+        }
+        if (applianceWarranty.renewalNotes != null) {
+          extras['renewal_notes'] = applianceWarranty.renewalNotes;
+        }
+        if (applianceWarranty.previousDocumentId != null) {
+          extras['previous_document_id'] = applianceWarranty.previousDocumentId;
+        }
+        extras['renewal_count'] = applianceWarranty.renewalCount;
+        docUpdates['extra_attributes'] = extras;
+      }
+
       AppLogger.debug(
         'DOCUMENTS_DATASET',
         'Executing documents table update for $documentId',
@@ -492,17 +534,31 @@ class DocumentsDataset {
       await _client.from('documents').update(docUpdates).eq('id', documentId);
 
       if (applianceWarranty != null) {
-        final warrantyMap = applianceWarranty.toJson();
-        warrantyMap['document_id'] = documentId;
+        final warrantyPayload = applianceWarranty.toSupabaseMap()
+          ..remove('id')
+          ..remove('document_id');
         try {
-          await _client.from('appliance_warranty_metadata').upsert(warrantyMap);
+          final res = await _client
+              .from('appliance_warranty_metadata')
+              .update(warrantyPayload)
+              .eq('document_id', documentId)
+              .select('id');
+          if (res.isEmpty) {
+            final insertMap = applianceWarranty.toSupabaseMap()..remove('id');
+            insertMap['document_id'] = documentId;
+            await _client.from('appliance_warranty_metadata').insert(insertMap);
+          }
         } catch (tableErr) {
           AppLogger.warning(
             'DOCUMENTS_DATASET',
-            'Non-fatal fallback upserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
+            'Non-fatal fallback updating warrantyMap: $tableErr. Retrying update by document_id.',
           );
-          final cleanMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
-          await _client.from('appliance_warranty_metadata').upsert(cleanMap);
+          final cleanMap = Map<String, dynamic>.from(warrantyPayload)
+            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
+          await _client
+              .from('appliance_warranty_metadata')
+              .update(cleanMap)
+              .eq('document_id', documentId);
         }
       }
 
@@ -701,8 +757,28 @@ class DocumentsDataset {
           : 'pdf';
 
       if (applianceWarranty != null) {
-        extraAttributes['appliance_items'] =
-            applianceWarranty.items.map((i) => i.toJson()).toList();
+        if (applianceWarranty.items.isNotEmpty) {
+          extraAttributes['appliance_items'] =
+              applianceWarranty.items.map((i) => i.toJson()).toList();
+        }
+        extraAttributes['warranty_type'] = applianceWarranty.warrantyType;
+        if (applianceWarranty.policyNumber != null) {
+          extraAttributes['policy_number'] = applianceWarranty.policyNumber;
+        }
+        if (applianceWarranty.amcProvider != null) {
+          extraAttributes['amc_provider'] = applianceWarranty.amcProvider;
+        }
+        if (applianceWarranty.renewalAmount != null) {
+          extraAttributes['renewal_amount'] = applianceWarranty.renewalAmount;
+        }
+        if (applianceWarranty.renewalNotes != null) {
+          extraAttributes['renewal_notes'] = applianceWarranty.renewalNotes;
+        }
+        if (applianceWarranty.previousDocumentId != null) {
+          extraAttributes['previous_document_id'] =
+              applianceWarranty.previousDocumentId;
+        }
+        extraAttributes['renewal_count'] = applianceWarranty.renewalCount;
       }
 
       if (vehicleMetadata != null) {
@@ -764,7 +840,7 @@ class DocumentsDataset {
       }
 
       if (applianceWarranty != null) {
-        final warrantyMap = applianceWarranty.toJson();
+        final warrantyMap = applianceWarranty.toSupabaseMap()..remove('id');
         warrantyMap['document_id'] = docId;
         try {
           await _client
@@ -773,9 +849,10 @@ class DocumentsDataset {
         } catch (tableErr) {
           AppLogger.warning(
             'DOCUMENTS_DATASET',
-            'Non-fatal fallback inserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
+            'Non-fatal fallback inserting warrantyMap: $tableErr. Retrying with strictly safe schema columns.',
           );
-          final legacyMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
+          final legacyMap = Map<String, dynamic>.from(warrantyMap)
+            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
           await _client
               .from('appliance_warranty_metadata')
               .insert(legacyMap);

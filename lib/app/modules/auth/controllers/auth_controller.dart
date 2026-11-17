@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,8 +16,8 @@ class AuthController extends GetxController {
 
   AuthController(this._authRepository);
 
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  late TextEditingController emailController;
+  late TextEditingController passwordController;
 
   final isLoading = false.obs;
   final obscurePassword = true.obs;
@@ -25,6 +26,9 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    emailController = TextEditingController();
+    passwordController = TextEditingController();
+
     if (Get.isRegistered<AuthService>() && AuthService.to.isAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Get.offAllNamed(AppRoutes.DASHBOARD);
@@ -141,21 +145,17 @@ class AuthController extends GetxController {
     AppLogger.debug('AUTH_CTRL', 'Signing in with email: $email');
 
     if (email.isEmpty || !GetUtils.isEmail(email)) {
-      Get.snackbar(
+      AppSnackbar.showError(
         'Invalid Email',
         'Please enter a valid work email address',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
       );
       return;
     }
 
     if (password.isEmpty) {
-      Get.snackbar(
+      AppSnackbar.showError(
         'Password Required',
         'Please enter your password',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
       );
       return;
     }
@@ -171,11 +171,9 @@ class AuthController extends GetxController {
         await AuthService.to.loadProfile();
       }
 
-      Get.snackbar(
+      AppSnackbar.showSuccess(
         'Welcome',
         'Successfully signed in to ${AppConstants.appName}',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
       );
 
       Get.offAllNamed(AppRoutes.DASHBOARD);
@@ -198,12 +196,9 @@ class AuthController extends GetxController {
     if (Get.isRegistered<AuthService>()) {
       AuthService.to.enterDemoMode();
     }
-    Get.snackbar(
+    AppSnackbar.showInfo(
       'Demo Mode Active',
       'Viewing static mock data. No database operations will be performed.',
-      backgroundColor: AppColors.primary,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 4),
     );
     Get.offAllNamed(AppRoutes.DASHBOARD);
   }

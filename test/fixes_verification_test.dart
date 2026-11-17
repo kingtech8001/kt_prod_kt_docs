@@ -1,4 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/modules/appliance_vault/bindings/appliance_detail_binding.dart';
+import 'package:kt_prod_kt_docs/app/routes/app_pages.dart';
+import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/address_model.dart';
@@ -1022,6 +1026,311 @@ void main() {
       expect(doc.vehicleMetadata?.tpExpiryDate, equals(DateTime(2031, 11, 24)));
       expect(doc.extraAttributes['insurance_type'], equals('Bundled (1-Yr OD + 3-Yr TP)'));
       expect(doc.extraAttributes['tp_expiry_date'], equals('2031-11-24'));
+    });
+
+    test('Point 15: Personal Documents Vault - Aadhaar (No Expiry) vs Driving License (Validity)', () {
+      // 1. Aadhaar Card (No expiry date / lifetime validity)
+      final aadhaarMeta = PersonalDocumentMetadataModel(
+        personName: 'Mihir Gandhi',
+        docTypeName: 'Aadhaar Card',
+        idNumber: '9842 1920 8812',
+        issuingAuthority: 'UIDAI',
+        issueDate: DateTime(2018, 5, 14),
+        expiryDate: null,
+      );
+
+      expect(aadhaarMeta.hasExpiry, isFalse);
+      expect(aadhaarMeta.expiryDate, isNull);
+      expect(aadhaarMeta.isExpired, isFalse);
+      expect(aadhaarMeta.isExpiringSoon, isFalse);
+      expect(aadhaarMeta.expiryStatusLabel, equals('Lifetime (No Expiry)'));
+
+      // Serialization without expiry date
+      final aadhaarJson = aadhaarMeta.toJson(forSupabaseTable: true);
+      expect(aadhaarJson['expiry_date'], isNull);
+      expect(aadhaarJson['doc_type_name'], equals('Aadhaar Card'));
+      expect(aadhaarJson['id_number'], equals('9842 1920 8812'));
+
+      // 2. Driving License (Has validity / expiry date)
+      final dlExpiry = DateTime(2039, 3, 19);
+      final dlMeta = PersonalDocumentMetadataModel(
+        personName: 'Mihir Gandhi',
+        docTypeName: 'Driving License',
+        idNumber: 'GJ01-20190012345',
+        issuingAuthority: 'RTO Ahmedabad',
+        issueDate: DateTime(2019, 3, 20),
+        expiryDate: dlExpiry,
+      );
+
+      expect(dlMeta.hasExpiry, isTrue);
+      expect(dlMeta.expiryDate, equals(dlExpiry));
+      expect(dlMeta.isExpired, isFalse);
+      expect(dlMeta.daysUntilExpiry, isNotNull);
+      expect(dlMeta.daysUntilExpiry!, greaterThan(0));
+
+      final dlJson = dlMeta.toJson(forSupabaseTable: true);
+      expect(dlJson['expiry_date'], equals('2039-03-19'));
+
+      // 3. Toggling expiry date off using clearExpiryDate
+      final clearedMeta = dlMeta.copyWith(clearExpiryDate: true);
+      expect(clearedMeta.expiryDate, isNull);
+      expect(clearedMeta.hasExpiry, isFalse);
+      expect(clearedMeta.expiryStatusLabel, equals('Lifetime (No Expiry)'));
+
+      // 4. Re-upload / History verification in DemoDataService
+      final allDocs = DemoDataService.getAllDocuments();
+      final aadhaarDoc = allDocs.firstWhere((d) => d.subCategory == 'Aadhaar Card');
+      final dlDoc = allDocs.firstWhere((d) => d.subCategory == 'Driving License');
+
+      expect(aadhaarDoc.personalMetadata?.expiryDate, isNull);
+      expect(dlDoc.personalMetadata?.expiryDate, isNotNull);
+
+      final aadhaarHistory = DemoDataService.getPersonalDocTypeHistoryMock(
+        personName: 'Mihir Gandhi',
+        docTypeName: 'Aadhaar Card',
+      );
+      expect(aadhaarHistory, isNotEmpty);
+      expect(aadhaarHistory.first.title, contains('Aadhaar Card'));
+
+      final dlHistory = DemoDataService.getPersonalDocTypeHistoryMock(
+        personName: 'Mihir Gandhi',
+        docTypeName: 'Driving License',
+      );
+      expect(dlHistory, isNotEmpty);
+      expect(dlHistory.first.title, contains('Driving License'));
+    });
+
+    test(
+        'Point 16: Appliance Vault - Details, Warranty Renewal (AMC, Extended, Component, Lifetime, No-Warranty), and Version Lineage History',
+        () async {
+      final now = DateTime.now();
+
+      // 1. Initial Appliance Invoice (Standard Manufacturer Warranty)
+      final initialWarranty = ApplianceWarrantyModel(
+        billingName: 'King Technology Pvt Ltd',
+        storeVendorName: 'Vijay Sales Thaltej',
+        invoiceNumber: 'INV-AC-9901',
+        purchaseDate: now.subtract(const Duration(days: 365)),
+        purchaseAmount: 52000.0,
+        warrantyType: 'standard',
+        items: [
+          ApplianceItemModel(
+            productName: 'Voltas 1.5 Ton Inverter AC',
+            productCategory: 'Air Conditioner',
+            brand: 'Voltas',
+            modelNumber: 'VOLT-185V',
+            serialNumber: 'SN-VOLT-2024-9102',
+            purchaseAmount: 52000.0,
+            warrantyPeriodMonths: 12,
+            warrantyValidUpto: now.subtract(const Duration(days: 5)), // Expired standard warranty
+            warrantyStatus: 'expired',
+            warrantyType: 'standard',
+          ),
+        ],
+      );
+
+      expect(initialWarranty.isExpired, isTrue);
+      expect(initialWarranty.warrantyStatusDisplay, equals('EXPIRED'));
+      expect(initialWarranty.warrantyTypeDisplay, equals('Standard Manufacturer Warranty'));
+
+      final baseDoc = DocumentModel(
+        id: 'doc-appliance-voltas-1',
+        title: 'Voltas 1.5 Ton AC Purchase Invoice',
+        categoryId: 'cat-appliance',
+        categoryCode: 'appliance_warranty',
+        subCategory: 'Air Conditioner',
+        fileName: 'voltas_ac_invoice.pdf',
+        filePath: 'mock/voltas_ac.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 500000,
+        status: 'active',
+        documentNumber: 'INV-AC-9901',
+        createdAt: now.subtract(const Duration(days: 365)),
+        updatedAt: now.subtract(const Duration(days: 365)),
+        applianceWarranty: initialWarranty,
+      );
+
+      // Add to DemoDataService
+      DemoDataService.getAllDocuments().insert(0, baseDoc);
+
+      // 2. Perform AMC Warranty Renewal
+      final amcExpiry = now.add(const Duration(days: 360));
+      final amcWarranty = initialWarranty.copyWith(
+        warrantyType: 'amc',
+        extendedWarrantyUpto: amcExpiry,
+        amcProvider: 'Urban Company Care',
+        policyNumber: 'AMC-UC-2026-4412',
+        renewalAmount: 4200.0,
+        renewalNotes: 'Includes 2 seasonal wet cleaning visits & free capacitor replacements',
+        items: [
+          initialWarranty.items.first.copyWith(
+            extendedWarrantyUpto: amcExpiry,
+            warrantyType: 'amc',
+            policyNumber: 'AMC-UC-2026-4412',
+            amcProvider: 'Urban Company Care',
+            warrantyStatus: 'active',
+          ),
+        ],
+      );
+
+      expect(amcWarranty.warrantyTypeDisplay, equals('Annual Maintenance Contract (AMC)'));
+      expect(amcWarranty.effectiveValidUpto, equals(amcExpiry));
+      expect(amcWarranty.isExpired, isFalse);
+      expect(amcWarranty.warrantyStatusDisplay, equals('AMC ACTIVE'));
+
+      final renewedDoc = DemoDataService.renewApplianceWarrantyMock(
+        previousDoc: baseDoc,
+        newWarranty: amcWarranty,
+        newTitle: 'Voltas 1.5 Ton AC - 1-Year AMC Contract',
+        newFileName: 'voltas_amc_contract_2026.pdf',
+        newFileSize: 250000,
+        newMimeType: 'application/pdf',
+        newFilePath: 'mock/voltas_amc_contract_2026.pdf',
+        newDescription: 'Annual maintenance contract renewed via Urban Company',
+      );
+
+      // Verify previous document was archived
+      final updatedBaseDoc = DemoDataService.getAllDocuments().firstWhere((d) => d.id == baseDoc.id);
+      expect(updatedBaseDoc.status, equals('archived'));
+      expect(updatedBaseDoc.extraAttributes['archived_reason'], equals('renewed'));
+
+      // Verify renewed document state and lineage
+      expect(renewedDoc.status, equals('active'));
+      expect(renewedDoc.extraAttributes['previous_document_id'], equals(baseDoc.id));
+      expect(renewedDoc.extraAttributes['renewal_count'], equals(1));
+      expect(renewedDoc.extraAttributes['warranty_type'], equals('amc'));
+      expect(renewedDoc.applianceWarranty?.amcProvider, equals('Urban Company Care'));
+      expect(renewedDoc.applianceWarranty?.policyNumber, equals('AMC-UC-2026-4412'));
+      expect(renewedDoc.applianceWarranty?.renewalAmount, equals(4200.0));
+
+      // 3. Lineage & History verification
+      final history = DemoDataService.getApplianceHistoryMock(
+        documentId: renewedDoc.id,
+        serialNumber: 'SN-VOLT-2024-9102',
+      );
+      expect(history.length, greaterThanOrEqualTo(2));
+      expect(history.any((d) => d.id == renewedDoc.id), isTrue);
+      expect(history.any((d) => d.id == baseDoc.id), isTrue);
+
+      // 4. Verify Built-in Demo Appliance History for Daikin AC (doc-3 & doc-3b)
+      final daikinHistory = DemoDataService.getApplianceHistoryMock(
+        documentId: 'doc-3',
+        serialNumber: 'DKN-2024-99812A',
+      );
+      expect(daikinHistory.length, greaterThanOrEqualTo(2));
+      expect(daikinHistory.any((d) => d.id == 'doc-3'), isTrue);
+      expect(daikinHistory.any((d) => d.id == 'doc-3b'), isTrue);
+
+      // 5. Verify Lifetime Guarantee & No Warranty / Bill Only Modes
+      final lifetimeWarranty = ApplianceWarrantyModel(
+        billingName: 'King Technology Pvt Ltd',
+        storeVendorName: 'Nilkamal Furniture',
+        invoiceNumber: 'INV-FURN-1029',
+        purchaseDate: now.subtract(const Duration(days: 400)),
+        purchaseAmount: 18500.0,
+        warrantyType: 'lifetime',
+        items: [
+          ApplianceItemModel(
+            productName: 'Executive Ergonomic Chair',
+            productCategory: 'Furniture / Office Asset',
+            brand: 'Nilkamal',
+            warrantyPeriodMonths: 0,
+            warrantyValidUpto: now,
+            warrantyStatus: 'active',
+            warrantyType: 'lifetime',
+          ),
+        ],
+      );
+      expect(lifetimeWarranty.isLifetime, isTrue);
+      expect(lifetimeWarranty.isExpired, isFalse);
+      expect(lifetimeWarranty.warrantyStatusDisplay, equals('LIFETIME'));
+      expect(lifetimeWarranty.warrantyTypeDisplay, equals('Lifetime Guarantee'));
+
+      final noWarranty = ApplianceWarrantyModel(
+        billingName: 'King Technology Pvt Ltd',
+        storeVendorName: 'Local Hardware Store',
+        invoiceNumber: 'BILL-REPAIR-9182',
+        purchaseDate: now,
+        purchaseAmount: 1200.0,
+        warrantyType: 'no_warranty',
+      );
+      expect(noWarranty.hasWarranty, isFalse);
+      expect(noWarranty.warrantyStatusDisplay, equals('NO WARRANTY'));
+      expect(noWarranty.warrantyTypeDisplay, equals('No Warranty (Invoice Only)'));
+
+      // 6. Verify Appliance Detail Full-Screen Route Configuration
+      expect(AppRoutes.APPLIANCE_DETAIL, equals('/appliances/detail'));
+      final applianceDetailPage = AppPages.routes.firstWhereOrNull(
+        (page) => page.name == AppRoutes.APPLIANCE_DETAIL,
+      );
+      expect(applianceDetailPage, isNotNull);
+      expect(applianceDetailPage?.binding, isA<ApplianceDetailBinding>());
+
+      // 7. Verify Schema Immunity: toSupabaseMap() and toJson(forSupabaseTable: true) contain ZERO non-schema columns
+      final fullWarranty = ApplianceWarrantyModel(
+        billingName: 'King Technology',
+        storeVendorName: 'Croma Retail',
+        invoiceNumber: 'SLA373385612716',
+        purchaseDate: now,
+        purchaseAmount: 45000.0,
+        warrantyType: 'amc',
+        policyNumber: 'AMC-POL-9921',
+        amcProvider: 'Urban Company',
+        renewalAmount: 3500.0,
+        renewalNotes: 'Comprehensive compressor & gas refill contract',
+        items: [
+          ApplianceItemModel(
+            productName: 'Godrej Refrigerator 320L',
+            productCategory: 'Refrigerator',
+            brand: 'Godrej',
+            modelNumber: 'RT-EON-320',
+            serialNumber: 'GD-991204',
+            warrantyPeriodMonths: 24,
+            warrantyValidUpto: now.add(const Duration(days: 730)),
+            customerCareNumber: '1800-209-5511',
+            warrantyStatus: 'active',
+            warrantyType: 'amc',
+            policyNumber: 'AMC-POL-9921',
+            amcProvider: 'Urban Company',
+          ),
+        ],
+      );
+
+      final supabaseMap = fullWarranty.toSupabaseMap();
+      final defaultJson = fullWarranty.toJson(); // default forSupabaseTable: true
+      final fullExportJson = fullWarranty.toJson(forSupabaseTable: false);
+
+      // Verify strict schema columns compliance (prevents PGRST204 errors)
+      expect(supabaseMap.containsKey('amc_provider'), isFalse);
+      expect(supabaseMap.containsKey('warranty_type'), isFalse);
+      expect(supabaseMap.containsKey('policy_number'), isFalse);
+      expect(supabaseMap.containsKey('renewal_amount'), isFalse);
+      expect(supabaseMap.containsKey('renewal_notes'), isFalse);
+      expect(supabaseMap.containsKey('items'), isFalse);
+      for (final key in supabaseMap.keys) {
+        expect(ApplianceWarrantyModel.supabaseColumns.contains(key), isTrue,
+            reason: 'Column $key is not present in appliance_warranty_metadata table schema');
+      }
+
+      // Verify default toJson() is also table-safe
+      expect(defaultJson.containsKey('amc_provider'), isFalse);
+      expect(defaultJson.containsKey('items'), isFalse);
+
+      // Verify full export json retains extended attributes
+      expect(fullExportJson['amc_provider'], equals('Urban Company'));
+      expect(fullExportJson['warranty_type'], equals('amc'));
+      expect(fullExportJson['items'], isNotEmpty);
+
+      // Verify copyWith updates primary item dates correctly
+      final updatedExpiry = now.add(const Duration(days: 1000));
+      final copiedWarranty = fullWarranty.copyWith(
+        warrantyValidUpto: updatedExpiry,
+        amcProvider: 'Onsitego Services',
+      );
+      expect(copiedWarranty.warrantyValidUpto, equals(updatedExpiry));
+      expect(copiedWarranty.primaryItem?.warrantyValidUpto, equals(updatedExpiry));
+      expect(copiedWarranty.amcProvider, equals('Onsitego Services'));
     });
   });
 }

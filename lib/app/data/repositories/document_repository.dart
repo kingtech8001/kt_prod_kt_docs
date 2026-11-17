@@ -266,8 +266,28 @@ class DocumentRepository {
           : 'pdf';
 
       if (applianceWarranty != null) {
-        extraAttributes['appliance_items'] =
-            applianceWarranty.items.map((i) => i.toJson()).toList();
+        if (applianceWarranty.items.isNotEmpty) {
+          extraAttributes['appliance_items'] =
+              applianceWarranty.items.map((i) => i.toJson()).toList();
+        }
+        extraAttributes['warranty_type'] = applianceWarranty.warrantyType;
+        if (applianceWarranty.policyNumber != null) {
+          extraAttributes['policy_number'] = applianceWarranty.policyNumber;
+        }
+        if (applianceWarranty.amcProvider != null) {
+          extraAttributes['amc_provider'] = applianceWarranty.amcProvider;
+        }
+        if (applianceWarranty.renewalAmount != null) {
+          extraAttributes['renewal_amount'] = applianceWarranty.renewalAmount;
+        }
+        if (applianceWarranty.renewalNotes != null) {
+          extraAttributes['renewal_notes'] = applianceWarranty.renewalNotes;
+        }
+        if (applianceWarranty.previousDocumentId != null) {
+          extraAttributes['previous_document_id'] =
+              applianceWarranty.previousDocumentId;
+        }
+        extraAttributes['renewal_count'] = applianceWarranty.renewalCount;
       }
 
       final docData = {
@@ -310,7 +330,7 @@ class DocumentRepository {
       }
 
       if (applianceWarranty != null) {
-        final warrantyMap = applianceWarranty.toJson();
+        final warrantyMap = applianceWarranty.toSupabaseMap()..remove('id');
         warrantyMap['document_id'] = docId;
         try {
           await _provider.client
@@ -319,10 +339,10 @@ class DocumentRepository {
         } catch (tableErr) {
           AppLogger.warning(
             'DOC_REPO',
-            'Non-fatal fallback inserting warrantyMap: $tableErr. Retrying without raw items column if needed.',
+            'Non-fatal fallback inserting warrantyMap: $tableErr. Retrying with strictly safe schema columns.',
           );
-          // If the items column is not on the table yet, retry with standard columns
-          final legacyMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
+          final legacyMap = Map<String, dynamic>.from(warrantyMap)
+            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
           await _provider.client
               .from('appliance_warranty_metadata')
               .insert(legacyMap);
@@ -427,10 +447,40 @@ class DocumentRepository {
       };
 
       if (applianceWarranty != null) {
-        docUpdatePayload['extra_attributes'] = {
-          'appliance_items':
-              applianceWarranty.items.map((i) => i.toJson()).toList(),
-        };
+        Map<String, dynamic> extras = {};
+        try {
+          final currentDoc = await _provider.client
+              .from('documents')
+              .select('extra_attributes')
+              .eq('id', documentId)
+              .maybeSingle();
+          if (currentDoc?['extra_attributes'] != null && currentDoc!['extra_attributes'] is Map) {
+            extras = Map<String, dynamic>.from(currentDoc['extra_attributes'] as Map);
+          }
+        } catch (_) {}
+
+        if (applianceWarranty.items.isNotEmpty) {
+          extras['appliance_items'] =
+              applianceWarranty.items.map((i) => i.toJson()).toList();
+        }
+        extras['warranty_type'] = applianceWarranty.warrantyType;
+        if (applianceWarranty.policyNumber != null) {
+          extras['policy_number'] = applianceWarranty.policyNumber;
+        }
+        if (applianceWarranty.amcProvider != null) {
+          extras['amc_provider'] = applianceWarranty.amcProvider;
+        }
+        if (applianceWarranty.renewalAmount != null) {
+          extras['renewal_amount'] = applianceWarranty.renewalAmount;
+        }
+        if (applianceWarranty.renewalNotes != null) {
+          extras['renewal_notes'] = applianceWarranty.renewalNotes;
+        }
+        if (applianceWarranty.previousDocumentId != null) {
+          extras['previous_document_id'] = applianceWarranty.previousDocumentId;
+        }
+        extras['renewal_count'] = applianceWarranty.renewalCount;
+        docUpdatePayload['extra_attributes'] = extras;
       }
 
       await _provider.client
@@ -439,21 +489,31 @@ class DocumentRepository {
           .eq('id', documentId);
 
       if (applianceWarranty != null) {
-        final warrantyMap = applianceWarranty.toJson();
-        warrantyMap['document_id'] = documentId;
+        final warrantyPayload = applianceWarranty.toSupabaseMap()
+          ..remove('id')
+          ..remove('document_id');
         try {
-          await _provider.client
+          final res = await _provider.client
               .from('appliance_warranty_metadata')
-              .upsert(warrantyMap, onConflict: 'document_id');
+              .update(warrantyPayload)
+              .eq('document_id', documentId)
+              .select('id');
+          if (res.isEmpty) {
+            final insertMap = applianceWarranty.toSupabaseMap()..remove('id');
+            insertMap['document_id'] = documentId;
+            await _provider.client.from('appliance_warranty_metadata').insert(insertMap);
+          }
         } catch (wErr) {
           AppLogger.warning(
             'DOC_REPO',
-            'Warranty upsert fallback: $wErr. Retrying without raw items column if needed.',
+            'Warranty update fallback: $wErr. Retrying update by document_id.',
           );
-          final fallbackMap = Map<String, dynamic>.from(warrantyMap)..remove('items');
+          final cleanMap = Map<String, dynamic>.from(warrantyPayload)
+            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
           await _provider.client
               .from('appliance_warranty_metadata')
-              .upsert(fallbackMap, onConflict: 'document_id');
+              .update(cleanMap)
+              .eq('document_id', documentId);
         }
       }
 

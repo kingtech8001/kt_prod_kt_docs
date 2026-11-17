@@ -511,12 +511,16 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                                   const SizedBox(width: 6),
                                 ],
                                 Expanded(
-                                  child: Text(
-                                    doc.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: AppColors.textPrimary,
+                                  child: InkWell(
+                                    onTap: () => controller.openApplianceDetail(doc),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Text(
+                                      doc.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: AppColors.textPrimary,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -567,13 +571,15 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                       ),
                       StatusBadge(
                         label: w?.warrantyStatusDisplay ?? 'ACTIVE',
-                        type: w?.hasWarranty == false
-                            ? StatusBadgeType.inactive
-                            : (w?.isExpired == true
+                        type: w?.isLifetime == true
+                            ? StatusBadgeType.success
+                            : (w?.hasWarranty == false
                                 ? StatusBadgeType.inactive
-                                : (w?.isExpiringSoon == true
-                                    ? StatusBadgeType.warning
-                                    : StatusBadgeType.success)),
+                                : (w?.isExpired == true
+                                    ? StatusBadgeType.inactive
+                                    : (w?.isExpiringSoon == true
+                                        ? StatusBadgeType.warning
+                                        : StatusBadgeType.success))),
                       ),
                     ],
                   ),
@@ -652,9 +658,11 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            w?.hasWarranty == true
-                                ? 'City: ${addr?.city ?? "N/A"} • Valid To: ${AppFormatters.formatDate(w?.warrantyValidUpto)}'
-                                : 'City: ${addr?.city ?? "N/A"} • No Warranty (Bill Only)',
+                            w?.isLifetime == true
+                                ? 'City: ${addr?.city ?? "N/A"} • Lifetime Guarantee'
+                                : (w?.hasWarranty == true
+                                    ? 'City: ${addr?.city ?? "N/A"} • Valid To: ${AppFormatters.formatDate(w?.effectiveValidUpto)}'
+                                    : 'City: ${addr?.city ?? "N/A"} • No Warranty (Bill Only)'),
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -673,6 +681,28 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                       ),
                       Row(
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.info_outline, size: 18),
+                            tooltip: 'View Details',
+                            onPressed: () =>
+                                controller.openApplianceDetail(doc),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.add_moderator_outlined,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                            tooltip: 'Renew / Extend Warranty',
+                            onPressed: () =>
+                                controller.openRenewWarrantyDialog(doc),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.history_rounded, size: 18),
+                            tooltip: 'Warranty & Renewal History',
+                            onPressed: () =>
+                                controller.openApplianceHistoryDialog(doc),
+                          ),
                           if (doc.isGoogleAttachment)
                             IconButton(
                               icon: const GoogleDriveLogo(size: 18),
@@ -743,15 +773,19 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                                 const SizedBox(width: 6),
                               ],
                               Flexible(
-                                child: Text(
-                                  doc.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                    color: AppColors.textPrimary,
+                                child: InkWell(
+                                  onTap: () => controller.openApplianceDetail(doc),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Text(
+                                    doc.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (doc.isGoogleAttachment) ...[
@@ -836,9 +870,11 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            w?.hasWarranty == true
-                                ? 'Valid: ${AppFormatters.formatDate(w?.warrantyValidUpto)}'
-                                : 'Valid: N/A',
+                            w?.isLifetime == true
+                                ? 'Valid: Lifetime'
+                                : (w?.hasWarranty == true
+                                    ? 'Valid: ${AppFormatters.formatDate(w?.effectiveValidUpto)}'
+                                    : 'Valid: N/A'),
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -846,21 +882,25 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                             ),
                           ),
                           Text(
-                            w?.hasWarranty == false
-                                ? 'Invoice Only'
-                                : (w?.isExpired == true
-                                    ? 'Expired'
-                                    : '${w?.daysUntilExpiry ?? 0} days remaining'),
+                            w?.isLifetime == true
+                                ? 'No Expiry'
+                                : (w?.hasWarranty == false
+                                    ? 'Invoice Only'
+                                    : (w?.isExpired == true
+                                        ? 'Expired'
+                                        : '${w?.daysUntilExpiry ?? 0} days remaining')),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: w?.hasWarranty == false
-                                  ? AppColors.textSecondary
-                                  : (w?.isExpiringSoon == true
-                                      ? AppColors.warning
-                                      : (w?.isExpired == true
-                                          ? AppColors.error
-                                          : AppColors.success)),
+                              color: w?.isLifetime == true
+                                  ? Colors.purple
+                                  : (w?.hasWarranty == false
+                                      ? AppColors.textSecondary
+                                      : (w?.isExpiringSoon == true
+                                          ? AppColors.warning
+                                          : (w?.isExpired == true
+                                              ? AppColors.error
+                                              : AppColors.success))),
                             ),
                           ),
                         ],
@@ -873,13 +913,15 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                         children: [
                           StatusBadge(
                             label: w?.warrantyStatusDisplay ?? 'ACTIVE',
-                            type: w?.hasWarranty == false
-                                ? StatusBadgeType.inactive
-                                : (w?.isExpired == true
+                            type: w?.isLifetime == true
+                                ? StatusBadgeType.success
+                                : (w?.hasWarranty == false
                                     ? StatusBadgeType.inactive
-                                    : (w?.isExpiringSoon == true
-                                        ? StatusBadgeType.warning
-                                        : StatusBadgeType.success)),
+                                    : (w?.isExpired == true
+                                        ? StatusBadgeType.inactive
+                                        : (w?.isExpiringSoon == true
+                                            ? StatusBadgeType.warning
+                                            : StatusBadgeType.success))),
                           ),
                           if (w?.customerCareNumber != null &&
                               w!.customerCareNumber!.isNotEmpty) ...[
@@ -899,6 +941,28 @@ class ApplianceVaultView extends GetView<ApplianceVaultController> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.info_outline, size: 20),
+                          tooltip: 'View Details',
+                          onPressed: () =>
+                              controller.openApplianceDetail(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.add_moderator_outlined,
+                            size: 20,
+                            color: AppColors.primary,
+                          ),
+                          tooltip: 'Renew / Extend Warranty',
+                          onPressed: () =>
+                              controller.openRenewWarrantyDialog(doc),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.history_rounded, size: 20),
+                          tooltip: 'Warranty & Renewal History',
+                          onPressed: () =>
+                              controller.openApplianceHistoryDialog(doc),
+                        ),
                         if (doc.isGoogleAttachment)
                           IconButton(
                             icon: const GoogleDriveLogo(size: 18),

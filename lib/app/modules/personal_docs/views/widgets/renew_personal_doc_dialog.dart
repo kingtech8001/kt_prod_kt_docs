@@ -51,9 +51,29 @@ class RenewPersonalDocDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = previousDocument.personalMetadata;
+    final docTypeName = meta?.docTypeName ?? previousDocument.subCategory;
+
     final isInsurance = (meta?.isInsurance ?? false) ||
+        docTypeName.toLowerCase().contains('insurance') ||
+        docTypeName.toLowerCase().contains('mediclaim') ||
         previousDocument.subCategory.toLowerCase().contains('insurance') ||
         previousDocument.subCategory.toLowerCase().contains('mediclaim');
+
+    final isLicenseOrPassport =
+        docTypeName.toLowerCase().contains('license') ||
+        docTypeName.toLowerCase().contains('licence') ||
+        docTypeName.toLowerCase().contains('passport') ||
+        previousDocument.subCategory.toLowerCase().contains('license') ||
+        previousDocument.subCategory.toLowerCase().contains('licence') ||
+        previousDocument.subCategory.toLowerCase().contains('passport');
+
+    final isTypicallyNoExpiry =
+        docTypeName.toLowerCase().contains('aadhaar') ||
+        docTypeName.toLowerCase().contains('pan') ||
+        docTypeName.toLowerCase().contains('voter') ||
+        docTypeName.toLowerCase().contains('chutni') ||
+        docTypeName.toLowerCase().contains('birth') ||
+        docTypeName.toLowerCase().contains('ration');
 
     // Date computation for defaults
     final now = DateTime.now();
@@ -61,14 +81,21 @@ class RenewPersonalDocDialog extends StatelessWidget {
     final prevExpiry = meta?.expiryDate;
     final prevIssue = meta?.issueDate;
 
+    // Initial hasExpiry determination:
+    final initialHasExpiry = prevExpiry != null ||
+        isLicenseOrPassport ||
+        (isInsurance && !isTypicallyNoExpiry);
+    final hasExpiryDate = initialHasExpiry.obs;
+
     // Default new issue date: if prevExpiry is in future, use prevExpiry; else use today
     final defaultNewIssue = (prevExpiry != null && prevExpiry.isAfter(today))
         ? prevExpiry
         : today;
 
-    // Default new expiry date: +1 year for health insurance
+    // Default new expiry date: +1 year for health insurance, +10 for passport/license, +5 for others
+    final int defaultYears = isInsurance ? 1 : (isLicenseOrPassport ? 10 : 5);
     final defaultNewExpiry = DateTime(
-      defaultNewIssue.year + 1,
+      defaultNewIssue.year + defaultYears,
       defaultNewIssue.month,
       defaultNewIssue.day,
     );
@@ -91,6 +118,9 @@ class RenewPersonalDocDialog extends StatelessWidget {
     // Form Controllers for changeable fields only
     final policyNumberController = TextEditingController(
       text: meta?.idNumber ?? previousDocument.documentNumber ?? '',
+    );
+    final issuingAuthorityController = TextEditingController(
+      text: meta?.issuingAuthority ?? meta?.insuranceCompany ?? '',
     );
     final insuranceCompanyController = TextEditingController(
       text: meta?.insuranceCompany ?? meta?.issuingAuthority ?? '',
@@ -164,23 +194,25 @@ class RenewPersonalDocDialog extends StatelessWidget {
 
         // 3. Expiry Date
         if (result.secondaryDate != null) {
+          hasExpiryDate.value = true;
           selectedExpiryDate.value = result.secondaryDate!;
           autoFilledCount++;
           filledFields.add('Expiry Date');
-        } else if (result.primaryDate != null) {
+        } else if (!isTypicallyNoExpiry && result.primaryDate != null) {
           selectedExpiryDate.value = DateTime(
-            result.primaryDate!.year + 1,
+            result.primaryDate!.year + defaultYears,
             result.primaryDate!.month,
             result.primaryDate!.day,
           );
         }
 
-        // 4. Insurance Company
+        // 4. Insurance Company / Issuing Authority
         final extractedCompany = result.personalFields['insuranceCompany'] ?? result.personalFields['issuingAuthority'];
         if (extractedCompany != null && extractedCompany.toString().trim().isNotEmpty) {
           insuranceCompanyController.text = extractedCompany.toString().trim();
+          issuingAuthorityController.text = extractedCompany.toString().trim();
           autoFilledCount++;
-          filledFields.add('Company');
+          filledFields.add('Provider/Authority');
         }
 
         // 5. Premium Amount
@@ -235,8 +267,12 @@ class RenewPersonalDocDialog extends StatelessWidget {
                       color: AppColors.primarySurface,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.health_and_safety_outlined,
+                    child: Icon(
+                      isInsurance
+                          ? Icons.health_and_safety_outlined
+                          : (isLicenseOrPassport
+                              ? Icons.drive_eta_rounded
+                              : Icons.badge_outlined),
                       color: AppColors.primary,
                       size: 22,
                     ),
@@ -248,12 +284,18 @@ class RenewPersonalDocDialog extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              isInsurance ? 'Renew Health Insurance Policy' : 'Renew Personal Document',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                            Flexible(
+                              child: Text(
+                                isInsurance
+                                    ? 'Renew Health Insurance Policy'
+                                    : 'Re-upload / Renew $docTypeName',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -268,7 +310,9 @@ class RenewPersonalDocDialog extends StatelessWidget {
                                         .withValues(alpha: 0.5)),
                               ),
                               child: Text(
-                                'Cycle #${(meta?.renewalCount ?? 0) + 1}',
+                                isInsurance
+                                    ? 'Cycle #${(meta?.renewalCount ?? 0) + 1}'
+                                    : 'Version #${(meta?.renewalCount ?? 0) + 1}',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -279,9 +323,11 @@ class RenewPersonalDocDialog extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 2),
-                        const Text(
-                          'Update policy validity and certificate. Person and category are locked.',
-                          style: TextStyle(
+                        Text(
+                          isInsurance
+                              ? 'Update policy validity, premium and certificate. Person and category are locked.'
+                              : 'Upload updated document file (e.g. address change, renewed license, new copy) and log new version.',
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
@@ -390,13 +436,32 @@ class RenewPersonalDocDialog extends StatelessWidget {
                     TextFormField(
                       controller: policyNumberController,
                       decoration: InputDecoration(
-                        labelText: isInsurance ? 'New Policy Number' : 'Document / Certificate ID Number',
-                        hintText: isInsurance ? 'e.g. P/161111/01/2027/000123' : 'Enter number',
+                        labelText: isInsurance
+                            ? 'New Policy Number'
+                            : 'Document / ID Number (e.g. Aadhaar / License / Passport #)',
+                        hintText: isInsurance
+                            ? 'e.g. P/161111/01/2027/000123'
+                            : 'Enter number',
                         prefixIcon: const Icon(Icons.tag, size: 18),
                         filled: true,
                         fillColor: AppColors.surface,
                       ),
                     ),
+
+                    if (!isInsurance) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: issuingAuthorityController,
+                        decoration: const InputDecoration(
+                          labelText: 'Issuing Authority / Govt Body (e.g. UIDAI, RTO)',
+                          hintText: 'e.g. UIDAI, RTO Ahmedabad, MEA',
+                          prefixIcon:
+                              Icon(Icons.account_balance_outlined, size: 18),
+                          filled: true,
+                          fillColor: AppColors.surface,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 16),
 
@@ -564,156 +629,317 @@ class RenewPersonalDocDialog extends StatelessWidget {
                       const SizedBox(height: 16),
                     ],
 
-                    // F. Dates Row: New Issue Date & New Expiry Date
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Obx(() => _buildDatePickerField(
-                                label: 'New Issue / Policy Start Date',
-                                date: selectedIssueDate.value,
-                                onSelect: (newDate) {
-                                  selectedIssueDate.value = newDate;
-                                  // Update default expiry to +1 year from new issue
-                                  selectedExpiryDate.value = DateTime(
-                                    newDate.year + 1,
-                                    newDate.month,
-                                    newDate.day,
-                                  );
-                                },
-                              )),
+                    // F. Dates: Issue Date
+                    Obx(() => _buildDatePickerField(
+                          label: 'Issue / Start Date',
+                          date: selectedIssueDate.value,
+                          onSelect: (newDate) {
+                            selectedIssueDate.value = newDate;
+                            selectedExpiryDate.value = DateTime(
+                              newDate.year + defaultYears,
+                              newDate.month,
+                              newDate.day,
+                            );
+                          },
+                        )),
+
+                    const SizedBox(height: 18),
+
+                    // G. Validity / Expiry Option Section
+                    Obx(() {
+                      final hasExpiry = hasExpiryDate.value;
+                      final expiry = selectedExpiryDate.value;
+
+                      return Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: hasExpiry
+                              ? AppColors.surface
+                              : AppColors.successLight.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: hasExpiry
+                                ? AppColors.border
+                                : AppColors.success.withValues(alpha: 0.35),
+                          ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Obx(() => _buildDatePickerField(
-                                label: 'New Policy Expiry Date',
-                                date: selectedExpiryDate.value,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      hasExpiry
+                                          ? Icons.event_available_rounded
+                                          : Icons.verified_user_rounded,
+                                      size: 18,
+                                      color: hasExpiry
+                                          ? AppColors.primary
+                                          : AppColors.success,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Validity / Expiry Date Option',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      hasExpiry
+                                          ? 'Has Expiry Date'
+                                          : 'No Expiry (Lifetime)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: hasExpiry
+                                            ? AppColors.primary
+                                            : AppColors.success,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Switch(
+                                      value: hasExpiry,
+                                      onChanged: (val) {
+                                        hasExpiryDate.value = val;
+                                      },
+                                      activeTrackColor: AppColors.primary,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            if (!hasExpiry) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: AppColors.success
+                                          .withValues(alpha: 0.3)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded,
+                                        color: AppColors.success, size: 18),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Lifetime Validity (No Expiry Date) — Aadhaar Card, PAN Card, Voter ID, and birth records remain permanently valid.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.success,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
+                              // Date picker field for documents with validity
+                              _buildDatePickerField(
+                                label: isInsurance
+                                    ? 'New Policy Expiry Date'
+                                    : 'New Expiry / Validity Date (e.g. Driving License, Passport)',
+                                date: expiry,
                                 onSelect: (newDate) {
                                   selectedExpiryDate.value = newDate;
                                 },
-                              )),
-                        ),
-                      ],
-                    ),
+                              ),
 
-                    const SizedBox(height: 10),
+                              const SizedBox(height: 10),
 
-                    // Quick Expiry Preset Chips
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        const Text(
-                          'Quick Validity Preset:',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          label: const Text('+1 Year (Annual)',
-                              style: TextStyle(fontSize: 11)),
-                          onPressed: () {
-                            final base = selectedIssueDate.value;
-                            selectedExpiryDate.value = DateTime(
-                              base.year + 1,
-                              base.month,
-                              base.day,
-                            );
-                          },
-                        ),
-                        ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          label: const Text('+2 Years (Multi-Year)',
-                              style: TextStyle(fontSize: 11)),
-                          onPressed: () {
-                            final base = selectedIssueDate.value;
-                            selectedExpiryDate.value = DateTime(
-                              base.year + 2,
-                              base.month,
-                              base.day,
-                            );
-                          },
-                        ),
-                        ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          label: const Text('+3 Years',
-                              style: TextStyle(fontSize: 11)),
-                          onPressed: () {
-                            final base = selectedIssueDate.value;
-                            selectedExpiryDate.value = DateTime(
-                              base.year + 3,
-                              base.month,
-                              base.day,
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Date Cross-Verification Alert Banner
-                    Obx(() {
-                      if (prevExpiry == null) return const SizedBox.shrink();
-                      final isCrossDateValid =
-                          selectedExpiryDate.value.isAfter(prevExpiry);
-                      if (!isCrossDateValid) {
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(top: 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.errorLight.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: AppColors.error.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.warning_amber_rounded,
-                                  color: AppColors.error, size: 20),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Cross-date verification warning: New policy expiry date (${AppFormatters.formatDate(selectedExpiryDate.value)}) must be strictly after previous cycle expiry (${AppFormatters.formatDate(prevExpiry)}).',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.error,
+                              // Quick Expiry Preset Chips
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  const Text(
+                                    'Quick Validity Presets:',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
-                                ),
+                                  if (isInsurance) ...[
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('+1 Year (Annual)',
+                                          style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        final base = selectedIssueDate.value;
+                                        selectedExpiryDate.value = DateTime(
+                                          base.year + 1,
+                                          base.month,
+                                          base.day,
+                                        );
+                                      },
+                                    ),
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('+2 Years',
+                                          style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        final base = selectedIssueDate.value;
+                                        selectedExpiryDate.value = DateTime(
+                                          base.year + 2,
+                                          base.month,
+                                          base.day,
+                                        );
+                                      },
+                                    ),
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('+3 Years',
+                                          style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        final base = selectedIssueDate.value;
+                                        selectedExpiryDate.value = DateTime(
+                                          base.year + 3,
+                                          base.month,
+                                          base.day,
+                                        );
+                                      },
+                                    ),
+                                  ] else ...[
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('+1 Year',
+                                          style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        final base = selectedIssueDate.value;
+                                        selectedExpiryDate.value = DateTime(
+                                          base.year + 1,
+                                          base.month,
+                                          base.day,
+                                        );
+                                      },
+                                    ),
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('+5 Years',
+                                          style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        final base = selectedIssueDate.value;
+                                        selectedExpiryDate.value = DateTime(
+                                          base.year + 5,
+                                          base.month,
+                                          base.day,
+                                        );
+                                      },
+                                    ),
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('+10 Years (Passport)',
+                                          style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        final base = selectedIssueDate.value;
+                                        selectedExpiryDate.value = DateTime(
+                                          base.year + 10,
+                                          base.month,
+                                          base.day,
+                                        );
+                                      },
+                                    ),
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('+20 Years (License)',
+                                          style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        final base = selectedIssueDate.value;
+                                        selectedExpiryDate.value = DateTime(
+                                          base.year + 20,
+                                          base.month,
+                                          base.day,
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ],
                               ),
+
+                              if (prevExpiry != null) ...[
+                                const SizedBox(height: 10),
+                                if (!selectedExpiryDate.value.isAfter(prevExpiry))
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.errorLight
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: AppColors.error
+                                              .withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                            Icons.warning_amber_rounded,
+                                            color: AppColors.error,
+                                            size: 18),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'New validity date (${AppFormatters.formatDate(selectedExpiryDate.value)}) must be strictly after previous cycle expiry (${AppFormatters.formatDate(prevExpiry)}).',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.error,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.successLight
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: AppColors.success
+                                              .withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle_outline,
+                                            color: AppColors.success, size: 16),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            'Continuity verified: new cycle extends past previous expiry (${AppFormatters.formatDate(prevExpiry)}).',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.success,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ],
-                          ),
-                        );
-                      }
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        margin: const EdgeInsets.only(top: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.successLight.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: AppColors.success.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.check_circle_outline,
-                                color: AppColors.success, size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Dates verified: Continuity maintained from previous policy cycle (${AppFormatters.formatDate(prevExpiry)}).',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       );
@@ -725,10 +951,14 @@ class RenewPersonalDocDialog extends StatelessWidget {
                     TextFormField(
                       controller: notesController,
                       maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Policy Notes / Special Coverage Details (Optional)',
-                        hintText: 'e.g. Critical illness rider added, cashless hospital list verified',
-                        prefixIcon: Icon(Icons.notes, size: 18),
+                      decoration: InputDecoration(
+                        labelText: isInsurance
+                            ? 'Policy Notes / Special Coverage Details (Optional)'
+                            : 'Version Remarks / Reason for Re-upload (Optional)',
+                        hintText: isInsurance
+                            ? 'e.g. Critical illness rider added, cashless hospital list verified'
+                            : 'e.g. Address updated, new chip smart card issued, driving license renewed',
+                        prefixIcon: const Icon(Icons.notes, size: 18),
                         filled: true,
                         fillColor: AppColors.surface,
                       ),
@@ -753,9 +983,11 @@ class RenewPersonalDocDialog extends StatelessWidget {
                     label: const Text('Cancel'),
                   ),
                   Obx(() {
+                    final hasExpiry = hasExpiryDate.value;
                     final canSubmit = selectedNewFile.value != null &&
                         !isSubmitting.value &&
-                        (prevExpiry == null ||
+                        (!hasExpiry ||
+                            prevExpiry == null ||
                             selectedExpiryDate.value.isAfter(prevExpiry));
 
                     return ElevatedButton.icon(
@@ -774,53 +1006,78 @@ class RenewPersonalDocDialog extends StatelessWidget {
                               if (selectedNewBytes.value == null ||
                                   selectedNewFile.value == null) {
                                 errorMessage.value =
-                                    'Please upload the new policy document certificate.';
+                                    'Please upload the document file.';
                                 return;
                               }
 
-                              if (prevExpiry != null &&
+                              if (hasExpiry &&
+                                  prevExpiry != null &&
                                   !selectedExpiryDate.value.isAfter(prevExpiry)) {
                                 errorMessage.value =
-                                    'New policy expiry date must be strictly after previous expiry date (${AppFormatters.formatDate(prevExpiry)}).';
+                                    'New validity date must be strictly after previous expiry date (${AppFormatters.formatDate(prevExpiry)}).';
                                 return;
                               }
 
                               isSubmitting.value = true;
                               try {
-                                final personName = meta?.personName ?? 'Personal';
-                                final docType = meta?.docTypeName ?? 'Insurance';
-                                final newTitle = isInsurance
-                                    ? '$docType - $personName (${selectedExpiryDate.value.year})'
-                                    : '$docType - $personName';
+                                final personName =
+                                    meta?.personName ?? 'Personal';
+                                final String newTitle;
+                                if (isInsurance) {
+                                  newTitle =
+                                      '$docTypeName - $personName (${selectedExpiryDate.value.year})';
+                                } else if (hasExpiry) {
+                                  newTitle =
+                                      '$docTypeName - $personName (Exp ${selectedExpiryDate.value.year})';
+                                } else {
+                                  newTitle = '$docTypeName - $personName';
+                                }
 
                                 final updatedMeta = (meta ??
                                         PersonalDocumentMetadataModel(
                                           personName: personName,
-                                          docTypeName: docType,
+                                          docTypeName: docTypeName,
                                         ))
                                     .copyWith(
-                                  idNumber:
-                                      policyNumberController.text.trim().isNotEmpty
-                                          ? policyNumberController.text.trim()
-                                          : null,
+                                  idNumber: policyNumberController.text
+                                          .trim()
+                                          .isNotEmpty
+                                      ? policyNumberController.text.trim()
+                                      : null,
                                   issueDate: selectedIssueDate.value,
-                                  expiryDate: selectedExpiryDate.value,
+                                  expiryDate: hasExpiry
+                                      ? selectedExpiryDate.value
+                                      : null,
+                                  clearExpiryDate: !hasExpiry,
                                   insuranceCompany: isInsurance &&
-                                          insuranceCompanyController.text.trim().isNotEmpty
+                                          insuranceCompanyController.text
+                                              .trim()
+                                              .isNotEmpty
                                       ? insuranceCompanyController.text.trim()
                                       : null,
-                                  issuingAuthority: isInsurance &&
-                                          insuranceCompanyController.text.trim().isNotEmpty
-                                      ? insuranceCompanyController.text.trim()
-                                      : meta?.issuingAuthority,
+                                  issuingAuthority: isInsurance
+                                      ? (insuranceCompanyController.text
+                                              .trim()
+                                              .isNotEmpty
+                                          ? insuranceCompanyController.text
+                                              .trim()
+                                          : meta?.issuingAuthority)
+                                      : (issuingAuthorityController.text
+                                              .trim()
+                                              .isNotEmpty
+                                          ? issuingAuthorityController.text
+                                              .trim()
+                                          : meta?.issuingAuthority),
                                   policyType: isInsurance
                                       ? selectedPolicyType.value
                                       : null,
                                   sumInsured: isInsurance
-                                      ? double.tryParse(sumInsuredController.text.trim())
+                                      ? double.tryParse(
+                                          sumInsuredController.text.trim())
                                       : null,
                                   premiumAmount: isInsurance
-                                      ? double.tryParse(premiumController.text.trim())
+                                      ? double.tryParse(
+                                          premiumController.text.trim())
                                       : null,
                                   tpaName: isInsurance &&
                                           tpaController.text.trim().isNotEmpty
@@ -831,14 +1088,17 @@ class RenewPersonalDocDialog extends StatelessWidget {
                                       : null,
                                 );
 
+                                final newDesc = hasExpiry
+                                    ? 'Renewed / updated cycle of "${previousDocument.title}". Valid until ${AppFormatters.formatDate(selectedExpiryDate.value)}.'
+                                    : 'Re-uploaded / updated copy of "${previousDocument.title}" with lifetime validity.';
+
                                 await onRenew(
                                   previousDocument: previousDocument,
                                   newMetadata: updatedMeta,
                                   newTitle: newTitle,
                                   fileBytes: selectedNewBytes.value!,
                                   fileName: selectedNewFile.value!.name,
-                                  newDescription:
-                                      'Renewed cycle of "${previousDocument.title}". Valid until ${AppFormatters.formatDate(selectedExpiryDate.value)}.',
+                                  newDescription: newDesc,
                                 );
 
                                 Get.back(result: true);
@@ -859,11 +1119,13 @@ class RenewPersonalDocDialog extends StatelessWidget {
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(Icons.autorenew_rounded, size: 18),
+                          : const Icon(Icons.post_add_rounded, size: 18),
                       label: Text(
                         isSubmitting.value
-                            ? 'Processing Renewal...'
-                            : 'Confirm & Save Renewal',
+                            ? 'Processing...'
+                            : (isInsurance
+                                ? 'Activate Renewal Cycle'
+                                : 'Save & Upload New Version'),
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     );
@@ -998,6 +1260,23 @@ class RenewPersonalDocDialog extends StatelessWidget {
                           : AppColors.warning,
                     ),
                   ),
+                )
+              else
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.successLight.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Lifetime Validity',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.success,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -1028,7 +1307,7 @@ class RenewPersonalDocDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Provider / Insurer',
+                    const Text('Provider / Authority',
                         style: TextStyle(
                             fontSize: 11, color: AppColors.textMuted)),
                     Text(
@@ -1054,7 +1333,7 @@ class RenewPersonalDocDialog extends StatelessWidget {
                     Text(
                       prevExpiry != null
                           ? '${AppFormatters.formatDate(prevIssue)} → ${AppFormatters.formatDate(prevExpiry)}'
-                          : 'No Expiry Recorded',
+                          : 'Lifetime Validity (No Expiry)',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

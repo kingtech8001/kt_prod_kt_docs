@@ -482,6 +482,7 @@ class DemoDataService {
           invoiceNumber: 'INV-DAIKIN-88912',
           purchaseDate: now.subtract(const Duration(days: 45)),
           purchaseAmount: 58900.00,
+          warrantyType: 'standard',
           items: [
             ApplianceItemModel(
               id: 'item-ac-1',
@@ -494,6 +495,71 @@ class DemoDataService {
               warrantyPeriodMonths: 24,
               warrantyValidUpto: now.add(const Duration(days: 20)), // Expiring soon in demo
               warrantyStatus: 'active',
+              warrantyType: 'standard',
+              customerCareNumber: '1800 102 9300',
+            ),
+          ],
+        ),
+      ),
+
+      // 3b. Historical Prior Year AMC for Daikin AC
+      DocumentModel(
+        id: 'doc-3b',
+        title: 'Daikin 1-Year Comprehensive AMC Agreement & Receipt',
+        description: 'Comprehensive AMC with 2 preventive maintenance visits & gas replenishment',
+        categoryId: 'cat-appliance',
+        categoryName: 'Appliance & Asset Invoices',
+        categoryCode: 'appliance_warranty',
+        subCategory: 'Air Conditioner',
+        folderId: 'fld-3',
+        folderName: 'Home Appliances & Warranty',
+        fileName: 'Daikin_AMC_2025_Certificate.pdf',
+        filePath: 'mock/daikin_amc.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 420000,
+        documentNumber: 'AMC-DAIKIN-77192',
+        status: 'archived',
+        isFavorite: false,
+        createdAt: now.subtract(const Duration(days: 380)),
+        updatedAt: now.subtract(const Duration(days: 380)),
+        extraAttributes: {
+          'previous_document_id': 'doc-3',
+          'renewal_count': 1,
+          'warranty_type': 'amc',
+          'amc_provider': 'Daikin Care India',
+          'policy_number': 'AMC-DAIKIN-77192',
+          'renewal_amount': 4500.0,
+          'renewal_notes': 'Previous Year 1-Year AMC with 2 Free Wet Services',
+        },
+        applianceWarranty: ApplianceWarrantyModel(
+          billingName: 'King Technology Pvt Ltd',
+          storeVendorName: 'Daikin Authorized Service Center',
+          invoiceNumber: 'AMC-DAIKIN-77192',
+          purchaseDate: now.subtract(const Duration(days: 380)),
+          purchaseAmount: 4500.00,
+          warrantyType: 'amc',
+          policyNumber: 'AMC-DAIKIN-77192',
+          amcProvider: 'Daikin Care India',
+          renewalAmount: 4500.0,
+          renewalNotes: 'Previous Year 1-Year AMC with 2 Free Wet Services',
+          previousDocumentId: 'doc-3',
+          renewalCount: 1,
+          items: [
+            ApplianceItemModel(
+              id: 'item-ac-amc-1',
+              productName: 'Daikin 2.0 Ton 5 Star Inverter AC',
+              productCategory: 'Air Conditioner',
+              brand: 'Daikin',
+              modelNumber: 'FTKM60TV',
+              serialNumber: 'DKN-2024-99812A',
+              purchaseAmount: 4500.00,
+              warrantyPeriodMonths: 12,
+              warrantyValidUpto: now.subtract(const Duration(days: 15)),
+              warrantyStatus: 'expired',
+              warrantyType: 'amc',
+              policyNumber: 'AMC-DAIKIN-77192',
+              amcProvider: 'Daikin Care India',
               customerCareNumber: '1800 102 9300',
             ),
           ],
@@ -575,6 +641,40 @@ class DemoDataService {
           issuingAuthority: 'UIDAI',
           issueDate: DateTime(2018, 5, 14),
           notes: 'Masked Aadhaar copy uploaded with biometric lock active',
+        ),
+      ),
+
+      // 5b. Personal Identity - Driving License
+      DocumentModel(
+        id: 'doc-5b',
+        title: 'Driving License - Mihir Gandhi',
+        description: 'Permanent Driving License for LMV and MCWG issued by Gujarat RTO',
+        categoryId: 'cat-personal',
+        categoryName: 'Personal & Identity',
+        categoryCode: 'identity_docs',
+        subCategory: 'Driving License',
+        folderId: 'fld-2',
+        folderName: 'Family Identity & KYC',
+        fileName: 'Driving_License_Mihir.pdf',
+        filePath: 'mock/driving_license_mihir.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 680000,
+        documentNumber: 'GJ01-20190012345',
+        status: 'active',
+        isFavorite: true,
+        createdAt: now.subtract(const Duration(days: 180)),
+        updatedAt: now.subtract(const Duration(days: 180)),
+        personalMetadata: PersonalDocumentMetadataModel(
+          personId: 'p-1',
+          personName: 'Mihir Gandhi',
+          docTypeId: 'dt-4',
+          docTypeName: 'Driving License',
+          idNumber: 'GJ01-20190012345',
+          issuingAuthority: 'RTO Ahmedabad Subhash Bridge',
+          issueDate: DateTime(2019, 3, 20),
+          expiryDate: DateTime(2039, 3, 19),
+          notes: 'Valid for LMV + MCWG class across India',
         ),
       ),
 
@@ -1595,5 +1695,130 @@ class DemoDataService {
     });
 
     return list;
+  }
+
+  /// Renews an appliance warranty or logs AMC / extended warranty in demo mode
+  static DocumentModel renewApplianceWarrantyMock({
+    required DocumentModel previousDoc,
+    required ApplianceWarrantyModel newWarranty,
+    required String newTitle,
+    required String newFileName,
+    required int newFileSize,
+    required String newMimeType,
+    required String newFilePath,
+    String? newDescription,
+  }) {
+    final docs = getAllDocuments();
+    final prevIdx = docs.indexWhere((d) => d.id == previousDoc.id);
+    if (prevIdx != -1) {
+      final prevExtra =
+          Map<String, dynamic>.from(docs[prevIdx].extraAttributes);
+      prevExtra['archived_reason'] = 'renewed';
+      docs[prevIdx] = docs[prevIdx].copyWith(
+        status: 'archived',
+        extraAttributes: prevExtra,
+      );
+      AppLogger.info(
+        'DEMO_DATA_SERVICE',
+        'Archived previous appliance document ${previousDoc.id} to "archived" status.',
+      );
+    }
+
+    final newDocId = 'doc-appliance-renew-${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
+    final extraAttrs = <String, dynamic>{
+      'storage_provider': 'supabase',
+      'previous_document_id': previousDoc.id,
+      'renewal_count': (previousDoc.applianceWarranty?.renewalCount ?? 0) + 1,
+      'warranty_type': newWarranty.warrantyType,
+    };
+    if (newWarranty.policyNumber != null) {
+      extraAttrs['policy_number'] = newWarranty.policyNumber;
+    }
+    if (newWarranty.amcProvider != null) {
+      extraAttrs['amc_provider'] = newWarranty.amcProvider;
+    }
+    if (newWarranty.renewalAmount != null) {
+      extraAttrs['renewal_amount'] = newWarranty.renewalAmount;
+    }
+    if (newWarranty.renewalNotes != null) {
+      extraAttrs['renewal_notes'] = newWarranty.renewalNotes;
+    }
+
+    final newDoc = DocumentModel(
+      id: newDocId,
+      title: newTitle,
+      description: newDescription ?? 'Warranty renewal / AMC for ${previousDoc.title}',
+      categoryId: previousDoc.categoryId,
+      categoryName: previousDoc.categoryName,
+      categoryCode: previousDoc.categoryCode,
+      subCategory: previousDoc.subCategory,
+      folderId: previousDoc.folderId,
+      folderName: previousDoc.folderName,
+      fileName: newFileName,
+      filePath: newFilePath,
+      fileType: newFileName.contains('.')
+          ? newFileName.split('.').last.toLowerCase()
+          : 'pdf',
+      mimeType: newMimeType,
+      fileSize: newFileSize,
+      documentNumber: newWarranty.policyNumber ?? newWarranty.invoiceNumber,
+      status: 'active',
+      isFavorite: false,
+      createdAt: now,
+      updatedAt: now,
+      extraAttributes: extraAttrs,
+      applianceWarranty: newWarranty.copyWith(
+        id: 'app-renew-${now.millisecondsSinceEpoch}',
+        documentId: newDocId,
+        previousDocumentId: previousDoc.id,
+        renewalCount: (previousDoc.applianceWarranty?.renewalCount ?? 0) + 1,
+      ),
+      address: previousDoc.address,
+    );
+
+    docs.insert(0, newDoc);
+    AppLogger.info(
+      'DEMO_DATA_SERVICE',
+      'Created new active renewed appliance document $newDocId: "${newDoc.title}".',
+    );
+    return newDoc;
+  }
+
+  /// Fetches history for an appliance in demo mode
+  static List<DocumentModel> getApplianceHistoryMock({
+    required String documentId,
+    String? serialNumber,
+    String? invoiceNumber,
+    String? productName,
+  }) {
+    final all = getAllDocuments();
+    final cleanSerial = serialNumber?.trim().toLowerCase();
+    final cleanInvoice = invoiceNumber?.trim().toLowerCase();
+    final cleanProduct = productName?.trim().toLowerCase();
+
+    final history = all.where((d) {
+      if (d.applianceWarranty == null) return false;
+      if (d.id == documentId) return true;
+      if (d.applianceWarranty?.previousDocumentId == documentId) return true;
+      if (d.extraAttributes['previous_document_id'] == documentId) return true;
+
+      final s = d.applianceWarranty?.serialNumber?.trim().toLowerCase();
+      if (cleanSerial != null && cleanSerial.isNotEmpty && s != null && s.isNotEmpty && s == cleanSerial) {
+        return true;
+      }
+      final inv = d.applianceWarranty?.invoiceNumber.trim().toLowerCase();
+      if (cleanInvoice != null && cleanInvoice.isNotEmpty && inv != null && inv.isNotEmpty && inv == cleanInvoice) {
+        return true;
+      }
+      final p = d.applianceWarranty?.productName.trim().toLowerCase();
+      if (cleanProduct != null && cleanProduct.isNotEmpty && p != null && p.isNotEmpty && p == cleanProduct) {
+        return true;
+      }
+      return false;
+    }).toList();
+
+    history.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return history;
   }
 }

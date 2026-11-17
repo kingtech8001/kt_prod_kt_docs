@@ -393,12 +393,17 @@ class PersonalDocsController extends GetxController {
         (meta?.expiryDate != null);
   }
 
-  /// Opens the specialized Smart Renewal Dialog for renewable personal documents
+  /// Whether user can re-upload or upload a new version for any personal document
+  bool canReuploadDoc(DocumentModel doc) {
+    return canEdit;
+  }
+
+  /// Opens the specialized Re-upload / Renewal Dialog for personal documents
   Future<void> openRenewDocumentDialog(DocumentModel doc) async {
     if (!canEdit) {
       AppSnackbar.showError(
         'Permission Denied',
-        'You do not have permission to renew documents.',
+        'You do not have permission to re-upload or renew documents.',
       );
       return;
     }
@@ -425,7 +430,7 @@ class PersonalDocsController extends GetxController {
         } catch (e, st) {
           AppLogger.error(
             'PERSONAL_DOCS_CTRL',
-            'Error submitting personal document renewal: $e',
+            'Error submitting personal document renewal / re-upload: $e',
             error: e,
             stackTrace: st,
           );
@@ -438,13 +443,13 @@ class PersonalDocsController extends GetxController {
       // Reload active documents - the old superseded record is now archived
       await loadPersonalDocuments(resetPage: true);
       AppSnackbar.showSuccess(
-        'Policy / Document Renewed',
-        '${doc.personalMetadata?.docTypeName ?? "Document"} renewed successfully. Previous policy archived.',
+        'Document Updated',
+        '${doc.personalMetadata?.docTypeName ?? "Document"} re-uploaded / renewed successfully. Previous version archived.',
       );
     }
   }
 
-  /// Opens the chronological Renewal History Dialog for a personal document
+  /// Opens the chronological Version & History Dialog for a personal document
   Future<void> openRenewalHistoryDialog(DocumentModel doc) async {
     final personName = doc.personalMetadata?.personName ?? '';
     final docTypeName = doc.personalMetadata?.docTypeName ?? doc.subCategory;

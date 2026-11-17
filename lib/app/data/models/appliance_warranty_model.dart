@@ -13,6 +13,9 @@ class ApplianceItemModel {
   final DateTime? extendedWarrantyUpto;
   final String? customerCareNumber;
   final String warrantyStatus; // 'active', 'expiring_soon', 'expired', 'no_warranty'
+  final String? warrantyType; // 'standard', 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
+  final String? policyNumber;
+  final String? amcProvider;
 
   ApplianceItemModel({
     String? id,
@@ -27,31 +30,59 @@ class ApplianceItemModel {
     this.extendedWarrantyUpto,
     this.customerCareNumber,
     this.warrantyStatus = 'active',
+    this.warrantyType = 'standard',
+    this.policyNumber,
+    this.amcProvider,
   }) : id = id ?? const Uuid().v4();
 
-  bool get hasWarranty =>
-      warrantyPeriodMonths > 0 && warrantyStatus != 'no_warranty';
+  DateTime get effectiveValidUpto => extendedWarrantyUpto ?? warrantyValidUpto;
 
-  bool get isExpired =>
-      hasWarranty && warrantyValidUpto.isBefore(DateTime.now());
+  bool get isLifetime => warrantyType == 'lifetime';
+
+  bool get hasWarranty =>
+      isLifetime || (warrantyPeriodMonths > 0 && warrantyStatus != 'no_warranty' && warrantyType != 'no_warranty');
+
+  bool get isExpired {
+    if (!hasWarranty || isLifetime) return false;
+    return effectiveValidUpto.isBefore(DateTime.now());
+  }
 
   bool get isExpiringSoon {
-    if (!hasWarranty) return false;
+    if (!hasWarranty || isLifetime) return false;
     final now = DateTime.now();
-    final diff = warrantyValidUpto.difference(now).inDays;
+    final diff = effectiveValidUpto.difference(now).inDays;
     return diff >= 0 && diff <= 30;
   }
 
   int get remainingDays {
+    if (isLifetime) return 9999;
     if (!hasWarranty) return 0;
     final now = DateTime.now();
-    return warrantyValidUpto.difference(now).inDays;
+    return effectiveValidUpto.difference(now).inDays;
   }
 
   int get daysUntilExpiry => remainingDays;
 
   String get warrantyStatusDisplay {
-    if (!hasWarranty || warrantyStatus == 'no_warranty') return 'NO WARRANTY';
+    if (isLifetime) return 'LIFETIME';
+    if (!hasWarranty || warrantyStatus == 'no_warranty' || warrantyType == 'no_warranty') {
+      return 'NO WARRANTY';
+    }
+    if (warrantyType == 'amc') {
+      if (isExpired) return 'AMC EXPIRED';
+      if (isExpiringSoon) return 'AMC EXPIRING';
+      return 'AMC ACTIVE';
+    }
+    if (warrantyType == 'extended' || extendedWarrantyUpto != null) {
+      if (isExpired) return 'EXT EXPIRED';
+      if (isExpiringSoon) return 'EXT EXPIRING';
+      return 'EXT ACTIVE';
+    }
+    if (warrantyType == 'component') {
+      if (isExpired) return 'PART EXPIRED';
+      if (isExpiringSoon) return 'PART EXPIRING';
+      return 'PART ACTIVE';
+    }
     if (isExpired) return 'EXPIRED';
     if (isExpiringSoon) return 'EXPIRING SOON';
     return 'ACTIVE';
@@ -70,6 +101,9 @@ class ApplianceItemModel {
     DateTime? extendedWarrantyUpto,
     String? customerCareNumber,
     String? warrantyStatus,
+    String? warrantyType,
+    String? policyNumber,
+    String? amcProvider,
   }) {
     return ApplianceItemModel(
       id: id ?? this.id,
@@ -84,6 +118,9 @@ class ApplianceItemModel {
       extendedWarrantyUpto: extendedWarrantyUpto ?? this.extendedWarrantyUpto,
       customerCareNumber: customerCareNumber ?? this.customerCareNumber,
       warrantyStatus: warrantyStatus ?? this.warrantyStatus,
+      warrantyType: warrantyType ?? this.warrantyType,
+      policyNumber: policyNumber ?? this.policyNumber,
+      amcProvider: amcProvider ?? this.amcProvider,
     );
   }
 
@@ -91,15 +128,22 @@ class ApplianceItemModel {
     final validUpto = json['warranty_valid_upto'] != null
         ? DateTime.parse(json['warranty_valid_upto'] as String)
         : DateTime.now();
+    final extUpto = json['extended_warranty_upto'] != null
+        ? DateTime.parse(json['extended_warranty_upto'] as String)
+        : null;
     final periodMonths =
         (json['warranty_period_months'] as num?)?.toInt() ?? 12;
+    final wType = json['warranty_type'] as String? ?? 'standard';
 
+    final effectiveDate = extUpto ?? validUpto;
     String computedStatus = 'active';
-    if (json['warranty_status'] == 'no_warranty' || periodMonths == 0) {
+    if (json['warranty_status'] == 'no_warranty' || periodMonths == 0 || wType == 'no_warranty') {
       computedStatus = 'no_warranty';
-    } else if (validUpto.isBefore(DateTime.now())) {
+    } else if (wType == 'lifetime') {
+      computedStatus = 'active';
+    } else if (effectiveDate.isBefore(DateTime.now())) {
       computedStatus = 'expired';
-    } else if (validUpto.difference(DateTime.now()).inDays <= 30) {
+    } else if (effectiveDate.difference(DateTime.now()).inDays <= 30) {
       computedStatus = 'expiring_soon';
     }
 
@@ -113,11 +157,12 @@ class ApplianceItemModel {
       purchaseAmount: (json['purchase_amount'] as num?)?.toDouble() ?? 0.0,
       warrantyPeriodMonths: periodMonths,
       warrantyValidUpto: validUpto,
-      extendedWarrantyUpto: json['extended_warranty_upto'] != null
-          ? DateTime.parse(json['extended_warranty_upto'] as String)
-          : null,
+      extendedWarrantyUpto: extUpto,
       customerCareNumber: json['customer_care_number'] as String?,
       warrantyStatus: json['warranty_status'] as String? ?? computedStatus,
+      warrantyType: wType,
+      policyNumber: json['policy_number'] as String?,
+      amcProvider: json['amc_provider'] as String?,
     );
   }
 
@@ -135,6 +180,9 @@ class ApplianceItemModel {
       'extended_warranty_upto': extendedWarrantyUpto?.toIso8601String().split('T').first,
       'customer_care_number': customerCareNumber,
       'warranty_status': warrantyStatus,
+      'warranty_type': warrantyType,
+      'policy_number': policyNumber,
+      'amc_provider': amcProvider,
     };
   }
 }
@@ -148,6 +196,13 @@ class ApplianceWarrantyModel {
   final String invoiceNumber;
   final DateTime purchaseDate;
   final double purchaseAmount;
+  final String warrantyType; // 'standard', 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
+  final String? policyNumber;
+  final String? amcProvider;
+  final double? renewalAmount;
+  final String? renewalNotes;
+  final String? previousDocumentId;
+  final int renewalCount;
 
   // Fallback storage for legacy single-item fields
   final String? _legacyProductName;
@@ -170,6 +225,13 @@ class ApplianceWarrantyModel {
     required this.invoiceNumber,
     required this.purchaseDate,
     required this.purchaseAmount,
+    this.warrantyType = 'standard',
+    this.policyNumber,
+    this.amcProvider,
+    this.renewalAmount,
+    this.renewalNotes,
+    this.previousDocumentId,
+    this.renewalCount = 0,
     // Optional legacy arguments for backwards compatibility
     String? productName,
     String? productCategory,
@@ -207,6 +269,9 @@ class ApplianceWarrantyModel {
                       extendedWarrantyUpto: extendedWarrantyUpto,
                       customerCareNumber: customerCareNumber,
                       warrantyStatus: warrantyStatus ?? 'active',
+                      warrantyType: warrantyType,
+                      policyNumber: policyNumber,
+                      amcProvider: amcProvider,
                     ),
                   ]
                 : []);
@@ -239,23 +304,28 @@ class ApplianceWarrantyModel {
   DateTime? get extendedWarrantyUpto =>
       primaryItem?.extendedWarrantyUpto ?? _legacyExtendedWarrantyUpto;
 
+  DateTime get effectiveValidUpto =>
+      extendedWarrantyUpto ?? warrantyValidUpto;
+
   String? get customerCareNumber =>
       primaryItem?.customerCareNumber ?? _legacyCustomerCareNumber;
 
   String get warrantyStatus =>
       primaryItem?.warrantyStatus ?? _legacyWarrantyStatus ?? 'active';
 
+  bool get isLifetime => warrantyType == 'lifetime' || (primaryItem?.isLifetime == true);
+
   bool get hasWarranty =>
-      items.any((i) => i.hasWarranty);
+      isLifetime || items.any((i) => i.hasWarranty);
 
   bool get isExpired =>
-      items.isNotEmpty && items.every((i) => i.isExpired);
+      !isLifetime && items.isNotEmpty && items.every((i) => i.isExpired);
 
   bool get isExpiringSoon =>
-      items.any((i) => i.isExpiringSoon);
+      !isLifetime && items.any((i) => i.isExpiringSoon);
 
   int get remainingDays =>
-      primaryItem?.remainingDays ?? 0;
+      isLifetime ? 9999 : (primaryItem?.remainingDays ?? 0);
 
   int get daysUntilExpiry => remainingDays;
 
@@ -273,8 +343,43 @@ class ApplianceWarrantyModel {
     return '${bList.first} + ${bList.length - 1} more';
   }
 
+  String get warrantyTypeDisplay {
+    switch (warrantyType) {
+      case 'amc':
+        return 'Annual Maintenance Contract (AMC)';
+      case 'extended':
+        return 'Brand Extended Warranty';
+      case 'component':
+        return 'Component Warranty (Compressor/Motor)';
+      case 'lifetime':
+        return 'Lifetime Guarantee';
+      case 'no_warranty':
+        return 'No Warranty (Invoice Only)';
+      default:
+        return 'Standard Manufacturer Warranty';
+    }
+  }
+
   String get warrantyStatusDisplay {
-    if (!hasWarranty) return 'NO WARRANTY';
+    if (isLifetime) return 'LIFETIME';
+    if (!hasWarranty || warrantyStatus == 'no_warranty' || warrantyType == 'no_warranty') {
+      return 'NO WARRANTY';
+    }
+    if (warrantyType == 'amc') {
+      if (isExpired) return 'AMC EXPIRED';
+      if (isExpiringSoon) return 'AMC EXPIRING';
+      return 'AMC ACTIVE';
+    }
+    if (warrantyType == 'extended' || extendedWarrantyUpto != null) {
+      if (isExpired) return 'EXT EXPIRED';
+      if (isExpiringSoon) return 'EXT EXPIRING';
+      return 'EXT ACTIVE';
+    }
+    if (warrantyType == 'component') {
+      if (isExpired) return 'PART EXPIRED';
+      if (isExpiringSoon) return 'PART EXPIRING';
+      return 'PART ACTIVE';
+    }
     if (isExpired) return 'EXPIRED';
     if (isExpiringSoon) return 'EXPIRING SOON';
     return 'ACTIVE';
@@ -289,16 +394,55 @@ class ApplianceWarrantyModel {
     String? invoiceNumber,
     DateTime? purchaseDate,
     double? purchaseAmount,
+    String? warrantyType,
+    String? policyNumber,
+    String? amcProvider,
+    double? renewalAmount,
+    String? renewalNotes,
+    String? previousDocumentId,
+    int? renewalCount,
+    int? warrantyPeriodMonths,
+    DateTime? warrantyValidUpto,
+    DateTime? extendedWarrantyUpto,
+    String? customerCareNumber,
+    String? warrantyStatus,
   }) {
+    List<ApplianceItemModel>? resolvedItems = items;
+    if (resolvedItems == null && this.items.isNotEmpty) {
+      final first = this.items.first;
+      final updatedFirst = first.copyWith(
+        warrantyValidUpto: warrantyValidUpto ?? first.warrantyValidUpto,
+        extendedWarrantyUpto: extendedWarrantyUpto ?? first.extendedWarrantyUpto,
+        customerCareNumber: customerCareNumber ?? first.customerCareNumber,
+        warrantyStatus: warrantyStatus ?? first.warrantyStatus,
+        warrantyType: warrantyType ?? first.warrantyType,
+        policyNumber: policyNumber ?? first.policyNumber,
+        amcProvider: amcProvider ?? first.amcProvider,
+      );
+      resolvedItems = [updatedFirst, ...this.items.skip(1)];
+    }
+
     return ApplianceWarrantyModel(
       id: id ?? this.id,
       documentId: documentId ?? this.documentId,
-      items: items ?? this.items,
+      items: resolvedItems ?? this.items,
       billingName: billingName ?? this.billingName,
       storeVendorName: storeVendorName ?? this.storeVendorName,
       invoiceNumber: invoiceNumber ?? this.invoiceNumber,
       purchaseDate: purchaseDate ?? this.purchaseDate,
       purchaseAmount: purchaseAmount ?? this.purchaseAmount,
+      warrantyType: warrantyType ?? this.warrantyType,
+      policyNumber: policyNumber ?? this.policyNumber,
+      amcProvider: amcProvider ?? this.amcProvider,
+      renewalAmount: renewalAmount ?? this.renewalAmount,
+      renewalNotes: renewalNotes ?? this.renewalNotes,
+      previousDocumentId: previousDocumentId ?? this.previousDocumentId,
+      renewalCount: renewalCount ?? this.renewalCount,
+      warrantyPeriodMonths: warrantyPeriodMonths ?? this.warrantyPeriodMonths,
+      warrantyValidUpto: warrantyValidUpto ?? this.warrantyValidUpto,
+      extendedWarrantyUpto: extendedWarrantyUpto ?? this.extendedWarrantyUpto,
+      customerCareNumber: customerCareNumber ?? this.customerCareNumber,
+      warrantyStatus: warrantyStatus ?? this.warrantyStatus,
     );
   }
 
@@ -306,15 +450,22 @@ class ApplianceWarrantyModel {
     final validUpto = json['warranty_valid_upto'] != null
         ? DateTime.parse(json['warranty_valid_upto'] as String)
         : DateTime.now();
+    final extUpto = json['extended_warranty_upto'] != null
+        ? DateTime.parse(json['extended_warranty_upto'] as String)
+        : null;
     final periodMonths =
         (json['warranty_period_months'] as num?)?.toInt() ?? 12;
+    final wType = json['warranty_type'] as String? ?? 'standard';
 
+    final effectiveDate = extUpto ?? validUpto;
     String computedStatus = 'active';
-    if (json['warranty_status'] == 'no_warranty' || periodMonths == 0) {
+    if (json['warranty_status'] == 'no_warranty' || periodMonths == 0 || wType == 'no_warranty') {
       computedStatus = 'no_warranty';
-    } else if (validUpto.isBefore(DateTime.now())) {
+    } else if (wType == 'lifetime') {
+      computedStatus = 'active';
+    } else if (effectiveDate.isBefore(DateTime.now())) {
       computedStatus = 'expired';
-    } else if (validUpto.difference(DateTime.now()).inDays <= 30) {
+    } else if (effectiveDate.difference(DateTime.now()).inDays <= 30) {
       computedStatus = 'expiring_soon';
     }
 
@@ -345,19 +496,44 @@ class ApplianceWarrantyModel {
       purchaseAmount: (json['purchase_amount'] as num?)?.toDouble() ?? 0.0,
       warrantyPeriodMonths: periodMonths,
       warrantyValidUpto: validUpto,
-      extendedWarrantyUpto: json['extended_warranty_upto'] != null
-          ? DateTime.parse(json['extended_warranty_upto'] as String)
-          : null,
+      extendedWarrantyUpto: extUpto,
       customerCareNumber: json['customer_care_number'] as String?,
       warrantyStatus: json['warranty_status'] as String? ?? computedStatus,
+      warrantyType: wType,
+      policyNumber: json['policy_number'] as String?,
+      amcProvider: json['amc_provider'] as String?,
+      renewalAmount: (json['renewal_amount'] as num?)?.toDouble(),
+      renewalNotes: json['renewal_notes'] as String?,
+      previousDocumentId: json['previous_document_id'] as String?,
+      renewalCount: (json['renewal_count'] as num?)?.toInt() ?? 0,
     );
 
     return model;
   }
 
-  Map<String, dynamic> toJson() {
+  static const Set<String> supabaseColumns = {
+    'id',
+    'document_id',
+    'product_name',
+    'product_category',
+    'brand',
+    'model_number',
+    'serial_number',
+    'billing_name',
+    'store_vendor_name',
+    'invoice_number',
+    'purchase_date',
+    'purchase_amount',
+    'warranty_period_months',
+    'warranty_valid_upto',
+    'extended_warranty_upto',
+    'customer_care_number',
+    'warranty_status',
+  };
+
+  Map<String, dynamic> toSupabaseMap() {
     final firstItem = primaryItem;
-    return {
+    final map = <String, dynamic>{
       if (id != null) 'id': id,
       if (documentId != null) 'document_id': documentId,
       'product_name': firstItem?.productName ?? productName,
@@ -375,7 +551,22 @@ class ApplianceWarrantyModel {
       'extended_warranty_upto': (firstItem?.extendedWarrantyUpto ?? extendedWarrantyUpto)?.toIso8601String().split('T').first,
       'customer_care_number': firstItem?.customerCareNumber ?? customerCareNumber,
       'warranty_status': firstItem?.warrantyStatus ?? warrantyStatus,
-      'items': items.map((item) => item.toJson()).toList(),
     };
+    return map;
+  }
+
+  Map<String, dynamic> toJson({bool forSupabaseTable = true}) {
+    final map = toSupabaseMap();
+    if (!forSupabaseTable) {
+      map['items'] = items.map((item) => item.toJson()).toList();
+      map['warranty_type'] = warrantyType;
+      map['policy_number'] = policyNumber;
+      map['amc_provider'] = amcProvider;
+      map['renewal_amount'] = renewalAmount;
+      map['renewal_notes'] = renewalNotes;
+      map['previous_document_id'] = previousDocumentId;
+      map['renewal_count'] = renewalCount;
+    }
+    return map;
   }
 }

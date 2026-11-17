@@ -5,7 +5,7 @@ import 'package:kt_prod_kt_docs/app/data/repositories/auth_repository.dart';
 import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
-import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
+import 'package:kt_prod_kt_docs/core/utils/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileController extends GetxController {
@@ -73,11 +73,9 @@ class ProfileController extends GetxController {
 
     final name = fullNameController.text.trim();
     if (name.isEmpty) {
-      Get.snackbar(
+      AppSnackbar.showWarning(
         'Name Required',
         'Please enter your full name.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
       return;
     }
@@ -101,19 +99,15 @@ class ProfileController extends GetxController {
       profile.value = updated;
       _authService.updateProfile(updated);
 
-      Get.snackbar(
+      AppSnackbar.showSuccess(
         'Profile Updated',
         'Your profile changes have been saved successfully.',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
       );
     } catch (e, st) {
       AppLogger.error('PROFILE_CTRL', 'Error saving profile: $e', error: e, stackTrace: st);
-      Get.snackbar(
+      AppSnackbar.showError(
         'Update Failed',
         e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
       );
     } finally {
       isSavingProfile.value = false;
@@ -125,21 +119,17 @@ class ProfileController extends GetxController {
     final confirmPassword = confirmPasswordController.text.trim();
 
     if (newPassword.isEmpty || newPassword.length < 6) {
-      Get.snackbar(
+      AppSnackbar.showWarning(
         'Invalid Password',
         'Password must be at least 6 characters.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
       return;
     }
 
     if (newPassword != confirmPassword) {
-      Get.snackbar(
+      AppSnackbar.showWarning(
         'Password Mismatch',
         'The password confirmation does not match.',
-        backgroundColor: AppColors.warning,
-        colorText: Colors.white,
       );
       return;
     }
@@ -147,11 +137,9 @@ class ProfileController extends GetxController {
     if (DemoDataService.isDemoMode) {
       newPasswordController.clear();
       confirmPasswordController.clear();
-      Get.snackbar(
+      AppSnackbar.showSuccess(
         'Password Changed (Demo)',
         'Simulated password update successfully in demo mode.',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
       );
       return;
     }
@@ -165,19 +153,15 @@ class ProfileController extends GetxController {
       newPasswordController.clear();
       confirmPasswordController.clear();
 
-      Get.snackbar(
+      AppSnackbar.showSuccess(
         'Password Changed',
         'Your account password has been updated securely.',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
       );
     } catch (e, st) {
       AppLogger.error('PROFILE_CTRL', 'Error updating password: $e', error: e, stackTrace: st);
-      Get.snackbar(
+      AppSnackbar.showError(
         'Password Update Failed',
         e.toString(),
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
       );
     } finally {
       isChangingPassword.value = false;

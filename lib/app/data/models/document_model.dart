@@ -237,10 +237,17 @@ class DocumentModel {
 
     Map<String, dynamic>? warrantyMap = warranty;
     if (warrantyMap != null) {
+      warrantyMap = Map<String, dynamic>.from(warrantyMap);
       if (warrantyMap['items'] == null && extra['appliance_items'] != null) {
-        warrantyMap = Map<String, dynamic>.from(warrantyMap);
         warrantyMap['items'] = extra['appliance_items'];
       }
+      if (extra['warranty_type'] != null) warrantyMap['warranty_type'] = extra['warranty_type'];
+      if (extra['policy_number'] != null) warrantyMap['policy_number'] = extra['policy_number'];
+      if (extra['amc_provider'] != null) warrantyMap['amc_provider'] = extra['amc_provider'];
+      if (extra['renewal_amount'] != null) warrantyMap['renewal_amount'] = extra['renewal_amount'];
+      if (extra['renewal_notes'] != null) warrantyMap['renewal_notes'] = extra['renewal_notes'];
+      if (extra['previous_document_id'] != null) warrantyMap['previous_document_id'] = extra['previous_document_id'];
+      if (extra['renewal_count'] != null) warrantyMap['renewal_count'] = extra['renewal_count'];
     } else if (extra['appliance_items'] != null) {
       warrantyMap = {
         'items': extra['appliance_items'],
@@ -249,6 +256,13 @@ class DocumentModel {
         'invoice_number': json['document_number'] ?? '',
         'purchase_date': json['created_at'],
         'purchase_amount': 0.0,
+        if (extra['warranty_type'] != null) 'warranty_type': extra['warranty_type'],
+        if (extra['policy_number'] != null) 'policy_number': extra['policy_number'],
+        if (extra['amc_provider'] != null) 'amc_provider': extra['amc_provider'],
+        if (extra['renewal_amount'] != null) 'renewal_amount': extra['renewal_amount'],
+        if (extra['renewal_notes'] != null) 'renewal_notes': extra['renewal_notes'],
+        if (extra['previous_document_id'] != null) 'previous_document_id': extra['previous_document_id'],
+        if (extra['renewal_count'] != null) 'renewal_count': extra['renewal_count'],
       };
     }
 

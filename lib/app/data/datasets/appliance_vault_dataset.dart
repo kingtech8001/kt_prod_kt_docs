@@ -7,6 +7,7 @@ import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/providers/supabase_provider.dart';
 import 'package:kt_prod_kt_docs/app/data/services/demo_data_service.dart';
 import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -525,6 +526,247 @@ class ApplianceVaultDataset {
         stackTrace: st,
       );
       rethrow;
+    }
+  }
+
+  /// Renews or logs an extended warranty / AMC / service contract for an appliance document.
+  Future<DocumentModel> renewApplianceWarranty({
+    required DocumentModel previousDocument,
+    required ApplianceWarrantyModel newWarranty,
+    required String newTitle,
+    required Uint8List fileBytes,
+    required String fileName,
+    String? newDescription,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.renewApplianceWarrantyMock(
+        previousDoc: previousDocument,
+        newWarranty: newWarranty,
+        newTitle: newTitle,
+        newFileName: fileName,
+        newFileSize: fileBytes.length,
+        newMimeType: fileName.toLowerCase().endsWith('.pdf')
+            ? 'application/pdf'
+            : 'image/jpeg',
+        newFilePath: 'mock/$fileName',
+        newDescription: newDescription,
+      );
+    }
+
+    AppLogger.info(
+      'APPLIANCE_DATASET',
+      'Renewing appliance warranty / AMC: ${previousDocument.id} ("${previousDocument.title}")...',
+    );
+
+    try {
+      final ext = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : 'pdf';
+      final mimeType =
+          ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+      final storagePath =
+          'appliances/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+      // 1. Upload new warranty / AMC document binary
+      await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+            storagePath,
+            fileBytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      // 2. Prepare next renewal count and extra attributes
+      final nextRenewalCount =
+          (previousDocument.applianceWarranty?.renewalCount ?? 0) + 1;
+
+      final extraAttrs = <String, dynamic>{
+        'storage_provider': 'supabase',
+        'previous_document_id': previousDocument.id,
+        'renewal_count': nextRenewalCount,
+        'warranty_type': newWarranty.warrantyType,
+      };
+      if (newWarranty.policyNumber != null) {
+        extraAttrs['policy_number'] = newWarranty.policyNumber;
+      }
+      if (newWarranty.amcProvider != null) {
+        extraAttrs['amc_provider'] = newWarranty.amcProvider;
+      }
+      if (newWarranty.renewalAmount != null) {
+        extraAttrs['renewal_amount'] = newWarranty.renewalAmount;
+      }
+      if (newWarranty.renewalNotes != null) {
+        extraAttrs['renewal_notes'] = newWarranty.renewalNotes;
+      }
+
+      final categoryId = await _getApplianceCategoryId();
+      final resolvedSubCategory = previousDocument.subCategory.isNotEmpty
+          ? previousDocument.subCategory
+          : newWarranty.productCategory;
+
+      final docNum = newWarranty.policyNumber ??
+          (newWarranty.invoiceNumber.isNotEmpty
+              ? newWarranty.invoiceNumber
+              : previousDocument.documentNumber);
+
+      final newDocPayload = {
+        'title': newTitle,
+        'description': newDescription ?? previousDocument.description,
+        'category_id': categoryId,
+        'sub_category': resolvedSubCategory,
+        'folder_id': previousDocument.folderId,
+        'file_name': fileName,
+        'file_path': storagePath,
+        'file_type': ext,
+        'mime_type': mimeType,
+        'file_size': fileBytes.length,
+        'document_number': docNum,
+        'status': 'active',
+        'uploaded_by': _client.auth.currentUser?.id,
+        'extra_attributes': extraAttrs,
+      };
+
+      final docRes = await _client
+          .from('documents')
+          .insert(newDocPayload)
+          .select()
+          .single();
+      final newDocId = docRes['id'] as String;
+
+      // 3. Insert appliance warranty metadata
+      final warrantyPayload = newWarranty
+          .copyWith(
+            documentId: newDocId,
+            previousDocumentId: previousDocument.id,
+            renewalCount: nextRenewalCount,
+          )
+          .toJson(forSupabaseTable: true)
+        ..remove('id');
+
+      try {
+        await _client.from('appliance_warranty_metadata').insert(warrantyPayload);
+      } catch (err) {
+        AppLogger.warning('APPLIANCE_DATASET', 'Warranty table insert fallback without items: $err');
+        final cleanMap = Map<String, dynamic>.from(warrantyPayload)..remove('items');
+        await _client.from('appliance_warranty_metadata').insert(cleanMap);
+      }
+
+      // 4. Archive previous document
+      final prevExtra =
+          Map<String, dynamic>.from(previousDocument.extraAttributes);
+      prevExtra['archived_reason'] = 'renewed';
+      await _client.from('documents').update({
+        'status': 'archived',
+        'extra_attributes': prevExtra,
+      }).eq('id', previousDocument.id);
+
+      // 5. Activity log
+      await _client.from('document_activity_logs').insert({
+        'document_id': newDocId,
+        'user_id': _client.auth.currentUser?.id,
+        'action': 'warranty_renewed',
+        'details': {
+          'previous_document_id': previousDocument.id,
+          'renewal_count': nextRenewalCount,
+          'warranty_type': newWarranty.warrantyType,
+          'provider': newWarranty.amcProvider,
+          'policy_number': newWarranty.policyNumber,
+        },
+      });
+
+      // 6. Return full model
+      final fullDoc = await _client
+          .from('documents')
+          .select('''
+            *,
+            document_categories(id, name, code, color_hex, icon),
+            folders(id, name),
+            profiles:uploaded_by(id, full_name, email),
+            document_addresses(*),
+            utility_metadata(*),
+            appliance_warranty_metadata(*),
+            personal_document_metadata(*),
+            document_favorites(document_id, user_id)
+          ''')
+          .eq('id', newDocId)
+          .single();
+
+      return DocumentModel.fromJson(fullDoc);
+    } catch (e, st) {
+      AppLogger.error(
+        'APPLIANCE_DATASET',
+        'Error renewing appliance warranty: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
+  /// Fetches history and versions for an appliance document
+  Future<List<DocumentModel>> getApplianceHistory({
+    required String documentId,
+    String? serialNumber,
+    String? invoiceNumber,
+    String? productName,
+  }) async {
+    if (DemoDataService.isDemoMode) {
+      return DemoDataService.getApplianceHistoryMock(
+        documentId: documentId,
+        serialNumber: serialNumber,
+        invoiceNumber: invoiceNumber,
+        productName: productName,
+      );
+    }
+
+    AppLogger.debug(
+      'APPLIANCE_DATASET',
+      'Fetching appliance history for docId: $documentId, serial: $serialNumber, invoice: $invoiceNumber...',
+    );
+
+    try {
+      var metaQuery = _client
+          .from('appliance_warranty_metadata')
+          .select('document_id');
+
+      if (serialNumber != null && serialNumber.isNotEmpty) {
+        metaQuery = metaQuery.eq('serial_number', serialNumber);
+      } else if (invoiceNumber != null && invoiceNumber.isNotEmpty) {
+        metaQuery = metaQuery.eq('invoice_number', invoiceNumber);
+      }
+
+      final metaRows = await metaQuery;
+      final ids = (metaRows as List)
+          .map((r) => r['document_id'] as String?)
+          .whereType<String>()
+          .toSet();
+      ids.add(documentId);
+
+      final response = await _client
+          .from('documents')
+          .select('''
+            *,
+            document_categories(id, name, code, color_hex, icon),
+            folders(id, name),
+            profiles:uploaded_by(id, full_name, email),
+            document_addresses(*),
+            utility_metadata(*),
+            appliance_warranty_metadata(*),
+            personal_document_metadata(*),
+            document_favorites(document_id, user_id)
+          ''')
+          .inFilter('id', ids.toList())
+          .order('created_at', ascending: false);
+
+      return (response as List)
+          .map((j) => DocumentModel.fromJson(j as Map<String, dynamic>))
+          .toList();
+    } catch (e, st) {
+      AppLogger.error(
+        'APPLIANCE_DATASET',
+        'Error fetching appliance history: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return [];
     }
   }
 }

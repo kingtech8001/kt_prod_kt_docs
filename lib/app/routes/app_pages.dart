@@ -2,7 +2,9 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/modules/activity_logs/bindings/activity_logs_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/activity_logs/views/activity_logs_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/appliance_vault/bindings/appliance_vault_binding.dart';
+import 'package:kt_prod_kt_docs/app/modules/appliance_vault/bindings/appliance_detail_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/appliance_vault/views/appliance_vault_view.dart';
+import 'package:kt_prod_kt_docs/app/modules/appliance_vault/views/appliance_detail_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/auth/bindings/auth_binding.dart';
 import 'package:kt_prod_kt_docs/app/modules/auth/views/auth_view.dart';
 import 'package:kt_prod_kt_docs/app/modules/splash/bindings/splash_binding.dart';
@@ -91,6 +93,12 @@ class AppPages {
       name: AppRoutes.APPLIANCES,
       page: () => const ApplianceVaultView(),
       binding: ApplianceVaultBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.APPLIANCE_DETAIL,
+      page: () => const ApplianceDetailView(),
+      binding: ApplianceDetailBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

@@ -11,6 +11,7 @@ class AppRoutes {
   static const String UTILITY_BILLS = '/utility-bills';
   static const String UTILITY_ACCOUNT_DETAIL = '/utility-bills/account';
   static const String APPLIANCES = '/appliances';
+  static const String APPLIANCE_DETAIL = '/appliances/detail';
   static const String PERSONAL_DOCS = '/personal-docs';
   static const String PERSONAL_DOC_DETAIL = '/personal-docs/detail';
   static const String VEHICLE_DOCS = '/vehicle-docs';

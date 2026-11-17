@@ -236,7 +236,7 @@ class UploadNextUtilityBillDialog extends StatelessWidget {
                       final file = selectedNewFile.value;
                       if (file == null) {
                         return InkWell(
-                          onTap: () => _pickNewFile(selectedNewFile, selectedNewBytes),
+                          onTap: () => _pickNewFile(selectedNewFile, selectedNewBytes, errorMessage),
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
                             width: double.infinity,
@@ -620,6 +620,7 @@ class UploadNextUtilityBillDialog extends StatelessWidget {
   Future<void> _pickNewFile(
     Rx<PlatformFile?> selectedNewFile,
     Rx<Uint8List?> selectedNewBytes,
+    RxString errorMessage,
   ) async {
     try {
       final result = await FilePicker.pickFiles(
@@ -631,13 +632,10 @@ class UploadNextUtilityBillDialog extends StatelessWidget {
         final bytes = chosen.bytes ?? await chosen.loadBytes();
         selectedNewFile.value = chosen;
         selectedNewBytes.value = bytes;
+        errorMessage.value = '';
       }
     } catch (e) {
-      Get.snackbar(
-        'File Selection Failed',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      errorMessage.value = 'File Selection Failed: $e';
     }
   }
 }

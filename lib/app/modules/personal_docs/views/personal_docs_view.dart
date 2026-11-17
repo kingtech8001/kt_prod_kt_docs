@@ -703,13 +703,17 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                                     : StatusBadgeType.success,
                           )
                         else
-                          Text(
-                            'Size: ${AppFormatters.formatFileSize(doc.fileSize)}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
+                          const StatusBadge(
+                            label: 'LIFETIME (NO EXPIRY)',
+                            type: StatusBadgeType.success,
                           ),
+                        Text(
+                          AppFormatters.formatFileSize(doc.fileSize),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -729,37 +733,50 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  TextButton.icon(
+                  IconButton(
+                    icon: const Icon(Icons.visibility_outlined, size: 16),
                     onPressed: () => controller.previewDocument(doc),
-                    icon: const Icon(Icons.visibility_outlined, size: 14),
-                    label: const Text('View', style: TextStyle(fontSize: 11)),
+                    tooltip: 'Preview Document',
                   ),
-                  TextButton.icon(
+                  IconButton(
+                    icon: const Icon(Icons.download_outlined, size: 16),
                     onPressed: () => controller.downloadDocument(doc),
-                    icon: const Icon(Icons.download_outlined, size: 14),
-                    label:
-                        const Text('Download', style: TextStyle(fontSize: 11)),
+                    tooltip: 'Download Document',
                   ),
-                  if (controller.isRenewableDoc(doc) && controller.canEdit)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    onPressed: () async {
+                      await Get.toNamed(
+                        AppRoutes.PERSONAL_DOC_DETAIL,
+                        arguments: doc,
+                      );
+                      controller.loadPersonalDocuments(resetPage: true);
+                    },
+                    tooltip: 'View Details',
+                  ),
+                  if (controller.canEdit)
                     IconButton(
                       icon: const Icon(
-                        Icons.autorenew_rounded,
-                        size: 16,
+                        Icons.post_add_rounded,
+                        size: 17,
                         color: AppColors.primary,
                       ),
                       onPressed: () => controller.openRenewDocumentDialog(doc),
-                      tooltip: 'Renew Policy / Document',
+                      tooltip: 'Re-upload / Upload New Version',
                     ),
-                  if (controller.isRenewableDoc(doc))
-                    IconButton(
-                      icon: const Icon(
-                        Icons.history_edu_outlined,
-                        size: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                      onPressed: () => controller.openRenewalHistoryDialog(doc),
-                      tooltip: 'Renewal History',
+                  IconButton(
+                    icon: const Icon(
+                      Icons.history_rounded,
+                      size: 17,
+                      color: AppColors.textSecondary,
                     ),
+                    onPressed: () => controller.openRenewalHistoryDialog(doc),
+                    tooltip: 'Version & History',
+                  ),
                   if (controller.canDelete)
                     IconButton(
                       icon: const Icon(
@@ -878,9 +895,9 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
                         : StatusBadgeType.success,
               )
             else
-              StatusBadge(
-                label: meta?.docTypeName ?? doc.subCategory,
-                type: StatusBadgeType.info,
+              const StatusBadge(
+                label: 'NO EXPIRY',
+                type: StatusBadgeType.success,
               ),
             const SizedBox(width: 8),
             IconButton(
@@ -894,6 +911,14 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
               tooltip: 'Favorite',
             ),
             IconButton(
+              icon: const Icon(Icons.info_outline_rounded, size: 20, color: AppColors.primary),
+              onPressed: () async {
+                await Get.toNamed(AppRoutes.PERSONAL_DOC_DETAIL, arguments: doc);
+                controller.loadPersonalDocuments(resetPage: true);
+              },
+              tooltip: 'View Details',
+            ),
+            IconButton(
               icon: const Icon(Icons.visibility_outlined, size: 20),
               onPressed: () => controller.previewDocument(doc),
               tooltip: 'Preview',
@@ -903,18 +928,17 @@ class PersonalDocsView extends GetView<PersonalDocsController> {
               onPressed: () => controller.downloadDocument(doc),
               tooltip: 'Download',
             ),
-            if (controller.isRenewableDoc(doc) && controller.canEdit)
+            if (controller.canEdit)
               IconButton(
-                icon: const Icon(Icons.autorenew_rounded, size: 20, color: AppColors.primary),
+                icon: const Icon(Icons.post_add_rounded, size: 20, color: AppColors.primary),
                 onPressed: () => controller.openRenewDocumentDialog(doc),
-                tooltip: 'Renew Policy / Document',
+                tooltip: 'Re-upload / Upload New Version',
               ),
-            if (controller.isRenewableDoc(doc))
-              IconButton(
-                icon: const Icon(Icons.history_edu_outlined, size: 20, color: AppColors.textSecondary),
-                onPressed: () => controller.openRenewalHistoryDialog(doc),
-                tooltip: 'Renewal History',
-              ),
+            IconButton(
+              icon: const Icon(Icons.history_rounded, size: 20, color: AppColors.textSecondary),
+              onPressed: () => controller.openRenewalHistoryDialog(doc),
+              tooltip: 'Version & History',
+            ),
             if (controller.canDelete)
               IconButton(
                 icon: const Icon(
