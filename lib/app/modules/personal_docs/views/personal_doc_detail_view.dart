@@ -286,30 +286,31 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                   ),
                 ],
               ),
-              Obx(() => ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    ),
-                    icon: controller.isSaving.value
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.check_rounded, size: 18),
-                    label: Text(
-                      controller.isSaving.value ? 'Saving...' : 'Save Document Details',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    onPressed: controller.isSaving.value
-                        ? null
-                        : controller.saveDocumentDetails,
-                  )),
+              if (controller.canEdit)
+                Obx(() => ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      ),
+                      icon: controller.isSaving.value
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.check_rounded, size: 18),
+                      label: Text(
+                        controller.isSaving.value ? 'Saving...' : 'Save Document Details',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      onPressed: controller.isSaving.value
+                          ? null
+                          : controller.saveDocumentDetails,
+                    )),
             ],
           ),
           const SizedBox(height: AppConstants.paddingLarge),
@@ -330,36 +331,42 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     controller: controller.titleController,
                     width: colWidth,
                     icon: Icons.title_outlined,
+                    enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Person Name (Cardholder / Insured) *',
                     controller: controller.personNameController,
                     width: colWidth,
                     icon: Icons.person_outline,
+                    enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Relationship (Self, Spouse, Son, Mother, etc.)',
                     controller: controller.relationshipController,
                     width: colWidth,
                     icon: Icons.people_outline,
+                    enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Document Type (e.g. Health Insurance, Aadhaar Card) *',
                     controller: controller.docTypeNameController,
                     width: colWidth,
                     icon: Icons.category_outlined,
+                    enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'ID / Policy / Covernote Number',
                     controller: controller.idNumberController,
                     width: colWidth,
                     icon: Icons.tag,
+                    enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Issuing Authority / Govt Body',
                     controller: controller.issuingAuthorityController,
                     width: colWidth,
                     icon: Icons.account_balance_outlined,
+                    enabled: controller.canEdit,
                   ),
                   _buildDatePickerField(
                     context: context,
@@ -367,6 +374,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     date: controller.issueDate.value,
                     width: colWidth,
                     onSelected: (dt) => controller.issueDate.value = dt,
+                    enabled: controller.canEdit,
                   ),
                   _buildValidityExpirySection(context, colWidth),
 
@@ -377,12 +385,14 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                       controller: controller.insuranceCompanyController,
                       width: colWidth,
                       icon: Icons.business_outlined,
+                      enabled: controller.canEdit,
                     ),
                     _buildFormField(
                       label: 'Policy Type (Family Floater, Individual, Term)',
                       controller: controller.policyTypeController,
                       width: colWidth,
                       icon: Icons.policy_outlined,
+                      enabled: controller.canEdit,
                     ),
                     _buildFormField(
                       label: 'Sum Insured / Coverage Amount (₹)',
@@ -390,6 +400,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                       width: colWidth,
                       icon: Icons.currency_rupee,
                       isNumeric: true,
+                      enabled: controller.canEdit,
                     ),
                     _buildFormField(
                       label: 'Annual Premium Amount (₹)',
@@ -397,18 +408,21 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                       width: colWidth,
                       icon: Icons.receipt_outlined,
                       isNumeric: true,
+                      enabled: controller.canEdit,
                     ),
                     _buildFormField(
                       label: 'TPA (Third Party Administrator) Name',
                       controller: controller.tpaNameController,
                       width: colWidth,
                       icon: Icons.medical_services_outlined,
+                      enabled: controller.canEdit,
                     ),
                     _buildFormField(
                       label: 'Coverage Endorsements & Notes',
                       controller: controller.notesController,
                       width: colWidth,
                       icon: Icons.note_outlined,
+                      enabled: controller.canEdit,
                     ),
                   ],
 
@@ -418,6 +432,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     controller: controller.descriptionController,
                     width: constraints.maxWidth,
                     icon: Icons.notes_outlined,
+                    enabled: controller.canEdit,
                   ),
                 ],
               );
@@ -434,6 +449,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
     required double width,
     required IconData icon,
     bool isNumeric = false,
+    bool enabled = true,
   }) {
     return SizedBox(
       width: width,
@@ -451,11 +467,12 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
           const SizedBox(height: 6),
           TextFormField(
             controller: controller,
+            enabled: enabled,
             keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
             decoration: InputDecoration(
               prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
               filled: true,
-              fillColor: AppColors.surfaceMuted,
+              fillColor: enabled ? AppColors.surfaceMuted : AppColors.surfaceMuted.withValues(alpha: 0.5),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 borderSide: const BorderSide(color: AppColors.border),
@@ -464,13 +481,20 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 borderSide: const BorderSide(color: AppColors.border),
               ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+              ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontSize: 14,
+              color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+            ),
           ),
         ],
       ),
@@ -483,6 +507,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
     required DateTime? date,
     required double width,
     required ValueChanged<DateTime> onSelected,
+    bool enabled = true,
   }) {
     return SizedBox(
       width: width,
@@ -499,22 +524,26 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
           ),
           const SizedBox(height: 6),
           InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: date ?? DateTime.now(),
-                firstDate: DateTime(1980),
-                lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
-              );
-              if (picked != null) onSelected(picked);
-            },
+            onTap: enabled
+                ? () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: date ?? DateTime.now(),
+                      firstDate: DateTime(1980),
+                      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                    );
+                    if (picked != null) onSelected(picked);
+                  }
+                : null,
             borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
+                color: enabled ? AppColors.surfaceMuted : AppColors.surfaceMuted.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(
+                  color: enabled ? AppColors.border : AppColors.border.withValues(alpha: 0.5),
+                ),
               ),
               child: Row(
                 children: [
@@ -524,7 +553,9 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     date != null ? AppFormatters.formatDate(date) : 'Select Date',
                     style: TextStyle(
                       fontSize: 14,
-                      color: date != null ? AppColors.textPrimary : AppColors.textMuted,
+                      color: date != null
+                          ? (enabled ? AppColors.textPrimary : AppColors.textMuted)
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ],

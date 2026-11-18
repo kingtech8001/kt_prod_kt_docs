@@ -8,7 +8,7 @@ class AppConstants {
   // App Metadata
   static const String appName = 'DocHolder';
   static const String appTagline = 'King Technology Document Holder & Vault';
-  static final RxString _appVersion = '1.0.10'.obs;
+  static final RxString _appVersion = '1.0.11'.obs;
   static String get appVersion => _appVersion.value;
   static set appVersion(String value) => _appVersion.value = value;
 

@@ -53,6 +53,19 @@ class AuthService extends GetxService {
     return currentProfile.value?.role.toLowerCase() == 'super_admin';
   }
 
+  bool get canEdit {
+    if (isDemoMode.value) return true;
+    final role = currentProfile.value?.role.toLowerCase();
+    if (role == 'admin' || role == 'super_admin' || role == 'editor') return true;
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final metaRole = user?.userMetadata?['role']?.toString().toLowerCase();
+      return metaRole == 'admin' || metaRole == 'super_admin' || metaRole == 'editor';
+    } catch (_) {
+      return false;
+    }
+  }
+
   void enterDemoMode({bool persist = true}) {
     isDemoMode.value = true;
     currentProfile.value = ProfileModel(

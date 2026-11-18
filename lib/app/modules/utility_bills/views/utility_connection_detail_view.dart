@@ -474,40 +474,42 @@ class UtilityConnectionDetailView
                   ),
                 ],
               ),
-              InkWell(
-                onTap: () => Get.toNamed(AppRoutes.SETTINGS),
-                borderRadius: BorderRadius.circular(4),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.settings_outlined, size: 13, color: AppColors.primary),
-                      SizedBox(width: 4),
-                      Text(
-                        'Manage in Settings',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                          decoration: TextDecoration.underline,
+              if (controller.canEdit)
+                InkWell(
+                  onTap: () => Get.toNamed(AppRoutes.SETTINGS),
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.settings_outlined, size: 13, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text(
+                          'Manage in Settings',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 6),
           Obx(() {
             final locs = controller.dynamicLocations;
             final selected = controller.selectedLocation.value;
+            final isEnabled = controller.canEdit;
 
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: isEnabled ? AppColors.surface : AppColors.surfaceMuted,
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 border: Border.all(color: AppColors.border),
               ),
@@ -529,9 +531,10 @@ class UtilityConnectionDetailView
                           Expanded(
                             child: Text(
                               loc.summary,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
+                                color: isEnabled ? AppColors.textPrimary : AppColors.textMuted,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -541,7 +544,7 @@ class UtilityConnectionDetailView
                       ),
                     );
                   }).toList(),
-                  onChanged: (loc) => controller.onLocationSelected(loc),
+                  onChanged: isEnabled ? (loc) => controller.onLocationSelected(loc) : null,
                 ),
               ),
             );
@@ -619,6 +622,7 @@ class UtilityConnectionDetailView
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.providerNameController,
+                      enabled: controller.canEdit,
                       decoration:
                           const InputDecoration(hintText: 'e.g. PGVCL, Torrent'),
                     ),
@@ -638,6 +642,7 @@ class UtilityConnectionDetailView
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.utilityTypeController,
+                      enabled: controller.canEdit,
                       decoration: const InputDecoration(
                         hintText: 'e.g. Electricity / Light',
                       ),
@@ -664,6 +669,7 @@ class UtilityConnectionDetailView
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.consumerNumberController,
+                      enabled: controller.canEdit,
                       decoration: const InputDecoration(
                         hintText: 'e.g. 61647126444',
                       ),
@@ -684,6 +690,7 @@ class UtilityConnectionDetailView
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.meterNumberController,
+                      enabled: controller.canEdit,
                       decoration:
                           const InputDecoration(hintText: 'e.g. MTR-1118'),
                     ),
@@ -695,44 +702,45 @@ class UtilityConnectionDetailView
           const SizedBox(height: 20),
 
           // Save Button
-          SizedBox(
-            width: double.infinity,
-            child: Obx(
-              () => ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusSmall),
+          if (controller.canEdit)
+            SizedBox(
+              width: double.infinity,
+              child: Obx(
+                () => ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusSmall),
+                    ),
                   ),
-                ),
-                icon: controller.isSaving.value
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.save_rounded, size: 18),
-                label: Text(
-                  controller.isSaving.value
-                      ? 'Saving Location Changes...'
-                      : 'Save Account & Location Changes',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                  icon: controller.isSaving.value
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save_rounded, size: 18),
+                  label: Text(
+                    controller.isSaving.value
+                        ? 'Saving Location Changes...'
+                        : 'Save Account & Location Changes',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
+                  onPressed: controller.isSaving.value
+                      ? null
+                      : controller.saveConnectionDetails,
                 ),
-                onPressed: controller.isSaving.value
-                    ? null
-                    : controller.saveConnectionDetails,
               ),
             ),
-          ),
         ],
       ),
     );

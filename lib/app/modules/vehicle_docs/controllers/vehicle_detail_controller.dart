@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/vehicle_docs_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/vehicle_document_models.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/add_vehicle_service_dialog.dart';
 import 'package:kt_prod_kt_docs/app/modules/vehicle_docs/views/widgets/renew_vehicle_doc_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
@@ -20,6 +21,15 @@ class VehicleDetailController extends GetxController {
   final vehicle = Rxn<MasterVehicleModel>();
   final isLoading = true.obs;
   final isSaving = false.obs;
+
+  // Role Permissions
+  bool get canEdit {
+    try {
+      return AuthService.to.canEdit;
+    } catch (_) {
+      return true;
+    }
+  }
 
   // Editable Form Controllers
   final vehicleNumberController = TextEditingController();
@@ -125,6 +135,11 @@ class VehicleDetailController extends GetxController {
   Future<void> saveVehicleDetails() async {
     final current = vehicle.value;
     if (current == null) return;
+
+    if (!canEdit) {
+      AppSnackbar.showWarning('Permission Denied', 'Your role cannot edit vehicle details.');
+      return;
+    }
 
     final regNumber = vehicleNumberController.text.trim().toUpperCase();
     if (regNumber.isEmpty) {

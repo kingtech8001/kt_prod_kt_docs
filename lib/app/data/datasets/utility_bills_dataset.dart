@@ -456,21 +456,46 @@ class UtilityBillsDataset {
           .toList();
 
       if (docIds.isNotEmpty) {
-        // 3. Update addresses
-        await _client
+        // 3. Upsert / update addresses
+        final addrRows = await _client
             .from('document_addresses')
-            .update({
-              'premise_name': premiseName,
-              'flat_house_no': flatHouseNo,
-              'building_name': buildingName,
-              'street_address': streetAddress,
-              'area_locality': areaLocality,
-              'city': city,
-              'state': state,
-              'postal_code': postalCode,
-              'country': country,
-            })
+            .select('document_id')
             .inFilter('document_id', docIds);
+        final existingAddrDocIds = (addrRows as List)
+            .map((r) => r['document_id'] as String)
+            .toSet();
+
+        final addrUpdatePayload = {
+          'premise_name': premiseName,
+          'flat_house_no': flatHouseNo,
+          'building_name': buildingName,
+          'street_address': streetAddress,
+          'area_locality': areaLocality,
+          'city': city,
+          'state': state,
+          'postal_code': postalCode,
+          'country': country,
+        };
+
+        if (existingAddrDocIds.isNotEmpty) {
+          await _client
+              .from('document_addresses')
+              .update(addrUpdatePayload)
+              .inFilter('document_id', existingAddrDocIds.toList());
+        }
+
+        final missingAddrDocIds = docIds.where((id) => !existingAddrDocIds.contains(id)).toList();
+        if (missingAddrDocIds.isNotEmpty) {
+          final insertPayloads = missingAddrDocIds.map((id) => {
+            'document_id': id,
+            ...addrUpdatePayload,
+          }).toList();
+          try {
+            await _client.from('document_addresses').insert(insertPayloads);
+          } catch (e) {
+            AppLogger.warning('UTILITY_DATASET', 'Non-fatal inserting missing addresses: $e');
+          }
+        }
 
         // 4. Update documents subcategory
         await _client
@@ -680,7 +705,13 @@ class UtilityBillsDataset {
     required String utilityType,
     String? premiseName,
     String? flatHouseNo,
+    String? buildingName,
+    String? streetAddress,
+    String? areaLocality,
     String? city,
+    String? state,
+    String? postalCode,
+    String? country,
     required String title,
     String? description,
     required double billAmount,
@@ -696,6 +727,15 @@ class UtilityBillsDataset {
     final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'pdf';
     final mimeType = ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
     final storagePath = 'utility_bills/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+    final effectiveAreaLocality = (areaLocality != null && areaLocality.trim().isNotEmpty)
+        ? areaLocality.trim()
+        : (premiseName != null && premiseName.trim().isNotEmpty
+            ? premiseName.trim()
+            : (city ?? 'Rajkot'));
+    final effectiveCity = city ?? 'Rajkot';
+    final effectiveState = state ?? 'Gujarat';
+    final effectiveCountry = country ?? 'India';
 
     if (DemoDataService.isDemoMode) {
       final mockId = 'doc-util-${DateTime.now().millisecondsSinceEpoch}';
@@ -731,10 +771,13 @@ class UtilityBillsDataset {
         address: AddressModel(
           premiseName: premiseName,
           flatHouseNo: flatHouseNo,
-          areaLocality: premiseName ?? '',
-          city: city ?? 'Rajkot',
-          state: 'Gujarat',
-          country: 'India',
+          buildingName: buildingName,
+          streetAddress: streetAddress,
+          areaLocality: effectiveAreaLocality,
+          city: effectiveCity,
+          state: effectiveState,
+          postalCode: postalCode,
+          country: effectiveCountry,
         ),
       );
       DemoDataService.getAllDocuments().insert(0, newDoc);
@@ -787,16 +830,27 @@ class UtilityBillsDataset {
     await _client.from('utility_metadata').insert(utilPayload);
 
     // 4. Insert address if available
-    if (city != null || premiseName != null || flatHouseNo != null) {
+    if (city != null || premiseName != null || flatHouseNo != null || areaLocality != null) {
       final addrPayload = {
         'document_id': newDocId,
         'premise_name': premiseName,
         'flat_house_no': flatHouseNo,
-        'city': city ?? 'Rajkot',
-        'state': 'Gujarat',
-        'country': 'India',
+        if (buildingName != null) 'building_name': buildingName,
+        if (streetAddress != null) 'street_address': streetAddress,
+        'area_locality': effectiveAreaLocality,
+        'city': effectiveCity,
+        'state': effectiveState,
+        if (postalCode != null) 'postal_code': postalCode,
+        'country': effectiveCountry,
       };
-      await _client.from('document_addresses').insert(addrPayload);
+      try {
+        await _client.from('document_addresses').insert(addrPayload);
+      } catch (e, st) {
+        AppLogger.warning(
+          'UTILITY_DATASET',
+          'Could not insert document_addresses record for $newDocId: $e ($st)',
+        );
+      }
     }
 
     return DocumentModel(
@@ -832,10 +886,13 @@ class UtilityBillsDataset {
       address: AddressModel(
         premiseName: premiseName,
         flatHouseNo: flatHouseNo,
-        areaLocality: premiseName ?? '',
-        city: city ?? 'Rajkot',
-        state: 'Gujarat',
-        country: 'India',
+        buildingName: buildingName,
+        streetAddress: streetAddress,
+        areaLocality: effectiveAreaLocality,
+        city: effectiveCity,
+        state: effectiveState,
+        postalCode: postalCode,
+        country: effectiveCountry,
       ),
     );
   }

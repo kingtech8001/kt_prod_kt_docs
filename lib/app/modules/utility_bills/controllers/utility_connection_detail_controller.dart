@@ -6,6 +6,7 @@ import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_metadata_model.dart';
+import 'package:kt_prod_kt_docs/app/data/services/auth_service.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/edit_utility_bill_dialog.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/upload_next_utility_bill_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
@@ -44,6 +45,15 @@ class UtilityConnectionDetailController extends GetxController {
   final meterNumberController = TextEditingController();
   final providerNameController = TextEditingController();
   final utilityTypeController = TextEditingController();
+
+  // Role Permissions
+  bool get canEdit {
+    try {
+      return AuthService.to.canEdit;
+    } catch (_) {
+      return true;
+    }
+  }
 
   // Metrics
   final totalSpent = 0.0.obs;
@@ -192,6 +202,11 @@ class UtilityConnectionDetailController extends GetxController {
     final current = connection.value;
     if (current == null) return;
 
+    if (!canEdit) {
+      AppSnackbar.showWarning('Permission Denied', 'Your role does not have permission to edit connection details.');
+      return;
+    }
+
     final loc = selectedLocation.value;
     final newPremise = loc != null
         ? (loc.premiseName ?? loc.name)
@@ -329,7 +344,13 @@ class UtilityConnectionDetailController extends GetxController {
         required utilityType,
         premiseName,
         flatHouseNo,
+        buildingName,
+        streetAddress,
+        areaLocality,
         city,
+        state,
+        postalCode,
+        country,
         required title,
         description,
         required billAmount,
@@ -348,7 +369,13 @@ class UtilityConnectionDetailController extends GetxController {
           utilityType: utilityType,
           premiseName: premiseName,
           flatHouseNo: flatHouseNo,
+          buildingName: buildingName,
+          streetAddress: streetAddress,
+          areaLocality: areaLocality,
           city: city,
+          state: state,
+          postalCode: postalCode,
+          country: country,
           title: title,
           description: description,
           billAmount: billAmount,
