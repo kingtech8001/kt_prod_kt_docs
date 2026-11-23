@@ -7,6 +7,7 @@ import 'package:kt_prod_kt_docs/app/data/models/address_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_scan_result.dart';
+import 'package:kt_prod_kt_docs/app/data/models/document_subcategory_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/folder_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
@@ -196,6 +197,7 @@ class DocumentUploadController extends GetxController {
   final dynamicUtilityTypes = <String>[].obs;
   final dynamicPersons = <MasterPersonModel>[].obs;
   final dynamicPersonalDocTypes = <MasterPersonalDocTypeModel>[].obs;
+  final dynamicDocumentSubcategories = <DocumentSubcategoryModel>[].obs;
 
   // Selected File
   final selectedFile = Rxn<PlatformFile>();
@@ -445,6 +447,8 @@ class DocumentUploadController extends GetxController {
     formErrorMessage.value = '';
     try {
       await Future.wait([loadCategoriesAndFolders(), loadMasterData()]);
+      final category = currentCategory;
+      if (category != null) updateSubcategoriesForCategory(category.code);
     } catch (e, st) {
       AppLogger.error(
         'UPLOAD_CTRL',
@@ -535,6 +539,10 @@ class DocumentUploadController extends GetxController {
         selectedVehicleDocTypeId.value = vehicleDocTypeList.first.id;
         selectedVehicleDocTypeName.value = vehicleDocTypeList.first.name;
       }
+
+      final documentSubcategoryList = await _settingsDataset
+          .getDocumentSubcategories(activeOnly: true);
+      dynamicDocumentSubcategories.assignAll(documentSubcategoryList);
     } catch (e, st) {
       AppLogger.error(
         'UPLOAD_CTRL',
@@ -729,6 +737,11 @@ class DocumentUploadController extends GetxController {
   }
 
   void updateSubcategoriesForCategory(String catCode) {
+    final configuredSubcategories = documentSubcategoryOptions;
+    if (configuredSubcategories.isNotEmpty) {
+      selectedSubcategory.value = configuredSubcategories.first;
+      return;
+    }
     if (catCode == 'utility_bills') {
       final list = dynamicUtilityTypes.isNotEmpty
           ? dynamicUtilityTypes
@@ -768,6 +781,41 @@ class DocumentUploadController extends GetxController {
     } else {
       selectedSubcategory.value = 'General Document';
     }
+  }
+
+  List<String> get documentSubcategoryOptions {
+    final categoryId = selectedCategoryId.value;
+    if (categoryId.isEmpty) return const [];
+    return dynamicDocumentSubcategories
+        .where((subcategory) => subcategory.categoryId == categoryId)
+        .map((subcategory) => subcategory.name)
+        .toList();
+  }
+
+  List<String> get availableSubcategoryOptions {
+    final configured = documentSubcategoryOptions;
+    if (configured.isNotEmpty) return configured;
+    if (isUtilityBill) {
+      return dynamicUtilityTypes.isNotEmpty
+          ? dynamicUtilityTypes
+          : AppConstants.utilitySubcategories;
+    }
+    if (isApplianceWarranty) {
+      return dynamicApplianceSubcategories.isNotEmpty
+          ? dynamicApplianceSubcategories
+          : AppConstants.applianceSubcategories;
+    }
+    if (isPersonalDoc) {
+      final options = dynamicPersonalDocTypes.map((type) => type.name).toList();
+      return options.isNotEmpty ? options : const ['Aadhaar Card'];
+    }
+    if (isVehicleDoc) {
+      final options = dynamicVehicleDocTypes.map((type) => type.name).toList();
+      return options.isNotEmpty
+          ? options
+          : const ['RC Book (Registration Certificate)'];
+    }
+    return const ['General Document'];
   }
 
   bool get isSelectedFileCompressible {

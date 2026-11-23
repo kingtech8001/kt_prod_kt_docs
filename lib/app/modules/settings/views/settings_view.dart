@@ -52,6 +52,7 @@ class SettingsView extends GetView<SettingsController> {
                   if (selectedTab == 5) _buildPersonsTab(context),
                   if (selectedTab == 6) _buildPersonalDocTypesTab(context),
                   if (selectedTab == 7) _buildDocCategoriesTab(context),
+                  if (selectedTab == 8) _buildDocSubcategoriesTab(context),
                 ],
               ),
             ),
@@ -80,7 +81,11 @@ class SettingsView extends GetView<SettingsController> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left, size: 20, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.chevron_left,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
             tooltip: 'Scroll Left',
             splashRadius: 20,
             onPressed: () {
@@ -98,27 +103,61 @@ class SettingsView extends GetView<SettingsController> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Row(
                 children: [
-                  _buildTabButton(0, 'Locations & Premises', Icons.store_mall_directory_outlined),
+                  _buildTabButton(
+                    0,
+                    'Locations & Premises',
+                    Icons.store_mall_directory_outlined,
+                  ),
                   const SizedBox(width: 8),
                   _buildTabButton(1, 'Cities', Icons.location_city),
                   const SizedBox(width: 8),
-                  _buildTabButton(2, 'Appliance Brands', Icons.branding_watermark_outlined),
+                  _buildTabButton(
+                    2,
+                    'Appliance Brands',
+                    Icons.branding_watermark_outlined,
+                  ),
                   const SizedBox(width: 8),
-                  _buildTabButton(3, 'Appliance Categories', Icons.kitchen_outlined),
+                  _buildTabButton(
+                    3,
+                    'Appliance Categories',
+                    Icons.kitchen_outlined,
+                  ),
                   const SizedBox(width: 8),
                   _buildTabButton(4, 'Utility Providers', Icons.bolt_outlined),
                   const SizedBox(width: 8),
-                  _buildTabButton(5, 'Persons & Members', Icons.people_alt_outlined),
+                  _buildTabButton(
+                    5,
+                    'Persons & Members',
+                    Icons.people_alt_outlined,
+                  ),
                   const SizedBox(width: 8),
-                  _buildTabButton(6, 'Personal Doc Types', Icons.badge_outlined),
+                  _buildTabButton(
+                    6,
+                    'Personal Doc Types',
+                    Icons.badge_outlined,
+                  ),
                   const SizedBox(width: 8),
-                  _buildTabButton(7, 'Document Categories', Icons.folder_outlined),
+                  _buildTabButton(
+                    7,
+                    'Document Categories',
+                    Icons.folder_outlined,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildTabButton(
+                    8,
+                    'Document Subcategories',
+                    Icons.account_tree_outlined,
+                  ),
                 ],
               ),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
             tooltip: 'Scroll Right',
             splashRadius: 20,
             onPressed: () {
@@ -210,7 +249,9 @@ class SettingsView extends GetView<SettingsController> {
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: loc.isActive ? AppColors.primarySurface : AppColors.surfaceMuted,
+          color: loc.isActive
+              ? AppColors.primarySurface
+              : AppColors.surfaceMuted,
           borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
         ),
         child: Icon(
@@ -227,7 +268,9 @@ class SettingsView extends GetView<SettingsController> {
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: loc.isActive ? AppColors.textPrimary : AppColors.textMuted,
+                color: loc.isActive
+                    ? AppColors.textPrimary
+                    : AppColors.textMuted,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -520,27 +563,43 @@ class SettingsView extends GetView<SettingsController> {
         itemBuilder: (ctx, index) {
           final cat = list[index];
           return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
             leading: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: AppColors.primarySurface,
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
               ),
-              child: const Icon(Icons.folder_outlined, color: AppColors.primary, size: 20),
+              child: const Icon(
+                Icons.folder_outlined,
+                color: AppColors.primary,
+                size: 20,
+              ),
             ),
             title: Row(
               children: [
                 Text(
                   cat.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.radiusSmall,
+                    ),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
@@ -564,7 +623,10 @@ class SettingsView extends GetView<SettingsController> {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(
                         cat.description!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   Wrap(
@@ -572,62 +634,92 @@ class SettingsView extends GetView<SettingsController> {
                     runSpacing: 4,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: cat.hasCityFilter
                               ? AppColors.info.withValues(alpha: 0.1)
                               : AppColors.background,
-                          borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.radiusSmall,
+                          ),
                           border: Border.all(
-                            color: cat.hasCityFilter ? AppColors.info : AppColors.border,
+                            color: cat.hasCityFilter
+                                ? AppColors.info
+                                : AppColors.border,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              cat.hasCityFilter ? Icons.location_on : Icons.location_off_outlined,
+                              cat.hasCityFilter
+                                  ? Icons.location_on
+                                  : Icons.location_off_outlined,
                               size: 12,
-                              color: cat.hasCityFilter ? AppColors.info : AppColors.textMuted,
+                              color: cat.hasCityFilter
+                                  ? AppColors.info
+                                  : AppColors.textMuted,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              cat.hasCityFilter ? 'City Filter: Active' : 'City Filter: Disabled',
+                              cat.hasCityFilter
+                                  ? 'City Filter: Active'
+                                  : 'City Filter: Disabled',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: cat.hasCityFilter ? AppColors.info : AppColors.textMuted,
+                                color: cat.hasCityFilter
+                                    ? AppColors.info
+                                    : AppColors.textMuted,
                               ),
                             ),
                           ],
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: cat.hasTitleField
                               ? AppColors.primary.withValues(alpha: 0.1)
                               : AppColors.background,
-                          borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.radiusSmall,
+                          ),
                           border: Border.all(
-                            color: cat.hasTitleField ? AppColors.primary : AppColors.border,
+                            color: cat.hasTitleField
+                                ? AppColors.primary
+                                : AppColors.border,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              cat.hasTitleField ? Icons.title : Icons.text_fields_outlined,
+                              cat.hasTitleField
+                                  ? Icons.title
+                                  : Icons.text_fields_outlined,
                               size: 12,
-                              color: cat.hasTitleField ? AppColors.primary : AppColors.textMuted,
+                              color: cat.hasTitleField
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              cat.hasTitleField ? 'Title: Required' : 'Title: Auto-derived',
+                              cat.hasTitleField
+                                  ? 'Title: Required'
+                                  : 'Title: Auto-derived',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: cat.hasTitleField ? AppColors.primary : AppColors.textMuted,
+                                color: cat.hasTitleField
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -642,14 +734,104 @@ class SettingsView extends GetView<SettingsController> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
                   tooltip: 'Edit Category Configuration',
-                  onPressed: () => controller.openEditDocumentCategoryDialog(cat),
+                  onPressed: () =>
+                      controller.openEditDocumentCategoryDialog(cat),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: AppColors.error,
+                  ),
                   tooltip: 'Delete Category',
-                  onPressed: () => controller.confirmDeleteDocumentCategory(cat),
+                  onPressed: () =>
+                      controller.confirmDeleteDocumentCategory(cat),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    });
+  }
+
+  // ================= TAB 8: DOCUMENT SUBCATEGORIES =================
+  Widget _buildDocSubcategoriesTab(BuildContext context) {
+    return Obx(() {
+      final list = controller.filteredDocumentSubcategories;
+      return _buildConfigSection(
+        context: context,
+        title: 'Document Subcategories',
+        subtitle:
+            'Create the precise document types available on the upload form. A subcategory cannot be deleted while documents use it.',
+        onAdd: controller.openAddDocumentSubcategoryDialog,
+        addButtonText: 'Add Subcategory',
+        isLoading: controller.isDocumentSubcategoriesLoading.value,
+        itemCount: list.length,
+        itemBuilder: (ctx, index) {
+          final subcategory = list[index];
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
+            ),
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+              ),
+              child: const Icon(
+                Icons.account_tree_outlined,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              subcategory.name,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              '${controller.categoryNameForId(subcategory.categoryId)} • Code: ${subcategory.code}',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                  tooltip: 'Edit Subcategory',
+                  onPressed: () =>
+                      controller.openEditDocumentSubcategoryDialog(subcategory),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: AppColors.error,
+                  ),
+                  tooltip: 'Delete Subcategory',
+                  onPressed: () =>
+                      controller.confirmDeleteDocumentSubcategory(subcategory),
                 ),
               ],
             ),
@@ -710,7 +892,10 @@ class SettingsView extends GetView<SettingsController> {
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -744,7 +929,10 @@ class SettingsView extends GetView<SettingsController> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -789,9 +977,15 @@ class SettingsView extends GetView<SettingsController> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceMuted,
-                        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusLarge,
+                        ),
                       ),
-                      child: const Icon(Icons.search_off, size: 36, color: AppColors.textMuted),
+                      child: const Icon(
+                        Icons.search_off,
+                        size: 36,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                     const SizedBox(height: 14),
                     const Text(
@@ -805,7 +999,10 @@ class SettingsView extends GetView<SettingsController> {
                     const SizedBox(height: 4),
                     const Text(
                       'Try adjusting your search keywords or add a new entry.',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -816,7 +1013,8 @@ class SettingsView extends GetView<SettingsController> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: itemCount,
-              separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
+              separatorBuilder: (context, index) =>
+                  const Divider(height: 1, color: AppColors.border),
               itemBuilder: itemBuilder,
             ),
         ],
@@ -834,16 +1032,28 @@ class SettingsView extends GetView<SettingsController> {
         style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           hintText: 'Search...',
-          prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textMuted),
+          prefixIcon: const Icon(
+            Icons.search,
+            size: 18,
+            color: AppColors.textMuted,
+          ),
           suffixIcon: Obx(() {
-            if (controller.searchQuery.value.isEmpty) return const SizedBox.shrink();
+            if (controller.searchQuery.value.isEmpty)
+              return const SizedBox.shrink();
             return IconButton(
-              icon: const Icon(Icons.clear, size: 16, color: AppColors.textMuted),
+              icon: const Icon(
+                Icons.clear,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
               onPressed: controller.clearSearch,
               splashRadius: 14,
             );
           }),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 0,
+          ),
           filled: true,
           fillColor: AppColors.background,
           border: OutlineInputBorder(
@@ -932,7 +1142,11 @@ class SettingsView extends GetView<SettingsController> {
             ),
           if (onDelete != null)
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 20,
+                color: AppColors.error,
+              ),
               onPressed: onDelete,
               tooltip: 'Delete',
             ),

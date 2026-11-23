@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/settings_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/category_model.dart';
+import 'package:kt_prod_kt_docs/app/data/models/document_subcategory_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/personal_document_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
@@ -59,6 +60,9 @@ class SettingsController extends GetxController {
   final documentCategories = <CategoryModel>[].obs;
   final isCategoriesLoading = false.obs;
 
+  final documentSubcategories = <DocumentSubcategoryModel>[].obs;
+  final isDocumentSubcategoriesLoading = false.obs;
+
   // Dialog Form Input Controllers
   final locationNameController = TextEditingController();
   final locationPremiseNameController = TextEditingController();
@@ -101,6 +105,10 @@ class SettingsController extends GetxController {
   final docCategoryHasCityFilter = true.obs;
   final docCategoryHasTitleField = true.obs;
 
+  final docSubcategoryNameController = TextEditingController();
+  final docSubcategoryCodeController = TextEditingController();
+  final selectedDocSubcategoryCategoryId = ''.obs;
+
   bool get isAdmin =>
       profile.value?.role == 'admin' || profile.value?.role == 'super_admin';
 
@@ -113,7 +121,8 @@ class SettingsController extends GetxController {
       return l.name.toLowerCase().contains(query) ||
           l.city.toLowerCase().contains(query) ||
           l.areaLocality.toLowerCase().contains(query) ||
-          (l.postalCode != null && l.postalCode!.toLowerCase().contains(query)) ||
+          (l.postalCode != null &&
+              l.postalCode!.toLowerCase().contains(query)) ||
           l.fullAddress.toLowerCase().contains(query);
     }).toList();
   }
@@ -159,7 +168,8 @@ class SettingsController extends GetxController {
     return persons.where((p) {
       return p.fullName.toLowerCase().contains(query) ||
           p.relationship.toLowerCase().contains(query) ||
-          (p.phoneNumber != null && p.phoneNumber!.toLowerCase().contains(query)) ||
+          (p.phoneNumber != null &&
+              p.phoneNumber!.toLowerCase().contains(query)) ||
           (p.email != null && p.email!.toLowerCase().contains(query));
     }).toList();
   }
@@ -179,9 +189,27 @@ class SettingsController extends GetxController {
     return documentCategories.where((c) {
       return c.name.toLowerCase().contains(query) ||
           c.code.toLowerCase().contains(query) ||
-          (c.description != null && c.description!.toLowerCase().contains(query));
+          (c.description != null &&
+              c.description!.toLowerCase().contains(query));
     }).toList();
   }
+
+  List<DocumentSubcategoryModel> get filteredDocumentSubcategories {
+    final query = searchQuery.value.trim().toLowerCase();
+    if (query.isEmpty) return documentSubcategories;
+    return documentSubcategories.where((sub) {
+      final categoryName = categoryNameForId(sub.categoryId).toLowerCase();
+      return sub.name.toLowerCase().contains(query) ||
+          sub.code.toLowerCase().contains(query) ||
+          categoryName.contains(query);
+    }).toList();
+  }
+
+  String categoryNameForId(String categoryId) =>
+      documentCategories
+          .firstWhereOrNull((category) => category.id == categoryId)
+          ?.name ??
+      'Unknown category';
 
   @override
   void onInit() {
@@ -201,7 +229,12 @@ class SettingsController extends GetxController {
         phoneController.text = p.phoneNumber ?? '';
       }
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading profile: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading profile: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -217,6 +250,7 @@ class SettingsController extends GetxController {
       loadPersons(),
       loadPersonalDocTypes(),
       loadDocumentCategories(),
+      loadDocumentSubcategories(),
     ]);
   }
 
@@ -242,7 +276,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getLocations(activeOnly: false);
       locations.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading locations: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading locations: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLocationsLoading.value = false;
     }
@@ -301,7 +340,8 @@ class SettingsController extends GetxController {
             buildingName: locationBuildingNameController.text.trim().isNotEmpty
                 ? locationBuildingNameController.text.trim()
                 : null,
-            streetAddress: locationStreetAddressController.text.trim().isNotEmpty
+            streetAddress:
+                locationStreetAddressController.text.trim().isNotEmpty
                 ? locationStreetAddressController.text.trim()
                 : null,
             areaLocality: areaLocality.isNotEmpty ? areaLocality : name,
@@ -312,7 +352,10 @@ class SettingsController extends GetxController {
             displayOrder: locations.length + 1,
           );
           Get.back();
-          AppSnackbar.showSuccess('Location Saved', 'Location "$name" saved successfully with full address.');
+          AppSnackbar.showSuccess(
+            'Location Saved',
+            'Location "$name" saved successfully with full address.',
+          );
           loadLocations();
         } catch (e) {
           dialogErrorMessage.value = 'Failed to save location: $e';
@@ -377,7 +420,8 @@ class SettingsController extends GetxController {
             buildingName: locationBuildingNameController.text.trim().isNotEmpty
                 ? locationBuildingNameController.text.trim()
                 : null,
-            streetAddress: locationStreetAddressController.text.trim().isNotEmpty
+            streetAddress:
+                locationStreetAddressController.text.trim().isNotEmpty
                 ? locationStreetAddressController.text.trim()
                 : null,
             areaLocality: areaLocality.isNotEmpty ? areaLocality : name,
@@ -389,7 +433,10 @@ class SettingsController extends GetxController {
             displayOrder: location.displayOrder,
           );
           Get.back();
-          AppSnackbar.showSuccess('Location Updated', 'Location "$name" updated successfully.');
+          AppSnackbar.showSuccess(
+            'Location Updated',
+            'Location "$name" updated successfully.',
+          );
           loadLocations();
         } catch (e) {
           dialogErrorMessage.value = 'Failed to update location: $e';
@@ -418,12 +465,18 @@ class SettingsController extends GetxController {
             children: [
               const Text(
                 'Location / Premise Name *',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: locationNameController,
-                decoration: const InputDecoration(hintText: 'e.g. RK Iconic Office 1118, Corporate HQ, Home'),
+                decoration: const InputDecoration(
+                  hintText: 'e.g. RK Iconic Office 1118, Corporate HQ, Home',
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -434,12 +487,18 @@ class SettingsController extends GetxController {
                       children: [
                         const Text(
                           'Flat / Office / Unit No',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: locationFlatHouseNoController,
-                          decoration: const InputDecoration(hintText: 'e.g. B-1118, Unit 42'),
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. B-1118, Unit 42',
+                          ),
                         ),
                       ],
                     ),
@@ -451,12 +510,18 @@ class SettingsController extends GetxController {
                       children: [
                         const Text(
                           'Building / Tower / Complex',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: locationBuildingNameController,
-                          decoration: const InputDecoration(hintText: 'e.g. RK Iconic, Corporate Heights'),
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. RK Iconic, Corporate Heights',
+                          ),
                         ),
                       ],
                     ),
@@ -466,22 +531,34 @@ class SettingsController extends GetxController {
               const SizedBox(height: 12),
               const Text(
                 'Street Address / Road',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: locationStreetAddressController,
-                decoration: const InputDecoration(hintText: 'e.g. 150 Feet Ring Road, Main Road'),
+                decoration: const InputDecoration(
+                  hintText: 'e.g. 150 Feet Ring Road, Main Road',
+                ),
               ),
               const SizedBox(height: 12),
               const Text(
                 'Area / Locality',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: locationAreaLocalityController,
-                decoration: const InputDecoration(hintText: 'e.g. Sheetal Park, Nana Mava, Bodakdev'),
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Sheetal Park, Nana Mava, Bodakdev',
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -493,12 +570,18 @@ class SettingsController extends GetxController {
                       children: [
                         const Text(
                           'City *',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: locationCityController,
-                          decoration: const InputDecoration(hintText: 'e.g. Rajkot, Ahmedabad'),
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. Rajkot, Ahmedabad',
+                          ),
                         ),
                       ],
                     ),
@@ -511,12 +594,18 @@ class SettingsController extends GetxController {
                       children: [
                         const Text(
                           'Pincode *',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: locationPostalCodeController,
-                          decoration: const InputDecoration(hintText: 'e.g. 360005, 380015'),
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. 360005, 380015',
+                          ),
                         ),
                       ],
                     ),
@@ -532,12 +621,18 @@ class SettingsController extends GetxController {
                       children: [
                         const Text(
                           'State',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: locationStateController,
-                          decoration: const InputDecoration(hintText: 'e.g. Gujarat, Maharashtra'),
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. Gujarat, Maharashtra',
+                          ),
                         ),
                       ],
                     ),
@@ -549,12 +644,18 @@ class SettingsController extends GetxController {
                       children: [
                         const Text(
                           'Country',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: locationCountryController,
-                          decoration: const InputDecoration(hintText: 'e.g. India'),
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. India',
+                          ),
                         ),
                       ],
                     ),
@@ -590,7 +691,10 @@ class SettingsController extends GetxController {
       );
       loadLocations();
     } catch (e) {
-      AppSnackbar.showError('Update Failed', 'Failed to update location status.');
+      AppSnackbar.showError(
+        'Update Failed',
+        'Failed to update location status.',
+      );
     }
   }
 
@@ -609,7 +713,10 @@ class SettingsController extends GetxController {
           try {
             await _dataset.deleteLocation(location.id);
             Get.back();
-            AppSnackbar.showSuccess('Deleted', 'Location removed successfully.');
+            AppSnackbar.showSuccess(
+              'Deleted',
+              'Location removed successfully.',
+            );
             loadLocations();
           } catch (e) {
             dialogErrorMessage.value = 'Failed to delete: $e';
@@ -630,7 +737,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getCities(activeOnly: false);
       cities.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading cities: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading cities: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isCitiesLoading.value = false;
     }
@@ -652,22 +764,34 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'City Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: cityNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Ahmedabad, Surat, Mumbai'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Ahmedabad, Surat, Mumbai',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'State / Region',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: cityStateController,
-              decoration: const InputDecoration(hintText: 'e.g. Gujarat, Maharashtra'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Gujarat, Maharashtra',
+              ),
             ),
           ],
         ),
@@ -687,7 +811,10 @@ class SettingsController extends GetxController {
           try {
             await _dataset.addCity(name: name, state: state);
             Get.back();
-            AppSnackbar.showSuccess('City Added', 'City "$name" added successfully.');
+            AppSnackbar.showSuccess(
+              'City Added',
+              'City "$name" added successfully.',
+            );
             loadCities();
           } catch (e) {
             dialogErrorMessage.value = 'Failed to add city: ${e.toString()}';
@@ -722,7 +849,8 @@ class SettingsController extends GetxController {
   void confirmDeleteCity(MasterCityModel city) {
     _showDeleteConfirmation(
       title: 'Delete City',
-      message: 'Are you sure you want to delete "${city.name}"? Documents linked to this city may lose their location filter.',
+      message:
+          'Are you sure you want to delete "${city.name}"? Documents linked to this city may lose their location filter.',
       onDelete: () async {
         await _dataset.deleteCity(city.id);
         AppSnackbar.showSuccess('City Removed', 'City "${city.name}" deleted.');
@@ -739,7 +867,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getBrands(activeOnly: false);
       brands.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading brands: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading brands: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isBrandsLoading.value = false;
     }
@@ -761,31 +894,55 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'Brand Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: brandNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Havells, Crompton, Samsung'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Havells, Crompton, Samsung',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Category Type',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
-            Obx(() => DropdownButtonFormField<String>(
-                  initialValue: brandCategoryType.value,
-                  items: const [
-                    DropdownMenuItem(value: 'appliance', child: Text('Home Appliance')),
-                    DropdownMenuItem(value: 'electronics', child: Text('Electronics & Gadgets')),
-                    DropdownMenuItem(value: 'office', child: Text('Office Equipment')),
-                    DropdownMenuItem(value: 'utility', child: Text('Utility / Infrastructure')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) brandCategoryType.value = val;
-                  },
-                )),
+            Obx(
+              () => DropdownButtonFormField<String>(
+                initialValue: brandCategoryType.value,
+                items: const [
+                  DropdownMenuItem(
+                    value: 'appliance',
+                    child: Text('Home Appliance'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'electronics',
+                    child: Text('Electronics & Gadgets'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'office',
+                    child: Text('Office Equipment'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'utility',
+                    child: Text('Utility / Infrastructure'),
+                  ),
+                ],
+                onChanged: (val) {
+                  if (val != null) brandCategoryType.value = val;
+                },
+              ),
+            ),
           ],
         ),
         onConfirm: () async {
@@ -798,9 +955,15 @@ class SettingsController extends GetxController {
           isSubmitting.value = true;
           dialogErrorMessage.value = '';
           try {
-            await _dataset.addBrand(name: name, categoryType: brandCategoryType.value);
+            await _dataset.addBrand(
+              name: name,
+              categoryType: brandCategoryType.value,
+            );
             Get.back();
-            AppSnackbar.showSuccess('Brand Added', 'Brand "$name" added successfully.');
+            AppSnackbar.showSuccess(
+              'Brand Added',
+              'Brand "$name" added successfully.',
+            );
             loadBrands();
           } catch (e) {
             dialogErrorMessage.value = 'Failed to add brand: ${e.toString()}';
@@ -838,7 +1001,10 @@ class SettingsController extends GetxController {
       message: 'Are you sure you want to delete brand "${brand.name}"?',
       onDelete: () async {
         await _dataset.deleteBrand(brand.id);
-        AppSnackbar.showSuccess('Brand Removed', 'Brand "${brand.name}" deleted.');
+        AppSnackbar.showSuccess(
+          'Brand Removed',
+          'Brand "${brand.name}" deleted.',
+        );
         loadBrands();
       },
     );
@@ -852,7 +1018,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getApplianceSubcategories(activeOnly: false);
       applianceSubcategories.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading appliance subcategories: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading appliance subcategories: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isApplianceSubcategoriesLoading.value = false;
     }
@@ -875,29 +1046,42 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'Category / Item Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: applianceCategoryNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Ceiling Fan, Geyser, AC'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Ceiling Fan, Geyser, AC',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Default Warranty Duration (Months) *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: applianceWarrantyMonthsController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: '12 (1 year), 24 (2 years)'),
+              decoration: const InputDecoration(
+                hintText: '12 (1 year), 24 (2 years)',
+              ),
             ),
           ],
         ),
         onConfirm: () async {
           final name = applianceCategoryNameController.text.trim();
-          final months = int.tryParse(applianceWarrantyMonthsController.text.trim()) ?? 12;
+          final months =
+              int.tryParse(applianceWarrantyMonthsController.text.trim()) ?? 12;
 
           if (name.isEmpty) {
             dialogErrorMessage.value = 'Appliance category name is required.';
@@ -913,10 +1097,14 @@ class SettingsController extends GetxController {
               iconName: applianceIconName.value,
             );
             Get.back();
-            AppSnackbar.showSuccess('Category Added', 'Appliance category "$name" added.');
+            AppSnackbar.showSuccess(
+              'Category Added',
+              'Appliance category "$name" added.',
+            );
             loadApplianceSubcategories();
           } catch (e) {
-            dialogErrorMessage.value = 'Failed to add category: ${e.toString()}';
+            dialogErrorMessage.value =
+                'Failed to add category: ${e.toString()}';
           } finally {
             isSubmitting.value = false;
           }
@@ -927,7 +1115,9 @@ class SettingsController extends GetxController {
     );
   }
 
-  Future<void> toggleApplianceSubcategoryActive(MasterApplianceSubcategoryModel sub) async {
+  Future<void> toggleApplianceSubcategoryActive(
+    MasterApplianceSubcategoryModel sub,
+  ) async {
     try {
       await _dataset.updateApplianceSubcategory(
         id: sub.id,
@@ -952,7 +1142,10 @@ class SettingsController extends GetxController {
       message: 'Are you sure you want to delete "${sub.name}"?',
       onDelete: () async {
         await _dataset.deleteApplianceSubcategory(sub.id);
-        AppSnackbar.showSuccess('Category Removed', 'Category "${sub.name}" deleted.');
+        AppSnackbar.showSuccess(
+          'Category Removed',
+          'Category "${sub.name}" deleted.',
+        );
         loadApplianceSubcategories();
       },
     );
@@ -966,7 +1159,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getUtilityProviders(activeOnly: false);
       utilityProviders.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading utility providers: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading utility providers: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isUtilityProvidersLoading.value = false;
     }
@@ -988,34 +1186,67 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'Provider Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: utilityProviderNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Torrent Power, Adani Gas, DGVCL'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Torrent Power, Adani Gas, DGVCL',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Utility Type *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
-            Obx(() => DropdownButtonFormField<String>(
-                  initialValue: utilityTypeSelection.value,
-                  items: const [
-                    DropdownMenuItem(value: 'Light / Electricity Bill', child: Text('Light / Electricity')),
-                    DropdownMenuItem(value: 'Gas Bill (PNG / Piped)', child: Text('Gas (PNG / Piped)')),
-                    DropdownMenuItem(value: 'Gas Cylinder (LPG)', child: Text('Gas Cylinder (LPG)')),
-                    DropdownMenuItem(value: 'Water & Drainage Bill', child: Text('Water & Drainage')),
-                    DropdownMenuItem(value: 'Internet / Broadband Bill', child: Text('Internet / Broadband')),
-                    DropdownMenuItem(value: 'Property Tax / House Tax', child: Text('Property Tax')),
-                    DropdownMenuItem(value: 'Rent / Lease Receipt', child: Text('Rent / Lease')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) utilityTypeSelection.value = val;
-                  },
-                )),
+            Obx(
+              () => DropdownButtonFormField<String>(
+                initialValue: utilityTypeSelection.value,
+                items: const [
+                  DropdownMenuItem(
+                    value: 'Light / Electricity Bill',
+                    child: Text('Light / Electricity'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Gas Bill (PNG / Piped)',
+                    child: Text('Gas (PNG / Piped)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Gas Cylinder (LPG)',
+                    child: Text('Gas Cylinder (LPG)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Water & Drainage Bill',
+                    child: Text('Water & Drainage'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Internet / Broadband Bill',
+                    child: Text('Internet / Broadband'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Property Tax / House Tax',
+                    child: Text('Property Tax'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Rent / Lease Receipt',
+                    child: Text('Rent / Lease'),
+                  ),
+                ],
+                onChanged: (val) {
+                  if (val != null) utilityTypeSelection.value = val;
+                },
+              ),
+            ),
           ],
         ),
         onConfirm: () async {
@@ -1028,12 +1259,19 @@ class SettingsController extends GetxController {
           isSubmitting.value = true;
           dialogErrorMessage.value = '';
           try {
-            await _dataset.addUtilityProvider(name: name, utilityType: utilityTypeSelection.value);
+            await _dataset.addUtilityProvider(
+              name: name,
+              utilityType: utilityTypeSelection.value,
+            );
             Get.back();
-            AppSnackbar.showSuccess('Provider Added', 'Utility provider "$name" added.');
+            AppSnackbar.showSuccess(
+              'Provider Added',
+              'Utility provider "$name" added.',
+            );
             loadUtilityProviders();
           } catch (e) {
-            dialogErrorMessage.value = 'Failed to add provider: ${e.toString()}';
+            dialogErrorMessage.value =
+                'Failed to add provider: ${e.toString()}';
           } finally {
             isSubmitting.value = false;
           }
@@ -1044,7 +1282,9 @@ class SettingsController extends GetxController {
     );
   }
 
-  Future<void> toggleUtilityProviderActive(MasterUtilityProviderModel provider) async {
+  Future<void> toggleUtilityProviderActive(
+    MasterUtilityProviderModel provider,
+  ) async {
     try {
       await _dataset.updateUtilityProvider(
         id: provider.id,
@@ -1068,7 +1308,10 @@ class SettingsController extends GetxController {
       message: 'Are you sure you want to delete "${provider.name}"?',
       onDelete: () async {
         await _dataset.deleteUtilityProvider(provider.id);
-        AppSnackbar.showSuccess('Provider Removed', 'Provider "${provider.name}" deleted.');
+        AppSnackbar.showSuccess(
+          'Provider Removed',
+          'Provider "${provider.name}" deleted.',
+        );
         loadUtilityProviders();
       },
     );
@@ -1082,7 +1325,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getPersons(activeOnly: false);
       persons.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading persons: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading persons: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isPersonsLoading.value = false;
     }
@@ -1106,37 +1354,52 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'Full Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: personNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Mihir Gandhi, Suresh Gandhi'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Mihir Gandhi, Suresh Gandhi',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Relationship *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
-            Obx(() => DropdownButtonFormField<String>(
-                  initialValue: personRelationship.value,
-                  items: const [
-                    DropdownMenuItem(value: 'Self', child: Text('Self')),
-                    DropdownMenuItem(value: 'Spouse', child: Text('Spouse / Partner')),
-                    DropdownMenuItem(value: 'Father', child: Text('Father')),
-                    DropdownMenuItem(value: 'Mother', child: Text('Mother')),
-                    DropdownMenuItem(value: 'Son', child: Text('Son')),
-                    DropdownMenuItem(value: 'Daughter', child: Text('Daughter')),
-                    DropdownMenuItem(value: 'Brother', child: Text('Brother')),
-                    DropdownMenuItem(value: 'Sister', child: Text('Sister')),
-                    DropdownMenuItem(value: 'Staff', child: Text('Staff Member')),
-                    DropdownMenuItem(value: 'Other', child: Text('Other')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) personRelationship.value = val;
-                  },
-                )),
+            Obx(
+              () => DropdownButtonFormField<String>(
+                initialValue: personRelationship.value,
+                items: const [
+                  DropdownMenuItem(value: 'Self', child: Text('Self')),
+                  DropdownMenuItem(
+                    value: 'Spouse',
+                    child: Text('Spouse / Partner'),
+                  ),
+                  DropdownMenuItem(value: 'Father', child: Text('Father')),
+                  DropdownMenuItem(value: 'Mother', child: Text('Mother')),
+                  DropdownMenuItem(value: 'Son', child: Text('Son')),
+                  DropdownMenuItem(value: 'Daughter', child: Text('Daughter')),
+                  DropdownMenuItem(value: 'Brother', child: Text('Brother')),
+                  DropdownMenuItem(value: 'Sister', child: Text('Sister')),
+                  DropdownMenuItem(value: 'Staff', child: Text('Staff Member')),
+                  DropdownMenuItem(value: 'Other', child: Text('Other')),
+                ],
+                onChanged: (val) {
+                  if (val != null) personRelationship.value = val;
+                },
+              ),
+            ),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -1146,12 +1409,18 @@ class SettingsController extends GetxController {
                     children: [
                       const Text(
                         'Phone Number',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       TextField(
                         controller: personPhoneController,
-                        decoration: const InputDecoration(hintText: '+91 9876543210'),
+                        decoration: const InputDecoration(
+                          hintText: '+91 9876543210',
+                        ),
                       ),
                     ],
                   ),
@@ -1163,12 +1432,18 @@ class SettingsController extends GetxController {
                     children: [
                       const Text(
                         'Email Address',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       TextField(
                         controller: personEmailController,
-                        decoration: const InputDecoration(hintText: 'person@email.com'),
+                        decoration: const InputDecoration(
+                          hintText: 'person@email.com',
+                        ),
                       ),
                     ],
                   ),
@@ -1198,7 +1473,10 @@ class SettingsController extends GetxController {
                   : null,
             );
             Get.back();
-            AppSnackbar.showSuccess('Person Added', 'Added "$name" to master persons list.');
+            AppSnackbar.showSuccess(
+              'Person Added',
+              'Added "$name" to master persons list.',
+            );
             loadPersons();
           } catch (e) {
             dialogErrorMessage.value = 'Failed to add person: ${e.toString()}';
@@ -1236,10 +1514,14 @@ class SettingsController extends GetxController {
   void confirmDeletePerson(MasterPersonModel person) {
     _showDeleteConfirmation(
       title: 'Delete Person',
-      message: 'Are you sure you want to remove "${person.fullName}" from the persons directory?',
+      message:
+          'Are you sure you want to remove "${person.fullName}" from the persons directory?',
       onDelete: () async {
         await _dataset.deletePerson(person.id);
-        AppSnackbar.showSuccess('Person Removed', 'Person "${person.fullName}" removed.');
+        AppSnackbar.showSuccess(
+          'Person Removed',
+          'Person "${person.fullName}" removed.',
+        );
         loadPersons();
       },
     );
@@ -1253,7 +1535,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getPersonalDocTypes(activeOnly: false);
       personalDocTypes.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading personal doc types: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading personal doc types: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isPersonalDocTypesLoading.value = false;
     }
@@ -1276,42 +1563,58 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'Document Type Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docTypeNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Aadhaar Card, PAN Card, Passport'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Aadhaar Card, PAN Card, Passport',
+              ),
               onChanged: (val) {
                 if (docTypeCodeController.text.isEmpty ||
                     docTypeCodeController.text.startsWith(RegExp(r'[a-z_]+'))) {
-                  docTypeCodeController.text =
-                      val.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+                  docTypeCodeController.text = val.toLowerCase().replaceAll(
+                    RegExp(r'[^a-z0-9]'),
+                    '_',
+                  );
                 }
               },
             ),
             const SizedBox(height: 14),
             const Text(
               'Internal System Code *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docTypeCodeController,
-              decoration: const InputDecoration(hintText: 'e.g. aadhaar, pan, passport'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. aadhaar, pan, passport',
+              ),
             ),
             const SizedBox(height: 14),
-            Obx(() => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Requires Expiry Date Tracking (e.g. Passport, Driving License)',
-                    style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                  ),
-                  value: docTypeHasExpiry.value,
-                  onChanged: (val) {
-                    if (val != null) docTypeHasExpiry.value = val;
-                  },
-                )),
+            Obx(
+              () => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Requires Expiry Date Tracking (e.g. Passport, Driving License)',
+                  style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                ),
+                value: docTypeHasExpiry.value,
+                onChanged: (val) {
+                  if (val != null) docTypeHasExpiry.value = val;
+                },
+              ),
+            ),
           ],
         ),
         onConfirm: () async {
@@ -1319,7 +1622,8 @@ class SettingsController extends GetxController {
           final code = docTypeCodeController.text.trim().toLowerCase();
 
           if (name.isEmpty || code.isEmpty) {
-            dialogErrorMessage.value = 'Document type name and code are required.';
+            dialogErrorMessage.value =
+                'Document type name and code are required.';
             return;
           }
 
@@ -1332,10 +1636,14 @@ class SettingsController extends GetxController {
               hasExpiry: docTypeHasExpiry.value,
             );
             Get.back();
-            AppSnackbar.showSuccess('Doc Type Added', 'Document type "$name" added.');
+            AppSnackbar.showSuccess(
+              'Doc Type Added',
+              'Document type "$name" added.',
+            );
             loadPersonalDocTypes();
           } catch (e) {
-            dialogErrorMessage.value = 'Failed to add doc type: ${e.toString()}';
+            dialogErrorMessage.value =
+                'Failed to add doc type: ${e.toString()}';
           } finally {
             isSubmitting.value = false;
           }
@@ -1346,7 +1654,9 @@ class SettingsController extends GetxController {
     );
   }
 
-  Future<void> togglePersonalDocTypeActive(MasterPersonalDocTypeModel type) async {
+  Future<void> togglePersonalDocTypeActive(
+    MasterPersonalDocTypeModel type,
+  ) async {
     try {
       await _dataset.updatePersonalDocType(
         id: type.id,
@@ -1372,7 +1682,10 @@ class SettingsController extends GetxController {
       message: 'Are you sure you want to delete "${type.name}"?',
       onDelete: () async {
         await _dataset.deletePersonalDocType(type.id);
-        AppSnackbar.showSuccess('Type Removed', 'Document type "${type.name}" deleted.');
+        AppSnackbar.showSuccess(
+          'Type Removed',
+          'Document type "${type.name}" deleted.',
+        );
         loadPersonalDocTypes();
       },
     );
@@ -1386,7 +1699,12 @@ class SettingsController extends GetxController {
       final list = await _dataset.getDocumentCategories();
       documentCategories.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('SETTINGS_CTRL', 'Error loading document categories: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading document categories: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isCategoriesLoading.value = false;
     }
@@ -1413,70 +1731,114 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'Category Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docCategoryNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Legal Agreements, HR Records'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Legal Agreements, HR Records',
+              ),
               onChanged: (val) {
                 if (docCategoryCodeController.text.isEmpty ||
-                    docCategoryCodeController.text.startsWith(RegExp(r'[a-z_]+'))) {
-                  docCategoryCodeController.text =
-                      val.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+                    docCategoryCodeController.text.startsWith(
+                      RegExp(r'[a-z_]+'),
+                    )) {
+                  docCategoryCodeController.text = val.toLowerCase().replaceAll(
+                    RegExp(r'[^a-z0-9]'),
+                    '_',
+                  );
                 }
               },
             ),
             const SizedBox(height: 14),
             const Text(
               'Code Identifier *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docCategoryCodeController,
-              decoration: const InputDecoration(hintText: 'e.g. legal_agreements, hr_docs'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. legal_agreements, hr_docs',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Description',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docCategoryDescController,
-              decoration: const InputDecoration(hintText: 'Brief description of category usage'),
+              decoration: const InputDecoration(
+                hintText: 'Brief description of category usage',
+              ),
             ),
             const SizedBox(height: 16),
             const Divider(color: AppColors.border),
             const SizedBox(height: 8),
             const Text(
               'Category Form Configuration',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryDark,
+              ),
             ),
             const SizedBox(height: 8),
-            Obx(() => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Require City / Location Filter',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: const Text(
-                      'If enabled, users can assign a city and premise location during upload.',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                  value: docCategoryHasCityFilter.value,
-                  onChanged: (val) => docCategoryHasCityFilter.value = val ?? true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                )),
-            Obx(() => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Require Document Title Input',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: const Text(
-                      'If disabled, the document title is auto-derived from the uploaded file name.',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                  value: docCategoryHasTitleField.value,
-                  onChanged: (val) => docCategoryHasTitleField.value = val ?? true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                )),
+            Obx(
+              () => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Require City / Location Filter',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'If enabled, users can assign a city and premise location during upload.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                value: docCategoryHasCityFilter.value,
+                onChanged: (val) =>
+                    docCategoryHasCityFilter.value = val ?? true,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ),
+            Obx(
+              () => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Require Document Title Input',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'If disabled, the document title is auto-derived from the uploaded file name.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                value: docCategoryHasTitleField.value,
+                onChanged: (val) =>
+                    docCategoryHasTitleField.value = val ?? true,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ),
           ],
         ),
         onConfirm: () async {
@@ -1484,7 +1846,8 @@ class SettingsController extends GetxController {
           final code = docCategoryCodeController.text.trim();
 
           if (name.isEmpty || code.isEmpty) {
-            dialogErrorMessage.value = 'Category name and code identifier are required.';
+            dialogErrorMessage.value =
+                'Category name and code identifier are required.';
             return;
           }
 
@@ -1500,10 +1863,14 @@ class SettingsController extends GetxController {
               hasTitleField: docCategoryHasTitleField.value,
             );
             Get.back();
-            AppSnackbar.showSuccess('Category Added', 'Document category "$name" created.');
+            AppSnackbar.showSuccess(
+              'Category Added',
+              'Document category "$name" created.',
+            );
             loadDocumentCategories();
           } catch (e) {
-            dialogErrorMessage.value = 'Failed to add category: ${e.toString()}';
+            dialogErrorMessage.value =
+                'Failed to add category: ${e.toString()}';
           } finally {
             isSubmitting.value = false;
           }
@@ -1535,63 +1902,103 @@ class SettingsController extends GetxController {
           children: [
             const Text(
               'Category Name *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docCategoryNameController,
-              decoration: const InputDecoration(hintText: 'e.g. Legal Agreements, HR Records'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. Legal Agreements, HR Records',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Code Identifier *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docCategoryCodeController,
-              decoration: const InputDecoration(hintText: 'e.g. legal_agreements, hr_docs'),
+              decoration: const InputDecoration(
+                hintText: 'e.g. legal_agreements, hr_docs',
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Description',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: docCategoryDescController,
-              decoration: const InputDecoration(hintText: 'Brief description of category usage'),
+              decoration: const InputDecoration(
+                hintText: 'Brief description of category usage',
+              ),
             ),
             const SizedBox(height: 16),
             const Divider(color: AppColors.border),
             const SizedBox(height: 8),
             const Text(
               'Category Form Configuration',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryDark,
+              ),
             ),
             const SizedBox(height: 8),
-            Obx(() => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Require City / Location Filter',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: const Text(
-                      'If enabled, users can assign a city and premise location during upload.',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                  value: docCategoryHasCityFilter.value,
-                  onChanged: (val) => docCategoryHasCityFilter.value = val ?? true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                )),
-            Obx(() => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Require Document Title Input',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: const Text(
-                      'If disabled, the document title is auto-derived from the uploaded file name.',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                  value: docCategoryHasTitleField.value,
-                  onChanged: (val) => docCategoryHasTitleField.value = val ?? true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                )),
+            Obx(
+              () => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Require City / Location Filter',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'If enabled, users can assign a city and premise location during upload.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                value: docCategoryHasCityFilter.value,
+                onChanged: (val) =>
+                    docCategoryHasCityFilter.value = val ?? true,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ),
+            Obx(
+              () => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Require Document Title Input',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'If disabled, the document title is auto-derived from the uploaded file name.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                value: docCategoryHasTitleField.value,
+                onChanged: (val) =>
+                    docCategoryHasTitleField.value = val ?? true,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ),
           ],
         ),
         onConfirm: () async {
@@ -1599,7 +2006,8 @@ class SettingsController extends GetxController {
           final code = docCategoryCodeController.text.trim();
 
           if (name.isEmpty || code.isEmpty) {
-            dialogErrorMessage.value = 'Category name and code identifier are required.';
+            dialogErrorMessage.value =
+                'Category name and code identifier are required.';
             return;
           }
 
@@ -1616,10 +2024,14 @@ class SettingsController extends GetxController {
               hasTitleField: docCategoryHasTitleField.value,
             );
             Get.back();
-            AppSnackbar.showSuccess('Category Updated', 'Document category "$name" updated.');
+            AppSnackbar.showSuccess(
+              'Category Updated',
+              'Document category "$name" updated.',
+            );
             loadDocumentCategories();
           } catch (e) {
-            dialogErrorMessage.value = 'Failed to update category: ${e.toString()}';
+            dialogErrorMessage.value =
+                'Failed to update category: ${e.toString()}';
           } finally {
             isSubmitting.value = false;
           }
@@ -1633,12 +2045,246 @@ class SettingsController extends GetxController {
   void confirmDeleteDocumentCategory(CategoryModel cat) {
     _showDeleteConfirmation(
       title: 'Delete Category',
-      message: 'Are you sure you want to delete category "${cat.name}"? Documents tagged with this category may need reassignment.',
+      message:
+          'Are you sure you want to delete category "${cat.name}"? Documents tagged with this category may need reassignment.',
       onDelete: () async {
         await _dataset.deleteDocumentCategory(cat.id);
-        AppSnackbar.showSuccess('Category Deleted', 'Category "${cat.name}" removed.');
+        AppSnackbar.showSuccess(
+          'Category Deleted',
+          'Category "${cat.name}" removed.',
+        );
         loadDocumentCategories();
       },
+    );
+  }
+
+  // ================= DOCUMENT SUBCATEGORIES =================
+
+  Future<void> loadDocumentSubcategories() async {
+    isDocumentSubcategoriesLoading.value = true;
+    try {
+      final list = await _dataset.getDocumentSubcategories();
+      documentSubcategories.assignAll(list);
+    } catch (e, st) {
+      AppLogger.error(
+        'SETTINGS_CTRL',
+        'Error loading document subcategories: $e',
+        error: e,
+        stackTrace: st,
+      );
+    } finally {
+      isDocumentSubcategoriesLoading.value = false;
+    }
+  }
+
+  void openAddDocumentSubcategoryDialog() {
+    if (documentCategories.isEmpty) {
+      AppSnackbar.showWarning(
+        'Category Required',
+        'Create a document category before adding a subcategory.',
+      );
+      return;
+    }
+    docSubcategoryNameController.clear();
+    docSubcategoryCodeController.clear();
+    selectedDocSubcategoryCategoryId.value = documentCategories.first.id;
+    _showDocumentSubcategoryDialog(
+      title: 'Add Document Subcategory',
+      confirmButtonText: 'Add Subcategory',
+      onConfirm: () async {
+        final name = docSubcategoryNameController.text.trim();
+        final code = docSubcategoryCodeController.text.trim();
+        final categoryId = selectedDocSubcategoryCategoryId.value;
+        if (name.isEmpty || code.isEmpty || categoryId.isEmpty) {
+          dialogErrorMessage.value =
+              'Category, subcategory name, and code are required.';
+          return;
+        }
+        isSubmitting.value = true;
+        dialogErrorMessage.value = '';
+        try {
+          await _dataset.addDocumentSubcategory(
+            categoryId: categoryId,
+            name: name,
+            code: code,
+            displayOrder: documentSubcategories.length + 1,
+          );
+          Get.back();
+          AppSnackbar.showSuccess(
+            'Subcategory Added',
+            'Document subcategory "$name" created.',
+          );
+          loadDocumentSubcategories();
+        } catch (e, st) {
+          AppLogger.error(
+            'SETTINGS_CTRL',
+            'Error adding document subcategory: $e',
+            error: e,
+            stackTrace: st,
+          );
+          dialogErrorMessage.value = 'Failed to add subcategory: $e';
+        } finally {
+          isSubmitting.value = false;
+        }
+      },
+    );
+  }
+
+  void openEditDocumentSubcategoryDialog(DocumentSubcategoryModel subcategory) {
+    docSubcategoryNameController.text = subcategory.name;
+    docSubcategoryCodeController.text = subcategory.code;
+    selectedDocSubcategoryCategoryId.value = subcategory.categoryId;
+    _showDocumentSubcategoryDialog(
+      title: 'Edit Document Subcategory',
+      confirmButtonText: 'Save Changes',
+      isEditing: true,
+      onConfirm: () async {
+        final name = docSubcategoryNameController.text.trim();
+        final code = docSubcategoryCodeController.text.trim();
+        if (name.isEmpty || code.isEmpty) {
+          dialogErrorMessage.value = 'Subcategory name and code are required.';
+          return;
+        }
+        isSubmitting.value = true;
+        dialogErrorMessage.value = '';
+        try {
+          await _dataset.updateDocumentSubcategory(
+            subcategory: subcategory,
+            name: name,
+            code: code,
+            isActive: subcategory.isActive,
+          );
+          Get.back();
+          AppSnackbar.showSuccess(
+            'Subcategory Updated',
+            'Document subcategory "$name" updated.',
+          );
+          loadDocumentSubcategories();
+        } catch (e, st) {
+          AppLogger.error(
+            'SETTINGS_CTRL',
+            'Error updating document subcategory: $e',
+            error: e,
+            stackTrace: st,
+          );
+          dialogErrorMessage.value = 'Failed to update subcategory: $e';
+        } finally {
+          isSubmitting.value = false;
+        }
+      },
+    );
+  }
+
+  void confirmDeleteDocumentSubcategory(DocumentSubcategoryModel subcategory) {
+    _showDeleteConfirmation(
+      title: 'Delete Document Subcategory',
+      message:
+          'Delete "${subcategory.name}"? This is allowed only when no document uses this subcategory.',
+      onDelete: () async {
+        await _dataset.deleteDocumentSubcategory(subcategory);
+        AppSnackbar.showSuccess(
+          'Subcategory Deleted',
+          'Document subcategory "${subcategory.name}" removed.',
+        );
+        await loadDocumentSubcategories();
+      },
+    );
+  }
+
+  void _showDocumentSubcategoryDialog({
+    required String title,
+    required String confirmButtonText,
+    required Future<void> Function() onConfirm,
+    bool isEditing = false,
+  }) {
+    dialogErrorMessage.value = '';
+    isSubmitting.value = false;
+    AppDialog.show(
+      _buildDialogContainer(
+        title: title,
+        icon: Icons.account_tree_outlined,
+        maxWidth: 480,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Document Category *',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Obx(
+              () => DropdownButtonFormField<String>(
+                initialValue: selectedDocSubcategoryCategoryId.value,
+                isExpanded: true,
+                decoration: const InputDecoration(),
+                items: documentCategories
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category.id,
+                        child: Text(
+                          category.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: isEditing
+                    ? null
+                    : (value) =>
+                          selectedDocSubcategoryCategoryId.value = value ?? '',
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Subcategory Name *',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: docSubcategoryNameController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Lease Agreement, Broadband',
+              ),
+              onChanged: (value) {
+                if (docSubcategoryCodeController.text.isEmpty) {
+                  docSubcategoryCodeController.text = value
+                      .toLowerCase()
+                      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+                      .replaceAll(RegExp(r'^_|_$'), '');
+                }
+              },
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Code Identifier *',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: docSubcategoryCodeController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. lease_agreement, broadband',
+              ),
+            ),
+          ],
+        ),
+        onConfirm: onConfirm,
+        confirmButtonText: confirmButtonText,
+      ),
+      barrierDismissible: false,
     );
   }
 
@@ -1647,7 +2293,10 @@ class SettingsController extends GetxController {
   Future<void> saveProfile() async {
     final name = fullNameController.text.trim();
     if (name.isEmpty) {
-      AppSnackbar.showWarning('Name Required', 'Please provide a valid full name.');
+      AppSnackbar.showWarning(
+        'Name Required',
+        'Please provide a valid full name.',
+      );
       return;
     }
 
@@ -1658,7 +2307,10 @@ class SettingsController extends GetxController {
         department: departmentController.text.trim(),
         phoneNumber: phoneController.text.trim(),
       );
-      AppSnackbar.showSuccess('Profile Saved', 'Your profile details have been updated.');
+      AppSnackbar.showSuccess(
+        'Profile Saved',
+        'Your profile details have been updated.',
+      );
       loadProfile();
     } catch (e) {
       AppSnackbar.showError('Update Failed', e.toString());
@@ -1678,7 +2330,9 @@ class SettingsController extends GetxController {
     double maxWidth = 460,
   }) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+      ),
       backgroundColor: AppColors.surface,
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -1698,7 +2352,9 @@ class SettingsController extends GetxController {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: AppColors.primarySurface,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall,
+                      ),
                     ),
                     child: Icon(icon, color: AppColors.primary, size: 20),
                   ),
@@ -1714,7 +2370,11 @@ class SettingsController extends GetxController {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.close,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
                     onPressed: () => Get.back(),
                     splashRadius: 18,
                   ),
@@ -1724,24 +2384,40 @@ class SettingsController extends GetxController {
 
               // Inline Error Banner (Section 3.B: NEVER trigger floating snackbar while modal open)
               Obx(() {
-                if (dialogErrorMessage.value.isEmpty) return const SizedBox.shrink();
+                if (dialogErrorMessage.value.isEmpty)
+                  return const SizedBox.shrink();
                 return Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 14),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.errorLight,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.radiusSmall,
+                    ),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                      const Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           dialogErrorMessage.value,
-                          style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -1750,11 +2426,7 @@ class SettingsController extends GetxController {
               }),
 
               // Content Body (Scrollable if needed)
-              Flexible(
-                child: SingleChildScrollView(
-                  child: content,
-                ),
-              ),
+              Flexible(child: SingleChildScrollView(child: content)),
 
               const SizedBox(height: 20),
 
@@ -1801,7 +2473,9 @@ class SettingsController extends GetxController {
 
     AppDialog.show(
       Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
         backgroundColor: AppColors.surface,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -1817,9 +2491,15 @@ class SettingsController extends GetxController {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: AppColors.errorLight,
-                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusSmall,
+                        ),
                       ),
-                      child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.error,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1838,26 +2518,41 @@ class SettingsController extends GetxController {
 
                 // Inline Error if deletion fails
                 Obx(() {
-                  if (dialogErrorMessage.value.isEmpty) return const SizedBox.shrink();
+                  if (dialogErrorMessage.value.isEmpty)
+                    return const SizedBox.shrink();
                   return Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.errorLight,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall,
+                      ),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       dialogErrorMessage.value,
-                      style: const TextStyle(fontSize: 12, color: AppColors.error),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.error,
+                      ),
                     ),
                   );
                 }),
 
                 Text(
                   message,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 20),
 
@@ -1881,10 +2576,18 @@ class SettingsController extends GetxController {
                                 isSubmitting.value = true;
                                 dialogErrorMessage.value = '';
                                 try {
-                                  Get.back();
                                   await onDelete();
-                                } catch (e) {
-                                  AppSnackbar.showError('Delete Failed', e.toString());
+                                  Get.back();
+                                } catch (e, st) {
+                                  AppLogger.error(
+                                    'SETTINGS_CTRL',
+                                    'Delete operation failed: $e',
+                                    error: e,
+                                    stackTrace: st,
+                                  );
+                                  dialogErrorMessage.value = e
+                                      .toString()
+                                      .replaceFirst('Bad state: ', '');
                                 } finally {
                                   isSubmitting.value = false;
                                 }
@@ -1932,6 +2635,8 @@ class SettingsController extends GetxController {
     docCategoryCodeController.dispose();
     docCategoryColorController.dispose();
     docCategoryDescController.dispose();
+    docSubcategoryNameController.dispose();
+    docSubcategoryCodeController.dispose();
     super.onClose();
   }
 }

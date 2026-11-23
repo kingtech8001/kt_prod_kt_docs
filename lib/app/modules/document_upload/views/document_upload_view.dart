@@ -340,7 +340,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
           Obx(() {
             if (!controller.showCityFilter) return const SizedBox.shrink();
             return Column(
-              children: [_buildAddressSection(context), const SizedBox(height: 24)],
+              children: [
+                _buildAddressSection(context),
+                const SizedBox(height: 24),
+              ],
             );
           }),
 
@@ -388,40 +391,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
   }
 
   Widget _buildSubcategoryDropdown() {
-    List<String> options = ['General Document'];
-    if (controller.isUtilityBill) {
-      options = controller.dynamicUtilityTypes.isNotEmpty
-          ? controller.dynamicUtilityTypes
-          : AppConstants.utilitySubcategories;
-    } else if (controller.isApplianceWarranty) {
-      options = controller.dynamicApplianceSubcategories.isNotEmpty
-          ? controller.dynamicApplianceSubcategories
-          : AppConstants.applianceSubcategories;
-    } else if (controller.isPersonalDoc) {
-      options = controller.dynamicPersonalDocTypes.isNotEmpty
-          ? controller.dynamicPersonalDocTypes.map((t) => t.name).toList()
-          : [
-              'Aadhaar Card',
-              'PAN Card',
-              'Chutni Card (Voter ID)',
-              'Passport',
-              'Driving License',
-            ];
-    } else if (controller.isVehicleDoc) {
-      options = controller.dynamicVehicleDocTypes.isNotEmpty
-          ? controller.dynamicVehicleDocTypes.map((t) => t.name).toList()
-          : [
-              'RC Book (Registration Certificate)',
-              'Insurance Policy',
-              'PUC Certificate',
-              'Fitness Certificate',
-              'Road Tax Receipt',
-              'Service & Maintenance Bill',
-              'Purchase Invoice / Bill',
-              'Fastag / Toll Pass',
-              'Loan / Hypothecation NOC',
-            ];
-    }
+    final options = controller.availableSubcategoryOptions;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -464,11 +434,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          first,
-          const SizedBox(height: 12),
-          second,
-        ],
+        children: [first, const SizedBox(height: 12), second],
       );
     }
 
@@ -517,15 +483,14 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Provider Name *',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(() {
-                  final providers = controller.availableProvidersForSelectedType;
-                  final currentVal = providers.contains(controller.selectedProviderName.value)
+                  final providers =
+                      controller.availableProvidersForSelectedType;
+                  final currentVal =
+                      providers.contains(controller.selectedProviderName.value)
                       ? controller.selectedProviderName.value
                       : (providers.isNotEmpty ? providers.first : 'Other');
                   return Container(
@@ -543,7 +508,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             .map(
                               (p) => DropdownMenuItem(
                                 value: p,
-                                child: Text(p, style: const TextStyle(fontSize: 13)),
+                                child: Text(
+                                  p,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
                               ),
                             )
                             .toList(),
@@ -573,17 +541,12 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Consumer Number / ID',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
                   controller: controller.consumerNumberController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. 10293849',
-                  ),
+                  decoration: const InputDecoration(hintText: 'e.g. 10293849'),
                 ),
               ],
             ),
@@ -596,10 +559,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Bill Amount (₹)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -614,10 +574,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Payment Status',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(
@@ -637,10 +594,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             value: 'pending',
                             child: Text('Pending Payment'),
                           ),
-                          DropdownMenuItem(
-                            value: 'paid',
-                            child: Text('Paid'),
-                          ),
+                          DropdownMenuItem(value: 'paid', child: Text('Paid')),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -662,10 +616,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Bill Date',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(
@@ -716,10 +667,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Due Date (if applicable)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(
@@ -727,8 +675,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: controller.dueDate.value ??
-                            controller.billDate.value.add(const Duration(days: 15)),
+                        initialDate:
+                            controller.dueDate.value ??
+                            controller.billDate.value.add(
+                              const Duration(days: 15),
+                            ),
                         firstDate: DateTime(2010),
                         lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
@@ -749,7 +700,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         children: [
                           Text(
                             controller.dueDate.value != null
-                                ? AppFormatters.formatDate(controller.dueDate.value!)
+                                ? AppFormatters.formatDate(
+                                    controller.dueDate.value!,
+                                  )
                                 : 'Select Due Date',
                             style: TextStyle(
                               fontSize: 13,
@@ -818,10 +771,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Store / Vendor Name',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -837,10 +787,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Billing / Customer Name',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -862,17 +809,12 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Invoice / Bill Number',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
                   controller: controller.invoiceNumberController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. INV-98124',
-                  ),
+                  decoration: const InputDecoration(hintText: 'e.g. INV-98124'),
                 ),
               ],
             ),
@@ -881,10 +823,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Total Invoice Amount (₹)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -907,10 +846,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Purchase / Invoice Date',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(
@@ -946,7 +882,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            AppFormatters.formatDate(controller.purchaseDate.value),
+                            AppFormatters.formatDate(
+                              controller.purchaseDate.value,
+                            ),
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.textPrimary,
@@ -998,7 +936,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.warrantyEmerald.withValues(alpha: 0.15),
+                        color: AppColors.warrantyEmerald.withValues(
+                          alpha: 0.15,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1080,8 +1020,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 children: [
                   CircleAvatar(
                     radius: 12,
-                    backgroundColor:
-                        AppColors.warrantyEmerald.withValues(alpha: 0.15),
+                    backgroundColor: AppColors.warrantyEmerald.withValues(
+                      alpha: 0.15,
+                    ),
                     child: Text(
                       '#${index + 1}',
                       style: const TextStyle(
@@ -1124,10 +1065,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Appliance Category *',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(
@@ -1141,13 +1079,12 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value: subcategories.contains(
-                          item.selectedCategory.value,
-                        )
+                        value:
+                            subcategories.contains(item.selectedCategory.value)
                             ? item.selectedCategory.value
                             : (subcategories.isNotEmpty
-                                ? subcategories.first
-                                : null),
+                                  ? subcategories.first
+                                  : null),
                         items: subcategories
                             .map(
                               (sub) => DropdownMenuItem(
@@ -1173,10 +1110,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Brand *',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(
@@ -1244,10 +1178,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Product Name / Model',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -1263,18 +1194,13 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Price / Amount (₹)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
                   controller: item.purchaseAmountController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. 24990',
-                  ),
+                  decoration: const InputDecoration(hintText: 'e.g. 24990'),
                 ),
               ],
             ),
@@ -1289,17 +1215,12 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Serial Number',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
                   controller: item.serialNumberController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. SN-982410',
-                  ),
+                  decoration: const InputDecoration(hintText: 'e.g. SN-982410'),
                 ),
               ],
             ),
@@ -1308,10 +1229,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Model Number',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -1368,8 +1286,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       () => Switch(
                         value: item.hasWarrantyCoverage.value,
                         activeThumbColor: AppColors.warrantyEmerald,
-                        onChanged: (val) => controller
-                            .toggleItemWarrantyCoverage(index, val),
+                        onChanged: (val) =>
+                            controller.toggleItemWarrantyCoverage(index, val),
                       ),
                     ),
                   ],
@@ -1391,9 +1309,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       const SizedBox(height: 4),
                       Obx(
                         () => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(6),
@@ -1501,7 +1417,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: item.hasWarrantyCoverage.value &&
+                              color:
+                                  item.hasWarrantyCoverage.value &&
                                       item.warrantyMonths.value > 0
                                   ? AppColors.warrantyEmerald
                                   : AppColors.textSecondary,
@@ -1553,10 +1470,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Person / Family Member *',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(() {
@@ -1575,9 +1489,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value: pNames.contains(
-                          controller.selectedPersonName.value,
-                        )
+                        value:
+                            pNames.contains(controller.selectedPersonName.value)
                             ? controller.selectedPersonName.value
                             : pNames.first,
                         items: pNames.map((name) {
@@ -1603,10 +1516,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'ID / Document / Card Number',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -1626,10 +1536,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Issuing Authority',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 TextField(
@@ -1645,10 +1552,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               children: [
                 const Text(
                   'Issue Date',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Obx(
@@ -1656,7 +1560,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: controller.personalIssueDate.value ??
+                        initialDate:
+                            controller.personalIssueDate.value ??
                             DateTime.now(),
                         firstDate: DateTime(1950),
                         lastDate: DateTime(2050),
@@ -1714,17 +1619,15 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 const SizedBox(height: 12),
                 const Text(
                   'Expiry Date (if applicable)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 InkWell(
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: controller.personalExpiryDate.value ??
+                      initialDate:
+                          controller.personalExpiryDate.value ??
                           DateTime.now().add(const Duration(days: 3650)),
                       firstDate: DateTime(1950),
                       lastDate: DateTime(2060),
@@ -1792,7 +1695,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.directions_car_outlined, color: AppColors.primary, size: 20),
+                  Icon(
+                    Icons.directions_car_outlined,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Vehicle Document Details',
@@ -1807,9 +1714,15 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               OutlinedButton.icon(
                 onPressed: () => controller.openAddVehicleDialog(),
                 icon: const Icon(Icons.add, size: 14),
-                label: const Text('Add Vehicle', style: TextStyle(fontSize: 12)),
+                label: const Text(
+                  'Add Vehicle',
+                  style: TextStyle(fontSize: 12),
+                ),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   visualDensity: VisualDensity.compact,
                 ),
               ),
@@ -1838,19 +1751,32 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value: vList.any((v) => v.vehicleNumber == controller.selectedVehicleNumber.value)
+                        value:
+                            vList.any(
+                              (v) =>
+                                  v.vehicleNumber ==
+                                  controller.selectedVehicleNumber.value,
+                            )
                             ? controller.selectedVehicleNumber.value
-                            : (vList.isNotEmpty ? vList.first.vehicleNumber : null),
+                            : (vList.isNotEmpty
+                                  ? vList.first.vehicleNumber
+                                  : null),
                         items: vList.map((v) {
                           return DropdownMenuItem(
                             value: v.vehicleNumber,
-                            child: Text(v.displayName, style: const TextStyle(fontSize: 13)),
+                            child: Text(
+                              v.displayName,
+                              style: const TextStyle(fontSize: 13),
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
                           if (val != null) {
-                            final veh = vList.firstWhereOrNull((v) => v.vehicleNumber == val);
-                            if (veh != null) controller.updateSelectedVehicle(veh);
+                            final veh = vList.firstWhereOrNull(
+                              (v) => v.vehicleNumber == val,
+                            );
+                            if (veh != null)
+                              controller.updateSelectedVehicle(veh);
                           }
                         },
                       ),
@@ -1862,12 +1788,17 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             second: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Obx(() => Text(
-                  controller.isVehiclePassDoc
-                      ? 'Pass / Receipt / Permit Number'
-                      : 'Policy / Certificate / Reg Number',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                )),
+                Obx(
+                  () => Text(
+                    controller.isVehiclePassDoc
+                        ? 'Pass / Receipt / Permit Number'
+                        : 'Policy / Certificate / Reg Number',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 TextField(
                   controller: controller.vehiclePolicyOrCertNumberController,
@@ -1889,14 +1820,20 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.toll_outlined, color: AppColors.primary, size: 18),
+                      Icon(
+                        Icons.toll_outlined,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Annual Pass & FASTag Configuration',
@@ -1916,7 +1853,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       children: [
                         const Text(
                           'Pass Type *',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Obx(() {
@@ -1931,17 +1871,25 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 isExpanded: true,
-                                value: passTypes.contains(controller.selectedVehiclePassType.value)
+                                value:
+                                    passTypes.contains(
+                                      controller.selectedVehiclePassType.value,
+                                    )
                                     ? controller.selectedVehiclePassType.value
                                     : passTypes.first,
                                 items: passTypes.map((p) {
                                   return DropdownMenuItem(
                                     value: p,
-                                    child: Text(p, style: const TextStyle(fontSize: 13)),
+                                    child: Text(
+                                      p,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  if (val != null) controller.selectedVehiclePassType.value = val;
+                                  if (val != null)
+                                    controller.selectedVehiclePassType.value =
+                                        val;
                                 },
                               ),
                             ),
@@ -1954,13 +1902,17 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       children: [
                         const Text(
                           'Toll Plaza / Location / Society Name',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         TextField(
                           controller: controller.vehiclePassPlazaController,
                           decoration: const InputDecoration(
-                            hintText: 'e.g. Kherki Daula Plaza or Sea Link or Tower B',
+                            hintText:
+                                'e.g. Kherki Daula Plaza or Sea Link or Tower B',
                           ),
                         ),
                       ],
@@ -1972,13 +1924,17 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     children: [
                       const Text(
                         'FASTag Barcode / RFID Tag ID (Optional)',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       TextField(
                         controller: controller.vehicleFastagIdController,
                         decoration: const InputDecoration(
-                          hintText: 'e.g. 34161FA82032890... (from FASTag card or sticker)',
+                          hintText:
+                              'e.g. 34161FA82032890... (from FASTag card or sticker)',
                         ),
                       ),
                     ],
@@ -1993,12 +1949,17 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             first: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Obx(() => Text(
-                  controller.isVehiclePassDoc
-                      ? 'Issuing Bank / Tag Issuer / Authority'
-                      : 'Insurance Company / Agency Name',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                )),
+                Obx(
+                  () => Text(
+                    controller.isVehiclePassDoc
+                        ? 'Issuing Bank / Tag Issuer / Authority'
+                        : 'Insurance Company / Agency Name',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 TextField(
                   controller: controller.vehicleInsuranceCompanyController,
@@ -2013,17 +1974,25 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             second: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Obx(() => Text(
-                  controller.isVehiclePassDoc ? 'Pass Valid From' : 'Issue / Start Date',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                )),
+                Obx(
+                  () => Text(
+                    controller.isVehiclePassDoc
+                        ? 'Pass Valid From'
+                        : 'Issue / Start Date',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Obx(
                   () => InkWell(
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: controller.vehicleIssueDate.value ?? DateTime.now(),
+                        initialDate:
+                            controller.vehicleIssueDate.value ?? DateTime.now(),
                         firstDate: DateTime(1990),
                         lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
@@ -2032,7 +2001,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(8),
@@ -2043,7 +2015,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         children: [
                           Text(
                             controller.vehicleIssueDate.value != null
-                                ? AppFormatters.formatDate(controller.vehicleIssueDate.value!)
+                                ? AppFormatters.formatDate(
+                                    controller.vehicleIssueDate.value!,
+                                  )
                                 : 'Select Start Date',
                             style: TextStyle(
                               color: controller.vehicleIssueDate.value != null
@@ -2052,7 +2026,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                               fontSize: 13,
                             ),
                           ),
-                          const Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
                         ],
                       ),
                     ),
@@ -2067,31 +2045,43 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             first: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Obx(() => Text(
-                  controller.isVehiclePassDoc
-                      ? 'Pass Expiry Date (Annual/Monthly Renewal)'
-                      : (controller.isVehicleInsuranceDoc && controller.isVehicleBundledInsurance.value
-                          ? 'Own Damage (OD) Expiry Date (1-Year Term)'
-                          : 'Expiry / Renewal Date (For Insurance/PUC/Fitness)'),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                )),
+                Obx(
+                  () => Text(
+                    controller.isVehiclePassDoc
+                        ? 'Pass Expiry Date (Annual/Monthly Renewal)'
+                        : (controller.isVehicleInsuranceDoc &&
+                                  controller.isVehicleBundledInsurance.value
+                              ? 'Own Damage (OD) Expiry Date (1-Year Term)'
+                              : 'Expiry / Renewal Date (For Insurance/PUC/Fitness)'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Obx(
                   () => InkWell(
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: controller.vehicleExpiryDate.value ??
+                        initialDate:
+                            controller.vehicleExpiryDate.value ??
                             DateTime.now().add(const Duration(days: 365)),
                         firstDate: DateTime(2000),
-                        lastDate: DateTime.now().add(const Duration(days: 365 * 15)),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 365 * 15),
+                        ),
                       );
                       if (picked != null) {
                         controller.vehicleExpiryDate.value = picked;
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(8),
@@ -2102,7 +2092,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         children: [
                           Text(
                             controller.vehicleExpiryDate.value != null
-                                ? AppFormatters.formatDate(controller.vehicleExpiryDate.value!)
+                                ? AppFormatters.formatDate(
+                                    controller.vehicleExpiryDate.value!,
+                                  )
                                 : 'Select Expiry Date',
                             style: TextStyle(
                               color: controller.vehicleExpiryDate.value != null
@@ -2111,7 +2103,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                               fontSize: 13,
                             ),
                           ),
-                          const Icon(Icons.event_busy, size: 16, color: AppColors.textMuted),
+                          const Icon(
+                            Icons.event_busy,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
                         ],
                       ),
                     ),
@@ -2122,14 +2118,23 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
             second: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Obx(() => Text(
-                  controller.isVehiclePassDoc ? 'Pass Fee / Amount (₹)' : 'Premium / Bill Amount (₹)',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                )),
+                Obx(
+                  () => Text(
+                    controller.isVehiclePassDoc
+                        ? 'Pass Fee / Amount (₹)'
+                        : 'Premium / Bill Amount (₹)',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 TextField(
                   controller: controller.vehiclePremiumAmountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'e.g. 3500',
                     prefixText: '₹ ',
@@ -2141,7 +2146,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
 
           // Bundled 3/5-Year Third-Party (TP) Cover Section
           Obx(() {
-            if (!controller.isVehicleInsuranceDoc) return const SizedBox.shrink();
+            if (!controller.isVehicleInsuranceDoc)
+              return const SizedBox.shrink();
             return Container(
               margin: const EdgeInsets.only(top: 12),
               padding: const EdgeInsets.all(12),
@@ -2163,14 +2169,21 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                     value: controller.isVehicleBundledInsurance.value,
-                    onChanged: (val) => controller.toggleVehicleBundledInsurance(val ?? false),
+                    onChanged: (val) =>
+                        controller.toggleVehicleBundledInsurance(val ?? false),
                     title: const Text(
                       '3/5-Year Bundled Third-Party (TP) Cover',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: const Text(
                       'For new vehicle policies where TP liability remains valid for 3 or 5 years (1-Yr Own Damage + 3/5-Yr Third Party)',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
@@ -2183,18 +2196,29 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       children: [
                         const Text(
                           'TP Cover Term:',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         ChoiceChip(
-                          label: const Text('3-Year Bundled (Car / 4W)', style: TextStyle(fontSize: 11)),
-                          selected: controller.selectedVehicleBundledYears.value == 3,
+                          label: const Text(
+                            '3-Year Bundled (Car / 4W)',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          selected:
+                              controller.selectedVehicleBundledYears.value == 3,
                           onSelected: (selected) {
                             if (selected) controller.setVehicleBundledYears(3);
                           },
                         ),
                         ChoiceChip(
-                          label: const Text('5-Year Bundled (Two Wheeler / 2W)', style: TextStyle(fontSize: 11)),
-                          selected: controller.selectedVehicleBundledYears.value == 5,
+                          label: const Text(
+                            '5-Year Bundled (Two Wheeler / 2W)',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          selected:
+                              controller.selectedVehicleBundledYears.value == 5,
                           onSelected: (selected) {
                             if (selected) controller.setVehicleBundledYears(5);
                           },
@@ -2204,7 +2228,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     const SizedBox(height: 10),
                     InkWell(
                       onTap: () async {
-                        final initial = controller.vehicleTpExpiryDate.value ??
+                        final initial =
+                            controller.vehicleTpExpiryDate.value ??
                             DateTime.now().add(const Duration(days: 365 * 3));
                         final picked = await showDatePicker(
                           context: context,
@@ -2217,7 +2242,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(8),
@@ -2228,7 +2256,11 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.verified_user_outlined, size: 18, color: AppColors.primary),
+                                const Icon(
+                                  Icons.verified_user_outlined,
+                                  size: 18,
+                                  color: AppColors.primary,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   controller.vehicleTpExpiryDate.value != null
@@ -2237,14 +2269,20 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: controller.vehicleTpExpiryDate.value != null
+                                    color:
+                                        controller.vehicleTpExpiryDate.value !=
+                                            null
                                         ? AppColors.textPrimary
                                         : AppColors.textMuted,
                                   ),
                                 ),
                               ],
                             ),
-                            const Icon(Icons.event_busy, size: 16, color: AppColors.textMuted),
+                            const Icon(
+                              Icons.event_busy,
+                              size: 16,
+                              color: AppColors.textMuted,
+                            ),
                           ],
                         ),
                       ),
@@ -2285,7 +2323,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                   controller: controller.vehicleNotesController,
                   maxLines: 1,
                   decoration: const InputDecoration(
-                    hintText: 'e.g. Comprehensive zero-dep policy with RSA included',
+                    hintText:
+                        'e.g. Comprehensive zero-dep policy with RSA included',
                   ),
                 ),
               ],
@@ -2386,7 +2425,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       onTap: () => Get.toNamed(AppRoutes.SETTINGS),
                       borderRadius: BorderRadius.circular(4),
                       child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -2428,14 +2470,20 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       value: controller.selectedLocationId.value,
                       hint: const Text(
                         'Choose location (e.g. RK Iconic Office 1118, Corporate HQ)...',
-                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                       items: [
                         const DropdownMenuItem<String>(
                           value: null,
                           child: Text(
                             '-- None / Manual Address Entry --',
-                            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ),
                         ...controller.dynamicLocations.map(
@@ -2583,18 +2631,19 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         child: DropdownButton<String>(
                           isExpanded: true,
                           value: controller.selectedCity.value,
-                          items: (controller.dynamicCities.isNotEmpty
-                                  ? controller.dynamicCities
-                                  : AppConstants.supportedCities
-                                      .where((c) => c != 'All Cities')
-                                      .toList())
-                              .map(
-                                (city) => DropdownMenuItem(
-                                  value: city,
-                                  child: Text(city),
-                                ),
-                              )
-                              .toList(),
+                          items:
+                              (controller.dynamicCities.isNotEmpty
+                                      ? controller.dynamicCities
+                                      : AppConstants.supportedCities
+                                            .where((c) => c != 'All Cities')
+                                            .toList())
+                                  .map(
+                                    (city) => DropdownMenuItem(
+                                      value: city,
+                                      child: Text(city),
+                                    ),
+                                  )
+                                  .toList(),
                           onChanged: (val) {
                             if (val != null) {
                               controller.selectedCity.value = val;
@@ -2669,7 +2718,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         child: CircularProgressIndicator(
                           value: progress > 0 ? progress : null,
                           strokeWidth: 3.5,
-                          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                          backgroundColor: AppColors.primaryLight.withValues(
+                            alpha: 0.2,
+                          ),
                           color: AppColors.primary,
                         ),
                       ),
@@ -2711,8 +2762,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         isScanning
                             ? 'Scanning in progress (${(progress * 100).toInt()}%)'
                             : (scanResult != null
-                                ? 'Document Scanned & Extracted'
-                                : 'Document Auto-Scan'),
+                                  ? 'Document Scanned & Extracted'
+                                  : 'Document Auto-Scan'),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -2724,8 +2775,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                         isScanning
                             ? 'Auto-identifying text, numbers and dates...'
                             : (scanResult != null
-                                ? 'Key fields auto-filled to form'
-                                : 'Auto-extracts dates, numbers, amounts & types'),
+                                  ? 'Key fields auto-filled to form'
+                                  : 'Auto-extracts dates, numbers, amounts & types'),
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
@@ -2740,12 +2791,20 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     icon: const Text('🎮', style: TextStyle(fontSize: 14)),
                     label: Text(
                       showGame ? 'Hide Game' : 'Arcade',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: showGame ? const Color(0xFF475569) : const Color(0xFF2563EB),
+                      backgroundColor: showGame
+                          ? const Color(0xFF475569)
+                          : const Color(0xFF2563EB),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -2766,12 +2825,18 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       TextButton.icon(
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF2563EB),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                         ),
                         icon: const Text('🎮', style: TextStyle(fontSize: 14)),
                         label: Text(
                           showGame ? 'Hide Game' : 'Arcade',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         onPressed: () {
                           if (showGame) {
@@ -2785,12 +2850,18 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       TextButton.icon(
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                         ),
                         icon: const Icon(Icons.refresh_rounded, size: 16),
                         label: const Text(
                           'Re-Scan',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         onPressed: controller.rescanDocument,
                       ),
@@ -2887,7 +2958,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       value: progress > 0 ? progress : null,
                       strokeWidth: 3,
                       color: AppColors.primary,
-                      backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                      backgroundColor: AppColors.primaryLight.withValues(
+                        alpha: 0.2,
+                      ),
                     ),
                   ),
                   Text(
@@ -2935,7 +3008,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -3215,9 +3291,7 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    isPdf
-                        ? Icons.picture_as_pdf_outlined
-                        : Icons.compress,
+                    isPdf ? Icons.picture_as_pdf_outlined : Icons.compress,
                     color: isCompressedSelected
                         ? (isPdf ? AppColors.error : AppColors.primary)
                         : AppColors.textSecondary,
@@ -3270,7 +3344,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.secondary.withValues(alpha: 0.12),
+                              color: AppColors.secondary.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Row(
@@ -3411,7 +3487,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                         vertical: 1,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.textSecondary.withValues(alpha: 0.15),
+                                        color: AppColors.textSecondary
+                                            .withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Text(
@@ -3577,7 +3654,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary, width: 1.2),
+                      side: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.2,
+                      ),
                       backgroundColor: AppColors.primarySurface,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -3628,7 +3708,10 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                             ? null
                             : () => controller.compressSelectedFile(),
                         icon: const Icon(Icons.refresh, size: 14),
-                        label: const Text('Retry API', style: TextStyle(fontSize: 11)),
+                        label: const Text(
+                          'Retry API',
+                          style: TextStyle(fontSize: 11),
+                        ),
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(
@@ -3712,7 +3795,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                       ),
                       const SizedBox(height: 10),
                       ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(4)),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(4),
+                        ),
                         child: LinearProgressIndicator(
                           value: controller.compressionProgress.value.clamp(
                             0.05,
@@ -3757,7 +3842,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                     ? Icons.picture_as_pdf_outlined
                                     : Icons.photo_size_select_large_outlined,
                                 size: 16,
-                                color: isPdf ? AppColors.error : AppColors.primary,
+                                color: isPdf
+                                    ? AppColors.error
+                                    : AppColors.primary,
                               ),
                               const SizedBox(width: 8),
                               const Text(
@@ -3948,7 +4035,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                 const SizedBox(height: 2),
                                 Text(
                                   result?.originalSizeFormatted ??
-                                      CompressionResult.formatFileSize(file.size),
+                                      CompressionResult.formatFileSize(
+                                        file.size,
+                                      ),
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -4027,7 +4116,8 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                           spacing: 8,
                           runSpacing: 4,
                           children: [
-                            if (result.pageCount != null && result.pageCount! > 0)
+                            if (result.pageCount != null &&
+                                result.pageCount! > 0)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -4088,13 +4178,15 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                                 onPressed: () {
                                   if (isPdf) {
                                     PdfViewerDialog.showBytes(
-                                      title: 'Preview Compressed PDF: ${file.name}',
+                                      title:
+                                          'Preview Compressed PDF: ${file.name}',
                                       bytes: result.compressedBytes,
                                       fileName: result.compressedFileName,
                                     );
                                   } else {
                                     ImageLightboxDialog.show(
-                                      title: 'Preview Compressed Image: ${file.name}',
+                                      title:
+                                          'Preview Compressed Image: ${file.name}',
                                       imageBytes: result.compressedBytes,
                                       fileName: result.compressedFileName,
                                     );
@@ -4179,7 +4271,9 @@ class DocumentUploadView extends GetView<DocumentUploadController> {
                   ),
                 ),
 
-                if (result != null && !hasSafeCompression && !isCompressing) ...[
+                if (result != null &&
+                    !hasSafeCompression &&
+                    !isCompressing) ...[
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(
