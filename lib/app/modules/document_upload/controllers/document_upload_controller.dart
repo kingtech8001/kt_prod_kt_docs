@@ -255,21 +255,17 @@ class DocumentUploadController extends GetxController {
   final utilityPaymentStatus = 'pending'.obs;
 
   List<String> get availableProvidersForSelectedType {
-    final currentSubcategory = selectedSubcategory.value.toLowerCase().trim();
-    final matched = dynamicUtilityProviders
-        .where(
-          (p) =>
-              p.utilityType.toLowerCase().trim() == currentSubcategory ||
-              currentSubcategory.contains(p.utilityType.toLowerCase().trim()) ||
-              p.utilityType.toLowerCase().trim().contains(currentSubcategory),
-        )
-        .map((p) => p.name)
-        .toList();
-    if (matched.isEmpty) {
-      final all = dynamicUtilityProviders.map((p) => p.name).toSet().toList();
-      return all.isNotEmpty ? [...all, 'Other'] : ['Other'];
-    }
-    return [...matched, 'Other'];
+    // A provider can issue bills across a variety of customer setups. Keep the
+    // full active provider master list available instead of hiding providers by
+    // the selected utility subtype.
+    final providers =
+        dynamicUtilityProviders
+            .map((provider) => provider.name.trim())
+            .where((name) => name.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    return providers.isNotEmpty ? [...providers, 'Other'] : ['Other'];
   }
 
   void onUtilityProviderChanged(String? val) {

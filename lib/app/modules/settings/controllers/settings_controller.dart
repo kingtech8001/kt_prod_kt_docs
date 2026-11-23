@@ -106,7 +106,6 @@ class SettingsController extends GetxController {
   final docCategoryHasTitleField = true.obs;
 
   final docSubcategoryNameController = TextEditingController();
-  final docSubcategoryCodeController = TextEditingController();
   final selectedDocSubcategoryCategoryId = ''.obs;
 
   bool get isAdmin =>
@@ -2086,18 +2085,16 @@ class SettingsController extends GetxController {
       return;
     }
     docSubcategoryNameController.clear();
-    docSubcategoryCodeController.clear();
     selectedDocSubcategoryCategoryId.value = documentCategories.first.id;
     _showDocumentSubcategoryDialog(
       title: 'Add Document Subcategory',
       confirmButtonText: 'Add Subcategory',
       onConfirm: () async {
         final name = docSubcategoryNameController.text.trim();
-        final code = docSubcategoryCodeController.text.trim();
         final categoryId = selectedDocSubcategoryCategoryId.value;
-        if (name.isEmpty || code.isEmpty || categoryId.isEmpty) {
+        if (name.isEmpty || categoryId.isEmpty) {
           dialogErrorMessage.value =
-              'Category, subcategory name, and code are required.';
+              'Category and subcategory name are required.';
           return;
         }
         isSubmitting.value = true;
@@ -2106,7 +2103,7 @@ class SettingsController extends GetxController {
           await _dataset.addDocumentSubcategory(
             categoryId: categoryId,
             name: name,
-            code: code,
+            code: _generatedDocumentSubcategoryCode(name, categoryId),
             displayOrder: documentSubcategories.length + 1,
           );
           Get.back();
@@ -2132,7 +2129,6 @@ class SettingsController extends GetxController {
 
   void openEditDocumentSubcategoryDialog(DocumentSubcategoryModel subcategory) {
     docSubcategoryNameController.text = subcategory.name;
-    docSubcategoryCodeController.text = subcategory.code;
     selectedDocSubcategoryCategoryId.value = subcategory.categoryId;
     _showDocumentSubcategoryDialog(
       title: 'Edit Document Subcategory',
@@ -2140,9 +2136,8 @@ class SettingsController extends GetxController {
       isEditing: true,
       onConfirm: () async {
         final name = docSubcategoryNameController.text.trim();
-        final code = docSubcategoryCodeController.text.trim();
-        if (name.isEmpty || code.isEmpty) {
-          dialogErrorMessage.value = 'Subcategory name and code are required.';
+        if (name.isEmpty) {
+          dialogErrorMessage.value = 'Subcategory name is required.';
           return;
         }
         isSubmitting.value = true;
@@ -2151,7 +2146,7 @@ class SettingsController extends GetxController {
           await _dataset.updateDocumentSubcategory(
             subcategory: subcategory,
             name: name,
-            code: code,
+            code: subcategory.code,
             isActive: subcategory.isActive,
           );
           Get.back();
@@ -2254,30 +2249,6 @@ class SettingsController extends GetxController {
               decoration: const InputDecoration(
                 hintText: 'e.g. Lease Agreement, Broadband',
               ),
-              onChanged: (value) {
-                if (docSubcategoryCodeController.text.isEmpty) {
-                  docSubcategoryCodeController.text = value
-                      .toLowerCase()
-                      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-                      .replaceAll(RegExp(r'^_|_$'), '');
-                }
-              },
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Code Identifier *',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: docSubcategoryCodeController,
-              decoration: const InputDecoration(
-                hintText: 'e.g. lease_agreement, broadband',
-              ),
             ),
           ],
         ),
@@ -2286,6 +2257,25 @@ class SettingsController extends GetxController {
       ),
       barrierDismissible: false,
     );
+  }
+
+  String _generatedDocumentSubcategoryCode(String name, String categoryId) {
+    final base = name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    final normalizedBase = base.isEmpty ? 'document_subcategory' : base;
+    final existingCodes = documentSubcategories
+        .where((subcategory) => subcategory.categoryId == categoryId)
+        .map((subcategory) => subcategory.code)
+        .toSet();
+    if (!existingCodes.contains(normalizedBase)) return normalizedBase;
+
+    var suffix = 2;
+    while (existingCodes.contains('${normalizedBase}_$suffix')) {
+      suffix++;
+    }
+    return '${normalizedBase}_$suffix';
   }
 
   // ================= SAVE PERSONAL PROFILE =================
@@ -2636,7 +2626,6 @@ class SettingsController extends GetxController {
     docCategoryColorController.dispose();
     docCategoryDescController.dispose();
     docSubcategoryNameController.dispose();
-    docSubcategoryCodeController.dispose();
     super.onClose();
   }
 }

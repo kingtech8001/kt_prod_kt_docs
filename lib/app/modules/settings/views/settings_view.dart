@@ -803,7 +803,7 @@ class SettingsView extends GetView<SettingsController> {
               ),
             ),
             subtitle: Text(
-              '${controller.categoryNameForId(subcategory.categoryId)} • Code: ${subcategory.code}',
+              controller.categoryNameForId(subcategory.categoryId),
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 12,
