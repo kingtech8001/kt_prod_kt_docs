@@ -1,3 +1,4 @@
+import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -26,7 +27,14 @@ class AppSnackbar {
     if (_currentEntry != null) {
       try {
         _currentEntry?.remove();
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'APP_SNACKBAR',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
       _currentEntry = null;
     }
     // Also clean up any lingering GetX native snackbars if present
@@ -171,10 +179,7 @@ class _CompactToastWidgetState extends State<_CompactToastWidget>
     _offsetAnimation = Tween<Offset>(
       begin: const Offset(0.0, -0.4),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
@@ -214,7 +219,9 @@ class _CompactToastWidgetState extends State<_CompactToastWidget>
               ),
             ),
             Align(
-              alignment: isDesktopOrTablet ? Alignment.topRight : Alignment.topCenter,
+              alignment: isDesktopOrTablet
+                  ? Alignment.topRight
+                  : Alignment.topCenter,
               child: SafeArea(
                 top: true,
                 left: false,
@@ -241,7 +248,9 @@ class _CompactToastWidgetState extends State<_CompactToastWidget>
                         child: Container(
                           decoration: BoxDecoration(
                             color: widget.backgroundColor,
-                            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.radiusSmall,
+                            ),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.18),
@@ -250,12 +259,18 @@ class _CompactToastWidgetState extends State<_CompactToastWidget>
                               ),
                             ],
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.only(top: 2, right: 10),
+                                padding: const EdgeInsets.only(
+                                  top: 2,
+                                  right: 10,
+                                ),
                                 child: Icon(
                                   widget.icon,
                                   color: Colors.white,
@@ -276,13 +291,16 @@ class _CompactToastWidgetState extends State<_CompactToastWidget>
                                           fontSize: 13.5,
                                         ),
                                       ),
-                                    if (widget.title.isNotEmpty && widget.message.isNotEmpty)
+                                    if (widget.title.isNotEmpty &&
+                                        widget.message.isNotEmpty)
                                       const SizedBox(height: 3),
                                     if (widget.message.isNotEmpty)
                                       Text(
                                         widget.message,
                                         style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.92),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.92,
+                                          ),
                                           fontSize: 12.5,
                                           fontWeight: FontWeight.w400,
                                           height: 1.25,
@@ -336,10 +354,7 @@ class SlideTransition extends StatelessWidget {
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: fade,
-      child: FractionalTranslation(
-        translation: position.value,
-        child: child,
-      ),
+      child: FractionalTranslation(translation: position.value, child: child),
     );
   }
 }

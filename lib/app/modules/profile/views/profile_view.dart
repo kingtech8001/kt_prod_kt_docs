@@ -1,3 +1,4 @@
+import 'package:kt_prod_kt_docs/app/widgets/detail_skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/modules/profile/controllers/profile_controller.dart';
@@ -13,19 +14,26 @@ class ProfileView extends GetView<ProfileController> {
   Widget build(BuildContext context) {
     return WebScaffold(
       title: 'My Profile & Account Settings',
-      subtitle: 'Manage your personal staff details, department, contact info, and account security',
+      subtitle:
+          'Manage your personal staff details, department, contact info, and account security',
       currentRoute: AppRoutes.PROFILE,
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          return const DetailSkeleton();
         }
 
         final p = controller.profile.value;
-        final displayName = p?.fullName.isNotEmpty == true ? p!.fullName : 'User Profile';
+        final displayName = p?.fullName.isNotEmpty == true
+            ? p!.fullName
+            : 'User Profile';
         final email = p?.email ?? 'user@kingtech.com';
         final role = p?.role.toUpperCase() ?? 'STAFF';
-        final department = p?.department?.isNotEmpty == true ? p!.department! : 'Executive';
-        final phone = p?.phoneNumber?.isNotEmpty == true ? p!.phoneNumber! : 'Not set';
+        final department = p?.department?.isNotEmpty == true
+            ? p!.department!
+            : 'Executive';
+        final phone = p?.phoneNumber?.isNotEmpty == true
+            ? p!.phoneNumber!
+            : 'Not set';
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -50,7 +58,9 @@ class ProfileView extends GetView<ProfileController> {
                           radius: 40,
                           backgroundColor: AppColors.primary,
                           child: Text(
-                            displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                            displayName.isNotEmpty
+                                ? displayName[0].toUpperCase()
+                                : 'U',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 32,
@@ -76,7 +86,9 @@ class ProfileView extends GetView<ProfileController> {
                                   const SizedBox(width: 12),
                                   StatusBadge(
                                     label: role,
-                                    type: (role == 'ADMIN' || role == 'SUPER_ADMIN')
+                                    type:
+                                        (role == 'ADMIN' ||
+                                            role == 'SUPER_ADMIN')
                                         ? StatusBadgeType.warning
                                         : StatusBadgeType.info,
                                   ),
@@ -95,11 +107,19 @@ class ProfileView extends GetView<ProfileController> {
                                 spacing: 16,
                                 runSpacing: 8,
                                 children: [
-                                  _buildInfoChip(Icons.business_outlined, 'Dept: $department'),
-                                  _buildInfoChip(Icons.phone_outlined, 'Phone: $phone'),
+                                  _buildInfoChip(
+                                    Icons.business_outlined,
+                                    'Dept: $department',
+                                  ),
+                                  _buildInfoChip(
+                                    Icons.phone_outlined,
+                                    'Phone: $phone',
+                                  ),
                                   _buildInfoChip(
                                     Icons.verified_user_outlined,
-                                    p?.isActive == true ? 'Account Active' : 'Account Suspended',
+                                    p?.isActive == true
+                                        ? 'Account Active'
+                                        : 'Account Suspended',
                                     isSuccess: p?.isActive == true,
                                   ),
                                 ],
@@ -130,7 +150,11 @@ class ProfileView extends GetView<ProfileController> {
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.person_outline, color: AppColors.primary, size: 22),
+                                Icon(
+                                  Icons.person_outline,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
                                 SizedBox(width: 10),
                                 Text(
                                   'Personal Information',
@@ -145,39 +169,72 @@ class ProfileView extends GetView<ProfileController> {
                             const SizedBox(height: 6),
                             const Text(
                               'Update your official name, department title, and contact phone number.',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                             const Divider(height: 24),
-                            const Text('Full Name *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            const Text(
+                              'Full Name *',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             TextField(
                               controller: controller.fullNameController,
-                              decoration: const InputDecoration(hintText: 'Your full name'),
+                              decoration: const InputDecoration(
+                                hintText: 'Your full name',
+                              ),
                             ),
                             const SizedBox(height: 16),
-                            const Text('Department / Role Title', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            const Text(
+                              'Department / Role Title',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             TextField(
                               controller: controller.departmentController,
-                              decoration: const InputDecoration(hintText: 'e.g. Executive, IT, Accounts, Operations'),
+                              decoration: const InputDecoration(
+                                hintText:
+                                    'e.g. Executive, IT, Accounts, Operations',
+                              ),
                             ),
                             const SizedBox(height: 16),
-                            const Text('Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            const Text(
+                              'Phone Number',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             TextField(
                               controller: controller.phoneController,
-                              decoration: const InputDecoration(hintText: '+91 9876543210'),
+                              decoration: const InputDecoration(
+                                hintText: '+91 9876543210',
+                              ),
                             ),
                             const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: controller.isSavingProfile.value ? null : controller.saveProfile,
+                                onPressed: controller.isSavingProfile.value
+                                    ? null
+                                    : controller.saveProfile,
                                 icon: controller.isSavingProfile.value
                                     ? const SizedBox(
                                         width: 16,
                                         height: 16,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
                                       )
                                     : const Icon(Icons.check, size: 18),
                                 label: const Text('Save Profile Changes'),
@@ -199,7 +256,11 @@ class ProfileView extends GetView<ProfileController> {
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.lock_outline, color: AppColors.primary, size: 22),
+                                Icon(
+                                  Icons.lock_outline,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
                                 SizedBox(width: 10),
                                 Text(
                                   'Security & Password',
@@ -214,59 +275,95 @@ class ProfileView extends GetView<ProfileController> {
                             const SizedBox(height: 6),
                             const Text(
                               'Change your login password. Must be at least 6 characters.',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                             const Divider(height: 24),
-                            const Text('New Password', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            const Text(
+                              'New Password',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Obx(() => TextField(
-                                  controller: controller.newPasswordController,
-                                  obscureText: controller.obscureNewPassword.value,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter new password',
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        controller.obscureNewPassword.value
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined,
-                                        size: 18,
-                                      ),
-                                      onPressed: () => controller.obscureNewPassword.value =
-                                          !controller.obscureNewPassword.value,
+                            Obx(
+                              () => TextField(
+                                controller: controller.newPasswordController,
+                                obscureText:
+                                    controller.obscureNewPassword.value,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter new password',
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      controller.obscureNewPassword.value
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 18,
                                     ),
+                                    onPressed: () =>
+                                        controller.obscureNewPassword.value =
+                                            !controller
+                                                .obscureNewPassword
+                                                .value,
                                   ),
-                                )),
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 16),
-                            const Text('Confirm New Password', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            const Text(
+                              'Confirm New Password',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Obx(() => TextField(
-                                  controller: controller.confirmPasswordController,
-                                  obscureText: controller.obscureConfirmPassword.value,
-                                  decoration: InputDecoration(
-                                    hintText: 'Confirm new password',
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        controller.obscureConfirmPassword.value
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined,
-                                        size: 18,
-                                      ),
-                                      onPressed: () => controller.obscureConfirmPassword.value =
-                                          !controller.obscureConfirmPassword.value,
+                            Obx(
+                              () => TextField(
+                                controller:
+                                    controller.confirmPasswordController,
+                                obscureText:
+                                    controller.obscureConfirmPassword.value,
+                                decoration: InputDecoration(
+                                  hintText: 'Confirm new password',
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      controller.obscureConfirmPassword.value
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 18,
                                     ),
+                                    onPressed: () =>
+                                        controller
+                                            .obscureConfirmPassword
+                                            .value = !controller
+                                            .obscureConfirmPassword
+                                            .value,
                                   ),
-                                )),
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryDark),
-                                onPressed: controller.isChangingPassword.value ? null : controller.changePassword,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryDark,
+                                ),
+                                onPressed: controller.isChangingPassword.value
+                                    ? null
+                                    : controller.changePassword,
                                 icon: controller.isChangingPassword.value
                                     ? const SizedBox(
                                         width: 16,
                                         height: 16,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
                                       )
                                     : const Icon(Icons.key, size: 18),
                                 label: const Text('Update Password'),
@@ -309,14 +406,24 @@ class ProfileView extends GetView<ProfileController> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isSuccess ? AppColors.success.withValues(alpha: 0.1) : AppColors.background,
+        color: isSuccess
+            ? AppColors.success.withValues(alpha: 0.1)
+            : AppColors.background,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isSuccess ? AppColors.success.withValues(alpha: 0.3) : AppColors.border),
+        border: Border.all(
+          color: isSuccess
+              ? AppColors.success.withValues(alpha: 0.3)
+              : AppColors.border,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: isSuccess ? AppColors.success : AppColors.textSecondary),
+          Icon(
+            icon,
+            size: 14,
+            color: isSuccess ? AppColors.success : AppColors.textSecondary,
+          ),
           const SizedBox(width: 6),
           Text(
             label,

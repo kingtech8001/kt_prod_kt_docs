@@ -1,10 +1,10 @@
+import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/utility_bills_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
 import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/upload_next_utility_bill_dialog.dart';
-import 'package:kt_prod_kt_docs/app/modules/utility_bills/views/widgets/utility_connection_history_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -37,7 +37,8 @@ class UtilityBillsController extends GetxController {
   // Filters
   final selectedCity = 'All Cities'.obs;
   final selectedUtilityType = 'All Utilities'.obs;
-  final selectedPaymentStatus = 'all'.obs; // 'all', 'paid', 'pending', 'overdue'
+  final selectedPaymentStatus =
+      'all'.obs; // 'all', 'paid', 'pending', 'overdue'
   final searchQuery = ''.obs;
   final searchController = TextEditingController();
   final scrollController = ScrollController();
@@ -117,14 +118,17 @@ class UtilityBillsController extends GetxController {
       );
 
       utilityBills.assignAll(res.documents);
-      connectionAccounts.assignAll(UtilityConnectionAccount.groupFromDocuments(utilityBills));
+      connectionAccounts.assignAll(
+        UtilityConnectionAccount.groupFromDocuments(utilityBills),
+      );
       totalCount.value = res.totalCount;
       totalBillsAmount.value = res.totalAmount;
       pendingBillsAmount.value = res.pendingAmount;
       paidCount.value = res.paidCount;
       pendingCount.value = res.pendingCount;
 
-      hasMore.value = res.documents.length == pageSize &&
+      hasMore.value =
+          res.documents.length == pageSize &&
           utilityBills.length < res.totalCount;
     } catch (e, st) {
       AppLogger.error(
@@ -161,7 +165,9 @@ class UtilityBillsController extends GetxController {
       } else {
         currentPage.value = nextPage;
         utilityBills.addAll(res.documents);
-        connectionAccounts.assignAll(UtilityConnectionAccount.groupFromDocuments(utilityBills));
+        connectionAccounts.assignAll(
+          UtilityConnectionAccount.groupFromDocuments(utilityBills),
+        );
         totalCount.value = res.totalCount;
         if (res.documents.length < pageSize ||
             utilityBills.length >= totalCount.value) {
@@ -270,19 +276,29 @@ class UtilityBillsController extends GetxController {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isUndoingPayment ? AppColors.warningLight : AppColors.successLight,
-                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                        color: isUndoingPayment
+                            ? AppColors.warningLight
+                            : AppColors.successLight,
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusSmall,
+                        ),
                       ),
                       child: Icon(
-                        isUndoingPayment ? Icons.history_rounded : Icons.check_circle_outline_rounded,
-                        color: isUndoingPayment ? AppColors.warning : AppColors.success,
+                        isUndoingPayment
+                            ? Icons.history_rounded
+                            : Icons.check_circle_outline_rounded,
+                        color: isUndoingPayment
+                            ? AppColors.warning
+                            : AppColors.success,
                         size: 22,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        isUndoingPayment ? 'Mark Bill as Pending?' : 'Mark Bill as Paid?',
+                        isUndoingPayment
+                            ? 'Mark Bill as Pending?'
+                            : 'Mark Bill as Paid?',
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w700,
@@ -320,14 +336,18 @@ class UtilityBillsController extends GetxController {
                     const SizedBox(width: AppConstants.paddingSmall),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isUndoingPayment ? AppColors.warning : AppColors.success,
+                        backgroundColor: isUndoingPayment
+                            ? AppColors.warning
+                            : AppColors.success,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppConstants.paddingLarge,
                           vertical: 12,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.radiusSmall,
+                          ),
                         ),
                       ),
                       onPressed: () async {
@@ -335,7 +355,9 @@ class UtilityBillsController extends GetxController {
                         await togglePaymentStatus(doc);
                       },
                       child: Text(
-                        isUndoingPayment ? 'Mark as Pending' : 'Confirm Payment',
+                        isUndoingPayment
+                            ? 'Mark as Pending'
+                            : 'Confirm Payment',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -351,14 +373,15 @@ class UtilityBillsController extends GetxController {
 
   void previewDocument(DocumentModel doc) async {
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -394,7 +417,8 @@ class UtilityBillsController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -405,13 +429,19 @@ class UtilityBillsController extends GetxController {
         }
       }
 
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
+      AppSnackbar.showSuccess(
+        'Download Started',
+        '${doc.fileName} is downloading.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'UTILITY_CTRL',
@@ -420,12 +450,21 @@ class UtilityBillsController extends GetxController {
         stackTrace: st,
       );
       try {
-        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(
+          doc.filePath,
+          download: true,
+        );
         final uri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'UTILITY_BILLS_CONTROLLER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         AppSnackbar.showError('Download Error', e.toString());
       }
     }
@@ -461,43 +500,44 @@ class UtilityBillsController extends GetxController {
   void openEditDocumentDialog(DocumentModel doc) async {
     final updated = await DocumentEditDialog.show(
       document: doc,
-      onSave: ({
-        required title,
-        description,
-        documentNumber,
-        applianceWarranty,
-        vehicleMetadata,
-        newFileName,
-        newFileBytes,
-        newMimeType,
-        attachmentUrl,
-      }) async {
-        try {
-          await _dataset.updateDocumentDetails(
-            documentId: doc.id,
-            title: title,
-            description: description,
-            documentNumber: documentNumber,
-            applianceWarranty: applianceWarranty,
-            vehicleMetadata: vehicleMetadata,
-            newFileName: newFileName,
-            newFileBytes: newFileBytes,
-            newMimeType: newMimeType,
-            categoryCode: doc.categoryCode,
-            subCategory: doc.subCategory,
-            attachmentUrl: attachmentUrl,
-          );
-          await loadUtilityBills();
-        } catch (e, st) {
-          AppLogger.error(
-            'UTILITY_CTRL',
-            'Error editing bill: $e',
-            error: e,
-            stackTrace: st,
-          );
-          rethrow;
-        }
-      },
+      onSave:
+          ({
+            required title,
+            description,
+            documentNumber,
+            applianceWarranty,
+            vehicleMetadata,
+            newFileName,
+            newFileBytes,
+            newMimeType,
+            attachmentUrl,
+          }) async {
+            try {
+              await _dataset.updateDocumentDetails(
+                documentId: doc.id,
+                title: title,
+                description: description,
+                documentNumber: documentNumber,
+                applianceWarranty: applianceWarranty,
+                vehicleMetadata: vehicleMetadata,
+                newFileName: newFileName,
+                newFileBytes: newFileBytes,
+                newMimeType: newMimeType,
+                categoryCode: doc.categoryCode,
+                subCategory: doc.subCategory,
+                attachmentUrl: attachmentUrl,
+              );
+              await loadUtilityBills();
+            } catch (e, st) {
+              AppLogger.error(
+                'UTILITY_CTRL',
+                'Error editing bill: $e',
+                error: e,
+                stackTrace: st,
+              );
+              rethrow;
+            }
+          },
     );
 
     if (updated == true) {
@@ -506,70 +546,73 @@ class UtilityBillsController extends GetxController {
   }
 
   /// Opens the specialized dialog to log the next month/cycle bill for an existing connection account.
-  Future<void> openUploadNextBillDialog(UtilityConnectionAccount connection) async {
+  Future<void> openUploadNextBillDialog(
+    UtilityConnectionAccount connection,
+  ) async {
     final success = await UploadNextUtilityBillDialog.show(
       connection: connection,
-      onLogBill: ({
-        required consumerNumber,
-        meterNumber,
-        required providerName,
-        required utilityType,
-        premiseName,
-        flatHouseNo,
-        buildingName,
-        streetAddress,
-        areaLocality,
-        city,
-        state,
-        postalCode,
-        country,
-        required title,
-        description,
-        required billAmount,
-        required billDate,
-        dueDate,
-        required paymentStatus,
-        paymentDate,
-        paymentReferenceId,
-        required fileBytes,
-        required fileName,
-      }) async {
-        try {
-          await _dataset.logNextUtilityBill(
-            consumerNumber: consumerNumber,
-            meterNumber: meterNumber,
-            providerName: providerName,
-            utilityType: utilityType,
-            premiseName: premiseName,
-            flatHouseNo: flatHouseNo,
-            buildingName: buildingName,
-            streetAddress: streetAddress,
-            areaLocality: areaLocality,
-            city: city,
-            state: state,
-            postalCode: postalCode,
-            country: country,
-            title: title,
-            description: description,
-            billAmount: billAmount,
-            billDate: billDate,
-            dueDate: dueDate,
-            paymentStatus: paymentStatus,
-            paymentDate: paymentDate,
-            paymentReferenceId: paymentReferenceId,
-            fileBytes: fileBytes,
-            fileName: fileName,
-          );
-        } catch (e, st) {
-          AppLogger.error(
-            'UTILITY_CTRL',
-            'Error logging next utility bill: $e',
-            error: e,
-            stackTrace: st,
-          );
-          rethrow;
-        }
-      },
+      onLogBill:
+          ({
+            required consumerNumber,
+            meterNumber,
+            required providerName,
+            required utilityType,
+            premiseName,
+            flatHouseNo,
+            buildingName,
+            streetAddress,
+            areaLocality,
+            city,
+            state,
+            postalCode,
+            country,
+            required title,
+            description,
+            required billAmount,
+            required billDate,
+            dueDate,
+            required paymentStatus,
+            paymentDate,
+            paymentReferenceId,
+            required fileBytes,
+            required fileName,
+          }) async {
+            try {
+              await _dataset.logNextUtilityBill(
+                consumerNumber: consumerNumber,
+                meterNumber: meterNumber,
+                providerName: providerName,
+                utilityType: utilityType,
+                premiseName: premiseName,
+                flatHouseNo: flatHouseNo,
+                buildingName: buildingName,
+                streetAddress: streetAddress,
+                areaLocality: areaLocality,
+                city: city,
+                state: state,
+                postalCode: postalCode,
+                country: country,
+                title: title,
+                description: description,
+                billAmount: billAmount,
+                billDate: billDate,
+                dueDate: dueDate,
+                paymentStatus: paymentStatus,
+                paymentDate: paymentDate,
+                paymentReferenceId: paymentReferenceId,
+                fileBytes: fileBytes,
+                fileName: fileName,
+              );
+            } catch (e, st) {
+              AppLogger.error(
+                'UTILITY_CTRL',
+                'Error logging next utility bill: $e',
+                error: e,
+                stackTrace: st,
+              );
+              rethrow;
+            }
+          },
     );
 
     if (success == true) {
@@ -581,19 +624,27 @@ class UtilityBillsController extends GetxController {
     }
   }
 
-  /// Opens the chronological Billing History dialog for a connection account.
-  Future<void> openBillingHistoryDialog(UtilityConnectionAccount connection) async {
-    await UtilityConnectionHistoryDialog.show(
-      connection: connection,
-      loadHistory: () async {
-        return _dataset.getUtilityConnectionHistory(connection.consumerNumber);
-      },
-      onPreview: (d) => previewDocument(d),
-      onDownload: (d) => downloadDocument(d),
-      onTogglePayment: (d) async {
-        await togglePaymentStatus(d);
-      },
-    );
+  /// Uses the paginated account ledger for history from both entry points.
+  Future<void> openBillingHistoryDialog(
+    UtilityConnectionAccount connection,
+  ) async {
+    try {
+      await Get.toNamed(
+        AppRoutes.UTILITY_ACCOUNT_DETAIL,
+        arguments: connection,
+      );
+      await loadUtilityBills(isReset: true);
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'UTILITY_CTRL',
+        'Failed to open billing history.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      AppSnackbar.showError(
+        'History unavailable',
+        'Could not open billing history.',
+      );
+    }
   }
 }
-

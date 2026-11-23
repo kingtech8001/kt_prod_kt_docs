@@ -39,7 +39,9 @@ class ApplianceVaultDataset {
   SupabaseClient get _client => _provider.client;
 
   /// Fetches active master brands.
-  Future<List<MasterBrandModel>> getMasterBrands({bool activeOnly = true}) async {
+  Future<List<MasterBrandModel>> getMasterBrands({
+    bool activeOnly = true,
+  }) async {
     if (DemoDataService.isDemoMode) {
       return DemoDataService.getBrands();
     }
@@ -57,7 +59,9 @@ class ApplianceVaultDataset {
           .order('name', ascending: true);
 
       final list = (response as List)
-          .map((json) => MasterBrandModel.fromJson(json as Map<String, dynamic>))
+          .map(
+            (json) => MasterBrandModel.fromJson(json as Map<String, dynamic>),
+          )
           .toList();
       return list;
     } catch (e, st) {
@@ -123,7 +127,14 @@ class ApplianceVaultDataset {
       if (res != null && res['id'] != null) {
         _cachedApplianceCategoryId = res['id'] as String;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'APPLIANCE_VAULT_DATASET',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     _cachedApplianceCategoryId ??= '2b97daa0-6a1d-42e6-879f-c085e38219cc';
     return _cachedApplianceCategoryId!;
   }
@@ -139,19 +150,40 @@ class ApplianceVaultDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-3' || d.categoryId == 'cat-appliance' || d.categoryCode == 'appliance_warranty' || d.applianceWarranty != null)
+          .where(
+            (d) =>
+                d.categoryId == 'cat-3' ||
+                d.categoryId == 'cat-appliance' ||
+                d.categoryCode == 'appliance_warranty' ||
+                d.applianceWarranty != null,
+          )
           .toList();
 
       if (brand != null && brand.isNotEmpty && brand != 'All Brands') {
-        list = list.where((d) =>
-          d.applianceWarranty?.brand.toLowerCase() == brand.toLowerCase() ||
-          (d.applianceWarranty?.items.any((i) => i.brand.toLowerCase() == brand.toLowerCase()) ?? false)
-        ).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.applianceWarranty?.brand.toLowerCase() ==
+                      brand.toLowerCase() ||
+                  (d.applianceWarranty?.items.any(
+                        (i) => i.brand.toLowerCase() == brand.toLowerCase(),
+                      ) ??
+                      false),
+            )
+            .toList();
       }
-      if (subCategory != null && subCategory.isNotEmpty && subCategory != 'All Appliances') {
-        list = list.where((d) => d.subCategory.toLowerCase() == subCategory.toLowerCase()).toList();
+      if (subCategory != null &&
+          subCategory.isNotEmpty &&
+          subCategory != 'All Appliances') {
+        list = list
+            .where(
+              (d) => d.subCategory.toLowerCase() == subCategory.toLowerCase(),
+            )
+            .toList();
       }
-      if (warrantyStatus != null && warrantyStatus.isNotEmpty && warrantyStatus != 'all') {
+      if (warrantyStatus != null &&
+          warrantyStatus.isNotEmpty &&
+          warrantyStatus != 'all') {
         final now = DateTime.now();
         list = list.where((d) {
           final wDate = d.applianceWarranty?.warrantyValidUpto;
@@ -167,13 +199,22 @@ class ApplianceVaultDataset {
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.toLowerCase().trim();
-        list = list.where((d) =>
-          d.title.toLowerCase().contains(q) ||
-          d.subCategory.toLowerCase().contains(q) ||
-          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
-          (d.applianceWarranty?.modelNumber?.toLowerCase().contains(q) ?? false) ||
-          (d.applianceWarranty?.serialNumber?.toLowerCase().contains(q) ?? false)
-        ).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.title.toLowerCase().contains(q) ||
+                  d.subCategory.toLowerCase().contains(q) ||
+                  (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+                  (d.applianceWarranty?.modelNumber?.toLowerCase().contains(
+                        q,
+                      ) ??
+                      false) ||
+                  (d.applianceWarranty?.serialNumber?.toLowerCase().contains(
+                        q,
+                      ) ??
+                      false),
+            )
+            .toList();
       }
 
       int activeCount = 0;
@@ -250,8 +291,10 @@ class ApplianceVaultDataset {
             .toList();
         if (ids.isEmpty) {
           query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-          countQuery =
-              countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          countQuery = countQuery.eq(
+            'id',
+            '00000000-0000-0000-0000-000000000000',
+          );
         } else {
           query = query.inFilter('id', ids);
           countQuery = countQuery.inFilter('id', ids);
@@ -270,8 +313,9 @@ class ApplianceVaultDataset {
       if (warrantyStatus != null &&
           warrantyStatus.isNotEmpty &&
           warrantyStatus != 'all') {
-        var metaQuery =
-            _client.from('appliance_warranty_metadata').select('document_id');
+        var metaQuery = _client
+            .from('appliance_warranty_metadata')
+            .select('document_id');
         final today = DateTime.now().toIso8601String().split('T').first;
         final in30Days = DateTime.now()
             .add(const Duration(days: 30))
@@ -304,8 +348,10 @@ class ApplianceVaultDataset {
 
         if (ids.isEmpty) {
           query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-          countQuery =
-              countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          countQuery = countQuery.eq(
+            'id',
+            '00000000-0000-0000-0000-000000000000',
+          );
         } else {
           query = query.inFilter('id', ids);
           countQuery = countQuery.inFilter('id', ids);
@@ -340,7 +386,9 @@ class ApplianceVaultDataset {
       // 7. Calculate summary metrics across all available appliances in the database
       final summaryRes = await _client
           .from('appliance_warranty_metadata')
-          .select('warranty_valid_upto, warranty_status, warranty_period_months');
+          .select(
+            'warranty_valid_upto, warranty_status, warranty_period_months',
+          );
 
       int totalAppliances = (summaryRes as List).length;
       int activeCount = 0;
@@ -394,7 +442,10 @@ class ApplianceVaultDataset {
   /// Soft deletes an appliance document by setting deleted_at timestamp.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('APPLIANCE_DATASET', 'Demo Mode: Soft deleted invoice $documentId');
+      AppLogger.info(
+        'APPLIANCE_DATASET',
+        'Demo Mode: Soft deleted invoice $documentId',
+      );
       return;
     }
     AppLogger.info(
@@ -406,16 +457,20 @@ class ApplianceVaultDataset {
       try {
         await _client.rpc(
           'soft_delete_document',
-          params: {
-            'p_doc_id': documentId,
-          },
+          params: {'p_doc_id': documentId},
         );
       } catch (rpcErr) {
-        AppLogger.warning('APPLIANCE_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
-        await _client.from('documents').update({
-          'deleted_at': DateTime.now().toIso8601String(),
-          'deleted_by': userId,
-        }).eq('id', documentId);
+        AppLogger.warning(
+          'APPLIANCE_DATASET',
+          'RPC soft_delete_document fallback: $rpcErr',
+        );
+        await _client
+            .from('documents')
+            .update({
+              'deleted_at': DateTime.now().toIso8601String(),
+              'deleted_by': userId,
+            })
+            .eq('id', documentId);
         await _client.from('document_activity_logs').insert({
           'document_id': documentId,
           'user_id': userId,
@@ -467,7 +522,10 @@ class ApplianceVaultDataset {
   }
 
   /// Generates a signed preview URL for downloading or displaying.
-  Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+  Future<String> getSignedPreviewUrl(
+    String filePath, {
+    bool download = false,
+  }) async {
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       return filePath;
     }
@@ -562,13 +620,16 @@ class ApplianceVaultDataset {
       final ext = fileName.contains('.')
           ? fileName.split('.').last.toLowerCase()
           : 'pdf';
-      final mimeType =
-          ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+      final mimeType = ext == 'pdf'
+          ? 'application/pdf'
+          : 'application/octet-stream';
       final storagePath =
           'appliances/${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
       // 1. Upload new warranty / AMC document binary
-      await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+      await _client.storage
+          .from(AppConstants.storageBucket)
+          .uploadBinary(
             storagePath,
             fileBytes,
             fileOptions: const FileOptions(upsert: true),
@@ -602,7 +663,8 @@ class ApplianceVaultDataset {
           ? previousDocument.subCategory
           : newWarranty.productCategory;
 
-      final docNum = newWarranty.policyNumber ??
+      final docNum =
+          newWarranty.policyNumber ??
           (newWarranty.invoiceNumber.isNotEmpty
               ? newWarranty.invoiceNumber
               : previousDocument.documentNumber);
@@ -632,31 +694,39 @@ class ApplianceVaultDataset {
       final newDocId = docRes['id'] as String;
 
       // 3. Insert appliance warranty metadata
-      final warrantyPayload = newWarranty
-          .copyWith(
-            documentId: newDocId,
-            previousDocumentId: previousDocument.id,
-            renewalCount: nextRenewalCount,
-          )
-          .toJson(forSupabaseTable: true)
-        ..remove('id');
+      final warrantyPayload =
+          newWarranty
+              .copyWith(
+                documentId: newDocId,
+                previousDocumentId: previousDocument.id,
+                renewalCount: nextRenewalCount,
+              )
+              .toJson(forSupabaseTable: true)
+            ..remove('id');
 
       try {
-        await _client.from('appliance_warranty_metadata').insert(warrantyPayload);
+        await _client
+            .from('appliance_warranty_metadata')
+            .insert(warrantyPayload);
       } catch (err) {
-        AppLogger.warning('APPLIANCE_DATASET', 'Warranty table insert fallback without items: $err');
-        final cleanMap = Map<String, dynamic>.from(warrantyPayload)..remove('items');
+        AppLogger.warning(
+          'APPLIANCE_DATASET',
+          'Warranty table insert fallback without items: $err',
+        );
+        final cleanMap = Map<String, dynamic>.from(warrantyPayload)
+          ..remove('items');
         await _client.from('appliance_warranty_metadata').insert(cleanMap);
       }
 
       // 4. Archive previous document
-      final prevExtra =
-          Map<String, dynamic>.from(previousDocument.extraAttributes);
+      final prevExtra = Map<String, dynamic>.from(
+        previousDocument.extraAttributes,
+      );
       prevExtra['archived_reason'] = 'renewed';
-      await _client.from('documents').update({
-        'status': 'archived',
-        'extra_attributes': prevExtra,
-      }).eq('id', previousDocument.id);
+      await _client
+          .from('documents')
+          .update({'status': 'archived', 'extra_attributes': prevExtra})
+          .eq('id', previousDocument.id);
 
       // 5. Activity log
       await _client.from('document_activity_logs').insert({

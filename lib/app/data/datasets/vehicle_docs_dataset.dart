@@ -58,7 +58,9 @@ class VehicleDocsDataset {
           .order('vehicle_number', ascending: true);
 
       final list = (response as List)
-          .map((json) => MasterVehicleModel.fromJson(json as Map<String, dynamic>))
+          .map(
+            (json) => MasterVehicleModel.fromJson(json as Map<String, dynamic>),
+          )
           .toList();
       return list;
     } catch (e, st) {
@@ -180,7 +182,14 @@ class VehicleDocsDataset {
       if (res != null && res['id'] != null) {
         _cachedVehicleDocsCategoryId = res['id'] as String;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'VEHICLE_DOCS_DATASET',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     return _cachedVehicleDocsCategoryId ?? '';
   }
 
@@ -195,32 +204,51 @@ class VehicleDocsDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) =>
-              (d.categoryId == 'cat-5' ||
-                  d.categoryId == 'cat-vehicle' ||
-                  d.categoryCode == 'vehicle_docs' ||
-                  d.vehicleMetadata != null) &&
-              (d.status != 'archived' && d.status != 'superseded'))
+          .where(
+            (d) =>
+                (d.categoryId == 'cat-5' ||
+                    d.categoryId == 'cat-vehicle' ||
+                    d.categoryCode == 'vehicle_docs' ||
+                    d.vehicleMetadata != null) &&
+                (d.status != 'archived' && d.status != 'superseded'),
+          )
           .toList();
 
-      if (vehicleNumber != null && vehicleNumber.isNotEmpty && vehicleNumber != 'All Vehicles') {
-        list = list.where((d) =>
-          d.vehicleMetadata?.vehicleNumber.toUpperCase() == vehicleNumber.toUpperCase()
-        ).toList();
+      if (vehicleNumber != null &&
+          vehicleNumber.isNotEmpty &&
+          vehicleNumber != 'All Vehicles') {
+        list = list
+            .where(
+              (d) =>
+                  d.vehicleMetadata?.vehicleNumber.toUpperCase() ==
+                  vehicleNumber.toUpperCase(),
+            )
+            .toList();
       }
-      if (docType != null && docType.isNotEmpty && docType != 'All Document Types' && docType != 'All Docs') {
-        list = list.where((d) =>
-          (d.vehicleMetadata?.docTypeName.toLowerCase() == docType.toLowerCase()) ||
-          (d.subCategory.toLowerCase() == docType.toLowerCase())
-        ).toList();
+      if (docType != null &&
+          docType.isNotEmpty &&
+          docType != 'All Document Types' &&
+          docType != 'All Docs') {
+        list = list
+            .where(
+              (d) =>
+                  (d.vehicleMetadata?.docTypeName.toLowerCase() ==
+                      docType.toLowerCase()) ||
+                  (d.subCategory.toLowerCase() == docType.toLowerCase()),
+            )
+            .toList();
       }
-      if (expiryFilter != null && expiryFilter.isNotEmpty && expiryFilter != 'All' && expiryFilter != 'All Statuses') {
+      if (expiryFilter != null &&
+          expiryFilter.isNotEmpty &&
+          expiryFilter != 'All' &&
+          expiryFilter != 'All Statuses') {
         final now = DateTime.now();
         list = list.where((d) {
           final expDate = d.vehicleMetadata?.expiryDate;
           if (expDate == null) return true;
           if (expiryFilter == 'Expired') return expDate.isBefore(now);
-          if (expiryFilter == 'Expiring in 30 Days' || expiryFilter == 'Expiring Soon') {
+          if (expiryFilter == 'Expiring in 30 Days' ||
+              expiryFilter == 'Expiring Soon') {
             final diff = expDate.difference(now).inDays;
             return diff >= 0 && diff <= 30;
           }
@@ -232,13 +260,20 @@ class VehicleDocsDataset {
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.toLowerCase().trim();
-        list = list.where((d) =>
-          d.title.toLowerCase().contains(q) ||
-          d.subCategory.toLowerCase().contains(q) ||
-          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
-          (d.vehicleMetadata?.vehicleNumber.toLowerCase().contains(q) ?? false) ||
-          (d.vehicleMetadata?.policyOrCertNumber?.toLowerCase().contains(q) ?? false)
-        ).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.title.toLowerCase().contains(q) ||
+                  d.subCategory.toLowerCase().contains(q) ||
+                  (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+                  (d.vehicleMetadata?.vehicleNumber.toLowerCase().contains(q) ??
+                      false) ||
+                  (d.vehicleMetadata?.policyOrCertNumber
+                          ?.toLowerCase()
+                          .contains(q) ??
+                      false),
+            )
+            .toList();
       }
 
       final vehicleSet = <String>{};
@@ -361,21 +396,25 @@ class VehicleDocsDataset {
           expiryFilter != 'All' &&
           expiryFilter != 'All Statuses') {
         final now = DateTime.now();
-        final todayStr = DateTime(now.year, now.month, now.day)
-            .toIso8601String()
-            .split('T')
-            .first;
-        final in30DaysStr = DateTime(now.year, now.month, now.day)
-            .add(const Duration(days: 30))
-            .toIso8601String()
-            .split('T')
-            .first;
+        final todayStr = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).toIso8601String().split('T').first;
+        final in30DaysStr = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).add(const Duration(days: 30)).toIso8601String().split('T').first;
 
-        var expQuery = _client.from('vehicle_document_metadata').select('document_id');
+        var expQuery = _client
+            .from('vehicle_document_metadata')
+            .select('document_id');
 
         if (expiryFilter == 'Expired') {
           expQuery = expQuery.lt('expiry_date', todayStr);
-        } else if (expiryFilter == 'Expiring in 30 Days' || expiryFilter == 'Expiring Soon') {
+        } else if (expiryFilter == 'Expiring in 30 Days' ||
+            expiryFilter == 'Expiring Soon') {
           expQuery = expQuery
               .gte('expiry_date', todayStr)
               .lte('expiry_date', in30DaysStr);
@@ -400,8 +439,10 @@ class VehicleDocsDataset {
       if (filteredIds != null) {
         if (filteredIds.isEmpty) {
           query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-          countQuery =
-              countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          countQuery = countQuery.eq(
+            'id',
+            '00000000-0000-0000-0000-000000000000',
+          );
         } else {
           query = query.inFilter('id', filteredIds);
           countQuery = countQuery.inFilter('id', filteredIds);
@@ -423,7 +464,14 @@ class VehicleDocsDataset {
               .map((r) => r['document_id'] as String?)
               .whereType<String>()
               .toList();
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'VEHICLE_DOCS_DATASET',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
 
         final searchFilter =
             'title.ilike.%$q%,document_number.ilike.%$q%,file_name.ilike.%$q%,sub_category.ilike.%$q%';
@@ -652,13 +700,16 @@ class VehicleDocsDataset {
       final ext = fileName.contains('.')
           ? fileName.split('.').last.toLowerCase()
           : 'pdf';
-      final mimeType =
-          ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+      final mimeType = ext == 'pdf'
+          ? 'application/pdf'
+          : 'application/octet-stream';
       final storagePath =
           'vehicles/${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
       // 1. Upload new certificate / policy binary
-      await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+      await _client.storage
+          .from(AppConstants.storageBucket)
+          .uploadBinary(
             storagePath,
             fileBytes,
             fileOptions: const FileOptions(upsert: true),
@@ -677,15 +728,16 @@ class VehicleDocsDataset {
         extraAttrs['insurance_type'] = newMetadata.insuranceType;
       }
       if (newMetadata.tpExpiryDate != null) {
-        extraAttrs['tp_expiry_date'] =
-            newMetadata.tpExpiryDate!.toIso8601String();
+        extraAttrs['tp_expiry_date'] = newMetadata.tpExpiryDate!
+            .toIso8601String();
       }
       if (newMetadata.odExpiryDate != null) {
-        extraAttrs['od_expiry_date'] =
-            newMetadata.odExpiryDate!.toIso8601String();
+        extraAttrs['od_expiry_date'] = newMetadata.odExpiryDate!
+            .toIso8601String();
       }
 
-      final resolvedCategoryId = (previousDocument.categoryId != null &&
+      final resolvedCategoryId =
+          (previousDocument.categoryId != null &&
               previousDocument.categoryId!.isNotEmpty)
           ? previousDocument.categoryId!
           : await getVehicleDocsCategoryId();
@@ -693,8 +745,8 @@ class VehicleDocsDataset {
       final resolvedSubCategory = previousDocument.subCategory.isNotEmpty
           ? previousDocument.subCategory
           : (newMetadata.docTypeName.isNotEmpty
-              ? newMetadata.docTypeName
-              : 'Insurance Policy');
+                ? newMetadata.docTypeName
+                : 'Insurance Policy');
 
       final newDocPayload = {
         'title': newTitle,
@@ -722,29 +774,28 @@ class VehicleDocsDataset {
       final newDocId = docRes['id'] as String;
 
       // 3. Insert new vehicle document metadata with lineage reference
-      final metaPayload = newMetadata
-          .copyWith(
-            documentId: newDocId,
-            previousDocumentId: previousDocument.id,
-            renewalCount: nextRenewalCount,
-          )
-          .toJson(forSupabaseTable: true)
-        ..remove('id');
+      final metaPayload =
+          newMetadata
+              .copyWith(
+                documentId: newDocId,
+                previousDocumentId: previousDocument.id,
+                renewalCount: nextRenewalCount,
+              )
+              .toJson(forSupabaseTable: true)
+            ..remove('id');
 
       await _client.from('vehicle_document_metadata').insert(metaPayload);
 
       // 4. ONLY AFTER new document & metadata succeed, mark previous document as archived
-      final prevExtra =
-          Map<String, dynamic>.from(previousDocument.extraAttributes);
+      final prevExtra = Map<String, dynamic>.from(
+        previousDocument.extraAttributes,
+      );
       prevExtra['archived_reason'] = 'renewed';
       prevExtra['archived_at'] = DateTime.now().toIso8601String();
       prevExtra['superseded_by'] = newDocId;
       await _client
           .from('documents')
-          .update({
-            'status': 'archived',
-            'extra_attributes': prevExtra,
-          })
+          .update({'status': 'archived', 'extra_attributes': prevExtra})
           .eq('id', previousDocument.id);
 
       return DocumentModel(
@@ -790,7 +841,10 @@ class VehicleDocsDataset {
     VehicleDocumentMetadataModel meta,
   ) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('VEHICLE_DOCS_DATASET', '[DEMO] Simulated saveVehicleDocumentMetadata');
+      AppLogger.info(
+        'VEHICLE_DOCS_DATASET',
+        '[DEMO] Simulated saveVehicleDocumentMetadata',
+      );
       return;
     }
     AppLogger.info(
@@ -816,7 +870,10 @@ class VehicleDocsDataset {
     VehicleDocumentMetadataModel meta,
   ) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('VEHICLE_DOCS_DATASET', '[DEMO] Simulated updateVehicleDocumentMetadata');
+      AppLogger.info(
+        'VEHICLE_DOCS_DATASET',
+        '[DEMO] Simulated updateVehicleDocumentMetadata',
+      );
       return;
     }
     AppLogger.info(
@@ -913,7 +970,10 @@ class VehicleDocsDataset {
   /// Soft deletes a vehicle document by setting deleted_at timestamp.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('VEHICLE_DOCS_DATASET', 'Demo Mode: Soft deleted vehicle doc $documentId');
+      AppLogger.info(
+        'VEHICLE_DOCS_DATASET',
+        'Demo Mode: Soft deleted vehicle doc $documentId',
+      );
       return;
     }
     AppLogger.info(
@@ -925,16 +985,20 @@ class VehicleDocsDataset {
       try {
         await _client.rpc(
           'soft_delete_document',
-          params: {
-            'p_doc_id': documentId,
-          },
+          params: {'p_doc_id': documentId},
         );
       } catch (rpcErr) {
-        AppLogger.warning('VEHICLE_DOCS_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
-        await _client.from('documents').update({
-          'deleted_at': DateTime.now().toIso8601String(),
-          'deleted_by': userId,
-        }).eq('id', documentId);
+        AppLogger.warning(
+          'VEHICLE_DOCS_DATASET',
+          'RPC soft_delete_document fallback: $rpcErr',
+        );
+        await _client
+            .from('documents')
+            .update({
+              'deleted_at': DateTime.now().toIso8601String(),
+              'deleted_by': userId,
+            })
+            .eq('id', documentId);
         await _client.from('document_activity_logs').insert({
           'document_id': documentId,
           'user_id': userId,
@@ -1054,8 +1118,10 @@ class VehicleDocsDataset {
           .order('odometer_km', ascending: false);
 
       final list = (response as List)
-          .map((json) =>
-              VehicleServiceModel.fromJson(json as Map<String, dynamic>))
+          .map(
+            (json) =>
+                VehicleServiceModel.fromJson(json as Map<String, dynamic>),
+          )
           .toList();
       return list;
     } catch (e, st) {

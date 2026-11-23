@@ -32,10 +32,48 @@ class DashboardDataset {
 
   SupabaseClient get _client => _provider.client;
 
+  /// Resolves the master vehicle required by the vehicle detail screen.
+  Future<MasterVehicleModel?> getVehicleByNumber(String vehicleNumber) async {
+    if (DemoDataService.isDemoMode) {
+      for (final vehicle in DemoDataService.getVehicles()) {
+        if (vehicle.vehicleNumber.toUpperCase() ==
+            vehicleNumber.toUpperCase()) {
+          return vehicle;
+        }
+      }
+      return null;
+    }
+
+    try {
+      final response = await _client
+          .from('master_vehicles')
+          .select()
+          .eq('vehicle_number', vehicleNumber.toUpperCase())
+          .eq('is_active', true)
+          .maybeSingle();
+
+      if (response == null) {
+        return null;
+      }
+      return MasterVehicleModel.fromJson(response);
+    } catch (e, st) {
+      AppLogger.error(
+        'DASHBOARD_DATASET',
+        'Error resolving vehicle $vehicleNumber: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
+  }
+
   /// Fetches complete dashboard data bundle via single database RPC `get_dashboard_bundle` in ~20ms.
   Future<DashboardBundleModel> getDashboardBundle() async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Returning static dashboard bundle.');
+      AppLogger.info(
+        'DASHBOARD_DATASET',
+        'Demo Mode: Returning static dashboard bundle.',
+      );
       return DemoDataService.getDashboardBundle();
     }
     AppLogger.debug(
@@ -58,7 +96,10 @@ class DashboardDataset {
             .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
             .toList();
 
-        AppLogger.info('DASHBOARD_DATASET', 'Loaded complete dashboard bundle in single RPC trip.');
+        AppLogger.info(
+          'DASHBOARD_DATASET',
+          'Loaded complete dashboard bundle in single RPC trip.',
+        );
         return DashboardBundleModel(
           metrics: metrics,
           recentDocuments: recent,
@@ -164,7 +205,10 @@ class DashboardDataset {
           .take(limit)
           .toList();
     }
-    AppLogger.debug('DASHBOARD_DATASET', 'Fetching recent documents limit: $limit');
+    AppLogger.debug(
+      'DASHBOARD_DATASET',
+      'Fetching recent documents limit: $limit',
+    );
     try {
       final response = await _client
           .from('documents')
@@ -210,15 +254,21 @@ class DashboardDataset {
   Future<List<DocumentModel>> getExpiringWarranties({int limit = 6}) async {
     if (DemoDataService.isDemoMode) {
       return DemoDataService.getAllDocuments()
-          .where((d) =>
-              !d.isDoNotRemind &&
-              (d.categoryCode == 'appliance_warranty' ||
-                  d.applianceWarranty != null ||
-                  (d.vehicleMetadata != null && d.vehicleMetadata!.isExpired)))
+          .where(
+            (d) =>
+                !d.isDoNotRemind &&
+                (d.categoryCode == 'appliance_warranty' ||
+                    d.applianceWarranty != null ||
+                    (d.vehicleMetadata != null &&
+                        d.vehicleMetadata!.isExpired)),
+          )
           .take(limit)
           .toList();
     }
-    AppLogger.debug('DASHBOARD_DATASET', 'Fetching expiring & overdue documents...');
+    AppLogger.debug(
+      'DASHBOARD_DATASET',
+      'Fetching expiring & overdue documents...',
+    );
     try {
       final in30Days = DateTime.now()
           .add(const Duration(days: 30))
@@ -302,7 +352,10 @@ class DashboardDataset {
       DemoDataService.dismissReminderMock(docId);
       return;
     }
-    AppLogger.info('DASHBOARD_DATASET', 'Dismissing reminder for doc ID: $docId');
+    AppLogger.info(
+      'DASHBOARD_DATASET',
+      'Dismissing reminder for doc ID: $docId',
+    );
     try {
       final res = await _client
           .from('documents')
@@ -397,8 +450,12 @@ class DashboardDataset {
   }
 
   /// Obtains signed preview URL from Supabase storage.
-  Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+  Future<String> getSignedPreviewUrl(
+    String storagePath, {
+    bool download = false,
+  }) async {
+    if (storagePath.startsWith('http://') ||
+        storagePath.startsWith('https://')) {
       return storagePath;
     }
     if (storagePath.startsWith('gdrive://')) {
@@ -426,7 +483,10 @@ class DashboardDataset {
   /// Toggles favorite status for a document.
   Future<bool> toggleFavorite(String documentId, bool currentlyFavorite) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Toggled favorite in-memory');
+      AppLogger.info(
+        'DASHBOARD_DATASET',
+        'Demo Mode: Toggled favorite in-memory',
+      );
       return !currentlyFavorite;
     }
     final user = _provider.currentUser;
@@ -464,25 +524,35 @@ class DashboardDataset {
   /// Soft deletes document using RPC `soft_delete_document` with direct fallback.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('DASHBOARD_DATASET', 'Demo Mode: Soft delete simulated in-memory');
+      AppLogger.info(
+        'DASHBOARD_DATASET',
+        'Demo Mode: Soft delete simulated in-memory',
+      );
       return;
     }
     final user = _provider.currentUser;
-    AppLogger.debug('DASHBOARD_DATASET', 'softDeleteDocument for ID: $documentId');
+    AppLogger.debug(
+      'DASHBOARD_DATASET',
+      'softDeleteDocument for ID: $documentId',
+    );
     try {
       try {
-        await _client.rpc('soft_delete_document', params: {
-          'p_doc_id': documentId,
-        });
+        await _client.rpc(
+          'soft_delete_document',
+          params: {'p_doc_id': documentId},
+        );
       } catch (rpcErr) {
         AppLogger.warning(
           'DASHBOARD_DATASET',
           'RPC soft_delete_document fallback to direct update: $rpcErr',
         );
-        await _client.from('documents').update({
-          'deleted_at': DateTime.now().toIso8601String(),
-          'deleted_by': user?.id,
-        }).eq('id', documentId);
+        await _client
+            .from('documents')
+            .update({
+              'deleted_at': DateTime.now().toIso8601String(),
+              'deleted_by': user?.id,
+            })
+            .eq('id', documentId);
 
         await _client.from('document_activity_logs').insert({
           'document_id': documentId,

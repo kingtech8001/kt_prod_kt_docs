@@ -65,7 +65,8 @@ class FoldersController extends GetxController {
     if (query.isEmpty) return folders;
     return folders.where((f) {
       return f.name.toLowerCase().contains(query) ||
-          (f.description != null && f.description!.toLowerCase().contains(query));
+          (f.description != null &&
+              f.description!.toLowerCase().contains(query));
     }).toList();
   }
 
@@ -121,7 +122,12 @@ class FoldersController extends GetxController {
       }
       AppLogger.info('FOLDERS_CTRL', 'Loaded ${list.length} folders.');
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Error loading folders: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Error loading folders: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error Loading Folders', e.toString());
     } finally {
       isLoading.value = false;
@@ -159,9 +165,17 @@ class FoldersController extends GetxController {
           selectedFolder.value = folders[index];
         }
       }
-      AppLogger.info('FOLDERS_CTRL', 'Loaded ${docs.length} documents in folder $folderId.');
+      AppLogger.info(
+        'FOLDERS_CTRL',
+        'Loaded ${docs.length} documents in folder $folderId.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Error loading folder documents: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Error loading folder documents: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error Loading Documents', e.toString());
     } finally {
       isFolderDocsLoading.value = false;
@@ -178,12 +192,17 @@ class FoldersController extends GetxController {
 
     AppDialog.show(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
         title: const Row(
           children: [
             Icon(Icons.create_new_folder_outlined, color: AppColors.primary),
             SizedBox(width: AppConstants.paddingSmall),
-            Text('Create New Folder', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              'Create New Folder',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         content: ConstrainedBox(
@@ -195,23 +214,38 @@ class FoldersController extends GetxController {
               children: [
                 // In-context error display (Rule 3.B)
                 Obx(() {
-                  if (dialogErrorMessage.value.isEmpty) return const SizedBox.shrink();
+                  if (dialogErrorMessage.value.isEmpty)
+                    return const SizedBox.shrink();
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(AppConstants.paddingSmall + 2),
+                    padding: const EdgeInsets.all(
+                      AppConstants.paddingSmall + 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall,
+                      ),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                        const Icon(
+                          Icons.error_outline,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             dialogErrorMessage.value,
-                            style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -219,85 +253,108 @@ class FoldersController extends GetxController {
                   );
                 }),
 
-                const Text('Folder Name *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Folder Name *',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: folderNameController,
                   autofocus: true,
                   decoration: const InputDecoration(
-                    hintText: 'e.g. Legal Contracts, Branch Invoices, Tax Records',
+                    hintText:
+                        'e.g. Legal Contracts, Branch Invoices, Tax Records',
                   ),
                 ),
                 const SizedBox(height: AppConstants.paddingMedium),
 
-                const Text('Description (Optional)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Description (Optional)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: folderDescController,
                   maxLines: 2,
                   decoration: const InputDecoration(
-                    hintText: 'Brief description of documents stored in this folder',
+                    hintText:
+                        'Brief description of documents stored in this folder',
                   ),
                 ),
                 const SizedBox(height: AppConstants.paddingMedium),
 
-                const Text('Folder Color Tag', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Folder Color Tag',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
-                Obx(() => Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: folderColorPresets.map((hex) {
-                        final isSelected = selectedColor.value == hex;
-                        final colorVal = Color(int.parse(hex.replaceFirst('#', '0xFF')));
-                        return InkWell(
-                          onTap: () => selectedColor.value = hex,
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: colorVal,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected ? Colors.white : Colors.transparent,
-                                width: 2,
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: colorVal.withValues(alpha: 0.6),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
+                Obx(
+                  () => Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: folderColorPresets.map((hex) {
+                      final isSelected = selectedColor.value == hex;
+                      final colorVal = Color(
+                        int.parse(hex.replaceFirst('#', '0xFF')),
+                      );
+                      return InkWell(
+                        onTap: () => selectedColor.value = hex,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: colorVal,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              width: 2,
                             ),
-                            child: isSelected
-                                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: colorVal.withValues(alpha: 0.6),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
                                 : null,
                           ),
-                        );
-                      }).toList(),
-                    )),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 16,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          Obx(
+            () => ElevatedButton(
+              onPressed: isDialogSubmitting.value ? null : _submitCreateFolder,
+              child: isDialogSubmitting.value
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Create Folder'),
+            ),
           ),
-          Obx(() => ElevatedButton(
-                onPressed: isDialogSubmitting.value ? null : _submitCreateFolder,
-                child: isDialogSubmitting.value
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Create Folder'),
-              )),
         ],
       ),
     );
@@ -322,7 +379,10 @@ class FoldersController extends GetxController {
       );
 
       Get.back();
-      AppSnackbar.showSuccess('Folder Created', 'Folder "$name" created successfully.');
+      AppSnackbar.showSuccess(
+        'Folder Created',
+        'Folder "$name" created successfully.',
+      );
       folders.insert(0, newFolder);
     } catch (e) {
       dialogErrorMessage.value = e.toString();
@@ -341,12 +401,17 @@ class FoldersController extends GetxController {
 
     AppDialog.show(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
         title: const Row(
           children: [
             Icon(Icons.edit_outlined, color: AppColors.primary),
             SizedBox(width: AppConstants.paddingSmall),
-            Text('Edit Folder', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              'Edit Folder',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         content: ConstrainedBox(
@@ -357,23 +422,38 @@ class FoldersController extends GetxController {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Obx(() {
-                  if (dialogErrorMessage.value.isEmpty) return const SizedBox.shrink();
+                  if (dialogErrorMessage.value.isEmpty)
+                    return const SizedBox.shrink();
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(AppConstants.paddingSmall + 2),
+                    padding: const EdgeInsets.all(
+                      AppConstants.paddingSmall + 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall,
+                      ),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                        const Icon(
+                          Icons.error_outline,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             dialogErrorMessage.value,
-                            style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -381,7 +461,10 @@ class FoldersController extends GetxController {
                   );
                 }),
 
-                const Text('Folder Name *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Folder Name *',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: folderNameController,
@@ -389,63 +472,85 @@ class FoldersController extends GetxController {
                 ),
                 const SizedBox(height: AppConstants.paddingMedium),
 
-                const Text('Description', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Description',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: folderDescController,
                   maxLines: 2,
-                  decoration: const InputDecoration(hintText: 'Folder description'),
+                  decoration: const InputDecoration(
+                    hintText: 'Folder description',
+                  ),
                 ),
                 const SizedBox(height: AppConstants.paddingMedium),
 
-                const Text('Folder Color Tag', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Folder Color Tag',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
-                Obx(() => Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: folderColorPresets.map((hex) {
-                        final isSelected = selectedColor.value == hex;
-                        final colorVal = Color(int.parse(hex.replaceFirst('#', '0xFF')));
-                        return InkWell(
-                          onTap: () => selectedColor.value = hex,
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: colorVal,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected ? Colors.white : Colors.transparent,
-                                width: 2,
-                              ),
+                Obx(
+                  () => Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: folderColorPresets.map((hex) {
+                      final isSelected = selectedColor.value == hex;
+                      final colorVal = Color(
+                        int.parse(hex.replaceFirst('#', '0xFF')),
+                      );
+                      return InkWell(
+                        onTap: () => selectedColor.value = hex,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: colorVal,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              width: 2,
                             ),
-                            child: isSelected
-                                ? const Icon(Icons.check, size: 16, color: Colors.white)
-                                : null,
                           ),
-                        );
-                      }).toList(),
-                    )),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 16,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          Obx(
+            () => ElevatedButton(
+              onPressed: isDialogSubmitting.value
+                  ? null
+                  : () => _submitEditFolder(folder),
+              child: isDialogSubmitting.value
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Save Changes'),
+            ),
           ),
-          Obx(() => ElevatedButton(
-                onPressed: isDialogSubmitting.value ? null : () => _submitEditFolder(folder),
-                child: isDialogSubmitting.value
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Save Changes'),
-              )),
         ],
       ),
     );
@@ -475,10 +580,14 @@ class FoldersController extends GetxController {
 
       final index = folders.indexWhere((f) => f.id == folder.id);
       if (index != -1) {
-        folders[index] = updated.copyWith(documentCount: folders[index].documentCount);
+        folders[index] = updated.copyWith(
+          documentCount: folders[index].documentCount,
+        );
       }
       if (selectedFolder.value?.id == folder.id) {
-        selectedFolder.value = updated.copyWith(documentCount: folderDocuments.length);
+        selectedFolder.value = updated.copyWith(
+          documentCount: folderDocuments.length,
+        );
       }
     } catch (e) {
       dialogErrorMessage.value = e.toString();
@@ -491,7 +600,9 @@ class FoldersController extends GetxController {
   void confirmDeleteFolder(FolderModel folder) {
     AppDialog.show(
       Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
         backgroundColor: AppColors.surface,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
@@ -507,9 +618,15 @@ class FoldersController extends GetxController {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: AppColors.errorLight,
-                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusSmall,
+                        ),
                       ),
-                      child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.error,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -527,12 +644,20 @@ class FoldersController extends GetxController {
                 const SizedBox(height: 14),
                 Text(
                   'Are you sure you want to delete folder "${folder.name}"?',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Documents inside this folder will NOT be deleted. They will simply be unassigned from this folder and remain safely accessible in All Documents.',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: AppConstants.paddingLarge),
                 Row(
@@ -544,12 +669,17 @@ class FoldersController extends GetxController {
                     ),
                     const SizedBox(width: AppConstants.paddingSmall),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                      ),
                       onPressed: () async {
                         Get.back();
                         await _executeDeleteFolder(folder);
                       },
-                      child: const Text('Delete Folder', style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        'Delete Folder',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -570,9 +700,17 @@ class FoldersController extends GetxController {
         clearSelectedFolder();
       }
 
-      AppSnackbar.showWarning('Folder Deleted', 'Folder "${folder.name}" was removed.');
+      AppSnackbar.showWarning(
+        'Folder Deleted',
+        'Folder "${folder.name}" was removed.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Error deleting folder: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Error deleting folder: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error', e.toString());
     }
   }
@@ -587,7 +725,9 @@ class FoldersController extends GetxController {
 
     AppDialog.show(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
         title: Row(
           children: [
             const Icon(Icons.note_add_outlined, color: AppColors.primary),
@@ -595,7 +735,10 @@ class FoldersController extends GetxController {
             Expanded(
               child: Text(
                 'Add Files to "${activeFolder.name}"',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -610,8 +753,10 @@ class FoldersController extends GetxController {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: 4,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
-                  itemBuilder: (context, index) => const DocumentListTileSkeleton(),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
+                  itemBuilder: (context, index) =>
+                      const DocumentListTileSkeleton(),
                 ),
               );
             }
@@ -623,7 +768,10 @@ class FoldersController extends GetxController {
                   child: Text(
                     'No available documents to add.\nUpload documents first or add existing files.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               );
@@ -647,13 +795,19 @@ class FoldersController extends GetxController {
                     },
                     title: Text(
                       doc.title,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: Text(
                       '${doc.fileName} • ${doc.categoryName ?? "General"}',
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     dense: true,
                   );
@@ -663,41 +817,61 @@ class FoldersController extends GetxController {
           }),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          Obx(
+            () => ElevatedButton(
+              onPressed: selectedDocIdsToAdd.isEmpty
+                  ? null
+                  : () async {
+                      final ids = selectedDocIdsToAdd.toList();
+                      Get.back();
+                      await _submitAddDocumentsToFolder(activeFolder.id, ids);
+                    },
+              child: Text('Add (${selectedDocIdsToAdd.length}) Selected'),
+            ),
           ),
-          Obx(() => ElevatedButton(
-                onPressed: selectedDocIdsToAdd.isEmpty
-                    ? null
-                    : () async {
-                        final ids = selectedDocIdsToAdd.toList();
-                        Get.back();
-                        await _submitAddDocumentsToFolder(activeFolder.id, ids);
-                      },
-                child: Text('Add (${selectedDocIdsToAdd.length}) Selected'),
-              )),
         ],
       ),
     );
 
     try {
-      final available = await _dataset.getAvailableDocumentsForFolder(activeFolder.id);
+      final available = await _dataset.getAvailableDocumentsForFolder(
+        activeFolder.id,
+      );
       availableDocuments.assignAll(available);
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Error loading available docs: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Error loading available docs: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoadingAvailableDocs.value = false;
     }
   }
 
-  Future<void> _submitAddDocumentsToFolder(String folderId, List<String> docIds) async {
+  Future<void> _submitAddDocumentsToFolder(
+    String folderId,
+    List<String> docIds,
+  ) async {
     try {
-      await _dataset.addDocumentsToFolder(folderId: folderId, documentIds: docIds);
-      AppSnackbar.showSuccess('Documents Added', '${docIds.length} files added to folder.');
+      await _dataset.addDocumentsToFolder(
+        folderId: folderId,
+        documentIds: docIds,
+      );
+      AppSnackbar.showSuccess(
+        'Documents Added',
+        '${docIds.length} files added to folder.',
+      );
       loadFolderDocuments(folderId);
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Error adding documents: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Error adding documents: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error', e.toString());
     }
   }
@@ -712,13 +886,20 @@ class FoldersController extends GetxController {
 
       final index = folders.indexWhere((f) => f.id == activeFolder.id);
       if (index != -1) {
-        folders[index] = folders[index].copyWith(documentCount: folderDocuments.length);
+        folders[index] = folders[index].copyWith(
+          documentCount: folderDocuments.length,
+        );
         selectedFolder.value = folders[index];
       }
 
       AppSnackbar.showInfo('Removed', '${doc.title} removed from folder.');
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Error removing document: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Error removing document: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error', e.toString());
     }
   }
@@ -727,14 +908,15 @@ class FoldersController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     AppLogger.debug('FOLDERS_CTRL', 'Previewing document: ${doc.title}');
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -754,7 +936,12 @@ class FoldersController extends GetxController {
         );
       }
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Preview failed: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Preview failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Preview Failed', e.toString());
     }
   }
@@ -766,7 +953,8 @@ class FoldersController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -776,22 +964,42 @@ class FoldersController extends GetxController {
           return;
         }
       }
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
+      AppSnackbar.showSuccess(
+        'Download Started',
+        '${doc.fileName} is downloading.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Download failed: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Download failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       try {
-        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(
+          doc.filePath,
+          download: true,
+        );
         final uri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'FOLDERS_CONTROLLER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         AppSnackbar.showError('Download Failed', e.toString());
       }
     }
@@ -803,10 +1011,17 @@ class FoldersController extends GetxController {
       final isFav = await _dataset.toggleFavorite(doc.id, doc.isFavorite);
       final index = folderDocuments.indexWhere((d) => d.id == doc.id);
       if (index != -1) {
-        folderDocuments[index] = folderDocuments[index].copyWith(isFavorite: isFav);
+        folderDocuments[index] = folderDocuments[index].copyWith(
+          isFavorite: isFav,
+        );
       }
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Favorite toggle failed: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Favorite toggle failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error', e.toString());
     }
   }
@@ -821,14 +1036,24 @@ class FoldersController extends GetxController {
       if (activeFolder != null) {
         final index = folders.indexWhere((f) => f.id == activeFolder.id);
         if (index != -1) {
-          folders[index] = folders[index].copyWith(documentCount: folderDocuments.length);
+          folders[index] = folders[index].copyWith(
+            documentCount: folderDocuments.length,
+          );
           selectedFolder.value = folders[index];
         }
       }
 
-      AppSnackbar.showWarning('Moved to Trash', '${doc.title} moved to trash bin.');
+      AppSnackbar.showWarning(
+        'Moved to Trash',
+        '${doc.title} moved to trash bin.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDERS_CTRL', 'Move to trash failed: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDERS_CTRL',
+        'Move to trash failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error', e.toString());
     }
   }

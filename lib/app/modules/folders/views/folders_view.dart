@@ -1,3 +1,4 @@
+import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/folder_model.dart';
@@ -74,7 +75,8 @@ class FoldersView extends GetView<FoldersController> {
           // 1. Metrics Strip (Responsive 2 cols or 1 col on mobile)
           LayoutBuilder(
             builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < AppConstants.tabletBreakpoint;
+              final isMobile =
+                  constraints.maxWidth < AppConstants.tabletBreakpoint;
 
               final card1 = MetricCard(
                 title: 'TOTAL FOLDERS',
@@ -116,13 +118,16 @@ class FoldersView extends GetView<FoldersController> {
           // 2. Toolbar: Search Filter & Actions (Wrap ensures zero overflow on mobile)
           LayoutBuilder(
             builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < AppConstants.tabletBreakpoint;
+              final isMobile =
+                  constraints.maxWidth < AppConstants.tabletBreakpoint;
 
               return Container(
                 padding: const EdgeInsets.all(AppConstants.paddingMedium),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.radiusMedium,
+                  ),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Wrap(
@@ -135,7 +140,8 @@ class FoldersView extends GetView<FoldersController> {
                       width: isMobile ? constraints.maxWidth : 320,
                       child: TextField(
                         controller: controller.searchController,
-                        onChanged: (val) => controller.folderSearchQuery.value = val,
+                        onChanged: (val) =>
+                            controller.folderSearchQuery.value = val,
                         decoration: InputDecoration(
                           hintText: 'Search folders by name...',
                           prefixIcon: const Icon(Icons.search, size: 18),
@@ -182,13 +188,19 @@ class FoldersView extends GetView<FoldersController> {
                 padding: const EdgeInsets.all(AppConstants.paddingHero * 1.5),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.radiusMedium,
+                  ),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.folder_open_outlined, size: 56, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.folder_open_outlined,
+                      size: 56,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       controller.folderSearchQuery.value.isNotEmpty
@@ -203,13 +215,19 @@ class FoldersView extends GetView<FoldersController> {
                     const SizedBox(height: 6),
                     const Text(
                       'Group documents into structured collections like Legal, Invoices, HR, or Premises.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppConstants.paddingLarge),
                     ElevatedButton.icon(
                       onPressed: controller.openCreateFolderDialog,
-                      icon: const Icon(Icons.create_new_folder_outlined, size: 16),
+                      icon: const Icon(
+                        Icons.create_new_folder_outlined,
+                        size: 16,
+                      ),
                       label: const Text('Create First Folder'),
                     ),
                   ],
@@ -257,7 +275,13 @@ class FoldersView extends GetView<FoldersController> {
     Color folderColor;
     try {
       folderColor = Color(int.parse(folder.color.replaceFirst('#', '0xFF')));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'FOLDERS_VIEW',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       folderColor = AppColors.primary;
     }
 
@@ -285,7 +309,9 @@ class FoldersView extends GetView<FoldersController> {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: folderColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall + 2),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall + 2,
+                      ),
                     ),
                     child: Icon(Icons.folder, color: folderColor, size: 24),
                   ),
@@ -306,7 +332,10 @@ class FoldersView extends GetView<FoldersController> {
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.background,
                             borderRadius: BorderRadius.circular(4),
@@ -314,14 +343,22 @@ class FoldersView extends GetView<FoldersController> {
                           ),
                           child: Text(
                             '${folder.documentCount} ${folder.documentCount == 1 ? "document" : "documents"}',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.more_vert,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
                     padding: EdgeInsets.zero,
                     onSelected: (action) {
                       if (action == 'open') {
@@ -337,7 +374,11 @@ class FoldersView extends GetView<FoldersController> {
                         value: 'open',
                         child: Row(
                           children: [
-                            Icon(Icons.folder_open, size: 16, color: AppColors.primary),
+                            Icon(
+                              Icons.folder_open,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
                             SizedBox(width: 8),
                             Text('Open Folder', style: TextStyle(fontSize: 13)),
                           ],
@@ -347,9 +388,16 @@ class FoldersView extends GetView<FoldersController> {
                         value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                            Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
                             SizedBox(width: 8),
-                            Text('Edit / Color', style: TextStyle(fontSize: 13)),
+                            Text(
+                              'Edit / Color',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ],
                         ),
                       ),
@@ -357,9 +405,19 @@ class FoldersView extends GetView<FoldersController> {
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                            Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: AppColors.error,
+                            ),
                             SizedBox(width: 8),
-                            Text('Delete Folder', style: TextStyle(fontSize: 13, color: AppColors.error)),
+                            Text(
+                              'Delete Folder',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.error,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -372,14 +430,20 @@ class FoldersView extends GetView<FoldersController> {
                 children: [
                   Text(
                     'Created: ${AppFormatters.formatDate(folder.createdAt)}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                   TextButton.icon(
                     onPressed: () => controller.selectFolder(folder),
                     icon: const Icon(Icons.arrow_forward, size: 13),
                     label: const Text('Open', style: TextStyle(fontSize: 12)),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       visualDensity: VisualDensity.compact,
                     ),
                   ),
@@ -397,7 +461,13 @@ class FoldersView extends GetView<FoldersController> {
     Color folderColor;
     try {
       folderColor = Color(int.parse(folder.color.replaceFirst('#', '0xFF')));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'FOLDERS_VIEW',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       folderColor = AppColors.primary;
     }
 
@@ -416,7 +486,11 @@ class FoldersView extends GetView<FoldersController> {
                   padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.folder_outlined, size: 16, color: AppColors.primary),
+                      Icon(
+                        Icons.folder_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         'All Folders',
@@ -430,7 +504,11 @@ class FoldersView extends GetView<FoldersController> {
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
+              const Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
@@ -459,7 +537,8 @@ class FoldersView extends GetView<FoldersController> {
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isMobile = constraints.maxWidth < AppConstants.tabletBreakpoint;
+                final isMobile =
+                    constraints.maxWidth < AppConstants.tabletBreakpoint;
 
                 final folderIdentity = Row(
                   children: [
@@ -467,7 +546,9 @@ class FoldersView extends GetView<FoldersController> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: folderColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall + 2),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusSmall + 2,
+                        ),
                       ),
                       child: Icon(Icons.folder, color: folderColor, size: 30),
                     ),
@@ -492,28 +573,37 @@ class FoldersView extends GetView<FoldersController> {
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.background,
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(color: AppColors.border),
                                 ),
-                                child: Obx(() => Text(
-                                      '${controller.folderDocuments.length} files',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    )),
+                                child: Obx(
+                                  () => Text(
+                                    '${controller.folderDocuments.length} files',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          if (folder.description != null && folder.description!.isNotEmpty) ...[
+                          if (folder.description != null &&
+                              folder.description!.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
                               folder.description!,
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -539,12 +629,20 @@ class FoldersView extends GetView<FoldersController> {
                       label: const Text('Upload Here'),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
                       tooltip: 'Edit Folder',
                       onPressed: () => controller.openEditFolderDialog(folder),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: AppColors.error,
+                      ),
                       tooltip: 'Delete Folder',
                       onPressed: () => controller.confirmDeleteFolder(folder),
                     ),
@@ -627,13 +725,19 @@ class FoldersView extends GetView<FoldersController> {
                 padding: const EdgeInsets.all(AppConstants.paddingHero * 1.5),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.radiusMedium,
+                  ),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.inventory_2_outlined, size: 52, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      size: 52,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       controller.folderDocSearchQuery.value.isNotEmpty
@@ -648,7 +752,10 @@ class FoldersView extends GetView<FoldersController> {
                     const SizedBox(height: 6),
                     const Text(
                       'Assign existing files from your vault or upload new documents directly into this folder.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppConstants.paddingLarge),
@@ -663,7 +770,10 @@ class FoldersView extends GetView<FoldersController> {
                         ),
                         OutlinedButton.icon(
                           onPressed: controller.navigateToUpload,
-                          icon: const Icon(Icons.cloud_upload_outlined, size: 16),
+                          icon: const Icon(
+                            Icons.cloud_upload_outlined,
+                            size: 16,
+                          ),
                           label: const Text('Upload New File'),
                         ),
                       ],
@@ -701,7 +811,8 @@ class FoldersView extends GetView<FoldersController> {
                           document: doc,
                           onPreview: () => controller.previewDocument(doc),
                           onDownload: () => controller.downloadDocument(doc),
-                          onToggleFavorite: () => controller.toggleFavorite(doc),
+                          onToggleFavorite: () =>
+                              controller.toggleFavorite(doc),
                           onDelete: () => controller.confirmMoveToTrash(doc),
                         ),
                         // Quick "Remove from folder" action chip
@@ -709,12 +820,18 @@ class FoldersView extends GetView<FoldersController> {
                           top: 8,
                           left: 8,
                           child: InkWell(
-                            onTap: () => controller.removeDocumentFromFolder(doc),
+                            onTap: () =>
+                                controller.removeDocumentFromFolder(doc),
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppColors.surface.withValues(alpha: 0.92),
+                                color: AppColors.surface.withValues(
+                                  alpha: 0.92,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: AppColors.border),
                                 boxShadow: [
@@ -727,11 +844,19 @@ class FoldersView extends GetView<FoldersController> {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.folder_off_outlined, size: 12, color: AppColors.textSecondary),
+                                  Icon(
+                                    Icons.folder_off_outlined,
+                                    size: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
                                   SizedBox(width: 4),
                                   Text(
                                     'Unlink',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
                                 ],
                               ),

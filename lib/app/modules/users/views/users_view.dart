@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/core/values/app_strings.dart';
 import 'package:kt_prod_kt_docs/app/data/models/profile_model.dart';
 import 'package:kt_prod_kt_docs/app/modules/users/controllers/users_controller.dart';
 import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
@@ -31,7 +32,7 @@ class UsersView extends GetView<UsersController> {
       ],
       body: Obx(() {
         // Strict Rule: Shimmer loader mirroring layout geometry during loading. Zero bare spinners.
-        if (controller.isLoading.value) {
+        if (controller.isLoading.value && controller.allUsers.isEmpty) {
           return const StaffSkeletonView();
         }
 
@@ -135,8 +136,9 @@ class UsersView extends GetView<UsersController> {
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.radiusMedium,
+                  ),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: LayoutBuilder(
@@ -169,33 +171,34 @@ class UsersView extends GetView<UsersController> {
                       runSpacing: 6,
                       children: ['all', 'editor', 'viewer', 'user', 'admin']
                           .map((role) {
-                        final isSelected =
-                            controller.selectedRoleFilter.value == role;
-                        final label = role == 'all'
-                            ? 'All Roles'
-                            : role.toUpperCase();
+                            final isSelected =
+                                controller.selectedRoleFilter.value == role;
+                            final label = role == 'all'
+                                ? 'All Roles'
+                                : role.toUpperCase();
 
-                        return ChoiceChip(
-                          label: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: AppColors.primary,
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? Colors.white
-                                : AppColors.textPrimary,
-                          ),
-                          onSelected: (_) =>
-                              controller.onRoleFilterSelected(role),
-                        );
-                      }).toList(),
+                            return ChoiceChip(
+                              label: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: AppColors.primary,
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
+                              ),
+                              onSelected: (_) =>
+                                  controller.onRoleFilterSelected(role),
+                            );
+                          })
+                          .toList(),
                     );
 
                     if (isMobile) {
@@ -211,10 +214,7 @@ class UsersView extends GetView<UsersController> {
 
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        roleFilters,
-                        searchInput,
-                      ],
+                      children: [roleFilters, searchInput],
                     );
                   },
                 ),
@@ -223,14 +223,17 @@ class UsersView extends GetView<UsersController> {
               const SizedBox(height: AppConstants.paddingMedium),
 
               // 3. Staff Profiles List / Table
-              if (users.isEmpty)
+              if (controller.isLoading.value)
+                const StaffSkeletonView()
+              else if (users.isEmpty)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppConstants.paddingHero),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusMedium),
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.radiusMedium,
+                    ),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
@@ -275,19 +278,34 @@ class UsersView extends GetView<UsersController> {
                     final width = constraints.maxWidth;
                     if (width >= AppConstants.desktopBreakpoint) {
                       // Desktop: Wide data table
-                      return _buildDesktopTable(users);
+                      return Column(
+                        children: [
+                          _buildDesktopTable(users),
+                          _buildPagination(false),
+                        ],
+                      );
                     } else if (width >= AppConstants.tabletBreakpoint) {
                       // Tablet: Horizontally scrollable data table
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SizedBox(
-                          width: 860,
-                          child: _buildDesktopTable(users),
-                        ),
+                      return Column(
+                        children: [
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: 860,
+                              child: _buildDesktopTable(users),
+                            ),
+                          ),
+                          _buildPagination(false),
+                        ],
                       );
                     } else {
                       // Mobile: Adaptive cards
-                      return _buildMobileCards(users);
+                      return Column(
+                        children: [
+                          _buildMobileCards(users),
+                          _buildPagination(true),
+                        ],
+                      );
                     }
                   },
                 ),
@@ -297,6 +315,74 @@ class UsersView extends GetView<UsersController> {
       }),
     );
   }
+
+  Widget _buildPagination(bool mobile) => Padding(
+    padding: const EdgeInsets.all(AppConstants.paddingMedium),
+    child: Obx(() {
+      if (controller.isLoadingMore.value) return const BottomShimmerLoader();
+      if (mobile) {
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: controller.hasMore
+                ? () => controller.changePage(
+                    controller.currentPage.value + 1,
+                    append: true,
+                  )
+                : null,
+            child: const Text(AppStrings.loadMore),
+          ),
+        );
+      }
+      return Wrap(
+        spacing: AppConstants.paddingSmall,
+        runSpacing: AppConstants.paddingSmall,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(controller.pageLabel),
+          DropdownButton<int>(
+            value: controller.pageSize.value,
+            items: const [10, 25, 50, 100]
+                .map(
+                  (size) => DropdownMenuItem(value: size, child: Text('$size')),
+                )
+                .toList(),
+            onChanged: (size) {
+              if (size != null) controller.changePageSize(size);
+            },
+          ),
+          IconButton(
+            tooltip: AppStrings.firstPage,
+            icon: const Icon(Icons.first_page),
+            onPressed: controller.currentPage.value > 1
+                ? () => controller.changePage(1)
+                : null,
+          ),
+          IconButton(
+            tooltip: AppStrings.previousPage,
+            icon: const Icon(Icons.chevron_left),
+            onPressed: controller.currentPage.value > 1
+                ? () => controller.changePage(controller.currentPage.value - 1)
+                : null,
+          ),
+          IconButton(
+            tooltip: AppStrings.nextPage,
+            icon: const Icon(Icons.chevron_right),
+            onPressed: controller.hasMore
+                ? () => controller.changePage(controller.currentPage.value + 1)
+                : null,
+          ),
+          IconButton(
+            tooltip: AppStrings.lastPage,
+            icon: const Icon(Icons.last_page),
+            onPressed: controller.hasMore
+                ? () => controller.changePage(controller.totalPages)
+                : null,
+          ),
+        ],
+      );
+    }),
+  );
 
   Widget _buildDesktopTable(List<ProfileModel> users) {
     return Container(
@@ -392,8 +478,7 @@ class UsersView extends GetView<UsersController> {
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final user = users[index];
-              final isCurrent =
-                  user.id == controller.currentProfile.value?.id;
+              final isCurrent = user.id == controller.currentProfile.value?.id;
 
               return Container(
                 padding: const EdgeInsets.symmetric(
@@ -655,16 +740,14 @@ class UsersView extends GetView<UsersController> {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final user = users[index];
-        final isCurrent =
-            user.id == controller.currentProfile.value?.id;
+        final isCurrent = user.id == controller.currentProfile.value?.id;
 
         return RepaintBoundary(
           child: Container(
             padding: const EdgeInsets.all(AppConstants.paddingMedium),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius:
-                  BorderRadius.circular(AppConstants.radiusMedium),
+              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
               border: Border.all(color: AppColors.border),
             ),
             child: Column(

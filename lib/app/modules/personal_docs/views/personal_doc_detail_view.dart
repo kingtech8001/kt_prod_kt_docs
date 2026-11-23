@@ -1,3 +1,5 @@
+import 'package:kt_prod_kt_docs/app/widgets/inline_form_error.dart';
+import 'package:kt_prod_kt_docs/app/widgets/detail_skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
@@ -20,7 +22,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
       currentRoute: AppRoutes.PERSONAL_DOCS,
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return const DetailSkeleton();
         }
 
         final doc = controller.document.value;
@@ -29,7 +31,11 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.description_outlined, size: 64, color: AppColors.textMuted),
+                const Icon(
+                  Icons.description_outlined,
+                  size: 64,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Document Not Found',
@@ -57,6 +63,7 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    InlineFormError(message: controller.formError.value),
                     _buildHeader(context, doc),
                     const SizedBox(height: AppConstants.paddingLarge),
                     _buildDetailsCard(context, doc),
@@ -139,15 +146,17 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                   color: doc.isGoogleAttachment
                       ? const Color(0xFFF0FDF4)
                       : (controller.isInsurance
-                          ? const Color(0xFFEFF6FF)
-                          : AppColors.primarySurface),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                            ? const Color(0xFFEFF6FF)
+                            : AppColors.primarySurface),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.radiusMedium,
+                  ),
                   border: Border.all(
                     color: doc.isGoogleAttachment
                         ? const Color(0xFF86EFAC)
                         : (controller.isInsurance
-                            ? const Color(0xFF93C5FD)
-                            : AppColors.primary.withValues(alpha: 0.2)),
+                              ? const Color(0xFF93C5FD)
+                              : AppColors.primary.withValues(alpha: 0.2)),
                   ),
                 ),
                 child: Center(
@@ -156,10 +165,14 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                       : Icon(
                           controller.isInsurance
                               ? Icons.health_and_safety_outlined
-                              : (doc.isPdf ? Icons.picture_as_pdf : Icons.badge_outlined),
+                              : (doc.isPdf
+                                    ? Icons.picture_as_pdf
+                                    : Icons.badge_outlined),
                           color: controller.isInsurance
                               ? const Color(0xFF1D4ED8)
-                              : (doc.isPdf ? AppColors.error : AppColors.primary),
+                              : (doc.isPdf
+                                    ? AppColors.error
+                                    : AppColors.primary),
                           size: 30,
                         ),
                 ),
@@ -188,15 +201,15 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                           label: meta?.expiryDate == null
                               ? 'NO EXPIRY (LIFETIME)'
                               : (isExpired
-                                  ? 'EXPIRED'
-                                  : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE')),
+                                    ? 'EXPIRED'
+                                    : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE')),
                           type: meta?.expiryDate == null
                               ? StatusBadgeType.success
                               : (isExpired
-                                  ? StatusBadgeType.error
-                                  : (isExpiringSoon
-                                      ? StatusBadgeType.warning
-                                      : StatusBadgeType.success)),
+                                    ? StatusBadgeType.error
+                                    : (isExpiringSoon
+                                          ? StatusBadgeType.warning
+                                          : StatusBadgeType.success)),
                         ),
                       ],
                     ),
@@ -222,7 +235,10 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
                       side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                     icon: const Icon(Icons.visibility_outlined, size: 16),
                     label: const Text('Preview'),
@@ -232,7 +248,10 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
                       side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                     icon: const Icon(Icons.download_outlined, size: 16),
                     label: const Text('Download'),
@@ -243,10 +262,17 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                       ),
                       icon: const Icon(Icons.post_add_rounded, size: 16),
-                      label: Text(controller.isInsurance ? 'Renew Policy' : 'Re-upload / New Version'),
+                      label: Text(
+                        controller.isInsurance
+                            ? 'Renew Policy'
+                            : 'Re-upload / New Version',
+                      ),
                       onPressed: () => controller.openRenewDialog(doc),
                     ),
                 ],
@@ -274,7 +300,11 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.edit_note_rounded, color: AppColors.primary, size: 22),
+                  Icon(
+                    Icons.edit_note_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Document & Policy Details (Editable)',
@@ -287,30 +317,37 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                 ],
               ),
               if (controller.canEdit)
-                Obx(() => ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                Obx(
+                  () => ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
                       ),
-                      icon: controller.isSaving.value
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.check_rounded, size: 18),
-                      label: Text(
-                        controller.isSaving.value ? 'Saving...' : 'Save Document Details',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      onPressed: controller.isSaving.value
-                          ? null
-                          : controller.saveDocumentDetails,
-                    )),
+                    ),
+                    icon: controller.isSaving.value
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.check_rounded, size: 18),
+                    label: Text(
+                      controller.isSaving.value
+                          ? 'Saving...'
+                          : 'Save Document Details',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    onPressed: controller.isSaving.value
+                        ? null
+                        : controller.saveDocumentDetails,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: AppConstants.paddingLarge),
@@ -319,8 +356,9 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
           LayoutBuilder(
             builder: (context, constraints) {
               final isTwoCol = constraints.maxWidth > 700;
-              final colWidth =
-                  isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+              final colWidth = isTwoCol
+                  ? (constraints.maxWidth - 16) / 2
+                  : constraints.maxWidth;
 
               return Wrap(
                 spacing: 16,
@@ -348,7 +386,8 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     enabled: controller.canEdit,
                   ),
                   _buildFormField(
-                    label: 'Document Type (e.g. Health Insurance, Aadhaar Card) *',
+                    label:
+                        'Document Type (e.g. Health Insurance, Aadhaar Card) *',
                     controller: controller.docTypeNameController,
                     width: colWidth,
                     icon: Icons.category_outlined,
@@ -472,7 +511,9 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
             decoration: InputDecoration(
               prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
               filled: true,
-              fillColor: enabled ? AppColors.surfaceMuted : AppColors.surfaceMuted.withValues(alpha: 0.5),
+              fillColor: enabled
+                  ? AppColors.surfaceMuted
+                  : AppColors.surfaceMuted.withValues(alpha: 0.5),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 borderSide: const BorderSide(color: AppColors.border),
@@ -483,13 +524,21 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
               ),
               disabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+                borderSide: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
             style: TextStyle(
               fontSize: 14,
@@ -530,7 +579,9 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                       context: context,
                       initialDate: date ?? DateTime.now(),
                       firstDate: DateTime(1980),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 10),
+                      ),
                     );
                     if (picked != null) onSelected(picked);
                   }
@@ -539,22 +590,34 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               decoration: BoxDecoration(
-                color: enabled ? AppColors.surfaceMuted : AppColors.surfaceMuted.withValues(alpha: 0.5),
+                color: enabled
+                    ? AppColors.surfaceMuted
+                    : AppColors.surfaceMuted.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 border: Border.all(
-                  color: enabled ? AppColors.border : AppColors.border.withValues(alpha: 0.5),
+                  color: enabled
+                      ? AppColors.border
+                      : AppColors.border.withValues(alpha: 0.5),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 10),
                   Text(
-                    date != null ? AppFormatters.formatDate(date) : 'Select Date',
+                    date != null
+                        ? AppFormatters.formatDate(date)
+                        : 'Select Date',
                     style: TextStyle(
                       fontSize: 14,
                       color: date != null
-                          ? (enabled ? AppColors.textPrimary : AppColors.textMuted)
+                          ? (enabled
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted)
                           : AppColors.textSecondary,
                     ),
                   ),
@@ -645,15 +708,24 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
               if (!hasExpiry) ...[
                 // Banner for documents without expiry date (Aadhaar Card, PAN Card, Voter ID, etc.)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.check_circle_rounded, color: AppColors.success, size: 16),
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.success,
+                        size: 16,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -674,9 +746,13 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: expiry ?? DateTime.now().add(const Duration(days: 365 * 10)),
+                      initialDate:
+                          expiry ??
+                          DateTime.now().add(const Duration(days: 365 * 10)),
                       firstDate: DateTime(1980),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 30)),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 30),
+                      ),
                     );
                     if (picked != null) {
                       controller.expiryDate.value = picked;
@@ -684,10 +760,15 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                   },
                   borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall,
+                      ),
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Row(
@@ -695,14 +776,22 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.event_outlined, size: 16, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.event_outlined,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: 8),
                             Text(
-                              expiry != null ? AppFormatters.formatDate(expiry) : 'Select Validity Date',
+                              expiry != null
+                                  ? AppFormatters.formatDate(expiry)
+                                  : 'Select Validity Date',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: expiry != null ? AppColors.textPrimary : AppColors.textMuted,
+                                color: expiry != null
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -732,26 +821,42 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                   children: [
                     const Text(
                       'Presets:',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     ActionChip(
                       visualDensity: VisualDensity.compact,
-                      label: const Text('+1 Yr', style: TextStyle(fontSize: 10)),
+                      label: const Text(
+                        '+1 Yr',
+                        style: TextStyle(fontSize: 10),
+                      ),
                       onPressed: () => controller.setExpiryPreset(1),
                     ),
                     ActionChip(
                       visualDensity: VisualDensity.compact,
-                      label: const Text('+5 Yrs', style: TextStyle(fontSize: 10)),
+                      label: const Text(
+                        '+5 Yrs',
+                        style: TextStyle(fontSize: 10),
+                      ),
                       onPressed: () => controller.setExpiryPreset(5),
                     ),
                     ActionChip(
                       visualDensity: VisualDensity.compact,
-                      label: const Text('+10 Yrs (Passport)', style: TextStyle(fontSize: 10)),
+                      label: const Text(
+                        '+10 Yrs (Passport)',
+                        style: TextStyle(fontSize: 10),
+                      ),
                       onPressed: () => controller.setExpiryPreset(10),
                     ),
                     ActionChip(
                       visualDensity: VisualDensity.compact,
-                      label: const Text('+20 Yrs (License)', style: TextStyle(fontSize: 10)),
+                      label: const Text(
+                        '+20 Yrs (License)',
+                        style: TextStyle(fontSize: 10),
+                      ),
                       onPressed: () => controller.setExpiryPreset(20),
                     ),
                   ],
@@ -782,7 +887,11 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.history_edu_rounded, color: AppColors.primary, size: 22),
+                  const Icon(
+                    Icons.history_edu_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     controller.isInsurance
@@ -801,10 +910,17 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                   ),
                   icon: const Icon(Icons.post_add_rounded, size: 16),
-                  label: Text(controller.isInsurance ? 'Renew / Upload Next Term' : 'Re-upload / Upload New Version'),
+                  label: Text(
+                    controller.isInsurance
+                        ? 'Renew / Upload Next Term'
+                        : 'Re-upload / Upload New Version',
+                  ),
                   onPressed: () => controller.openRenewDialog(doc),
                 ),
             ],
@@ -828,7 +944,11 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final item = history[index];
-                return _buildHistoryRow(context, item, isCurrent: item.id == doc.id);
+                return _buildHistoryRow(
+                  context,
+                  item,
+                  isCurrent: item.id == doc.id,
+                );
               },
             ),
         ],
@@ -869,7 +989,9 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
               border: Border.all(color: AppColors.border),
             ),
             child: Icon(
-              item.isPdf ? Icons.picture_as_pdf : Icons.insert_drive_file_outlined,
+              item.isPdf
+                  ? Icons.picture_as_pdf
+                  : Icons.insert_drive_file_outlined,
               color: item.isPdf ? AppColors.error : AppColors.primary,
               size: 22,
             ),
@@ -896,7 +1018,10 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                     const SizedBox(width: 8),
                     if (isCurrent)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(4),
@@ -910,9 +1035,13 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
                           ),
                         ),
                       )
-                    else if (meta?.renewalCount != null && meta!.renewalCount > 0)
+                    else if (meta?.renewalCount != null &&
+                        meta!.renewalCount > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -946,15 +1075,15 @@ class PersonalDocDetailView extends GetView<PersonalDocDetailController> {
             label: meta?.expiryDate == null
                 ? 'NO EXPIRY (LIFETIME)'
                 : (isExpired
-                    ? 'EXPIRED'
-                    : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE')),
+                      ? 'EXPIRED'
+                      : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE')),
             type: meta?.expiryDate == null
                 ? StatusBadgeType.success
                 : (isExpired
-                    ? StatusBadgeType.error
-                    : (isExpiringSoon
-                        ? StatusBadgeType.warning
-                        : StatusBadgeType.success)),
+                      ? StatusBadgeType.error
+                      : (isExpiringSoon
+                            ? StatusBadgeType.warning
+                            : StatusBadgeType.success)),
           ),
           const SizedBox(width: AppConstants.paddingMedium),
           Wrap(

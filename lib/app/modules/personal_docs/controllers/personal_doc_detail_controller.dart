@@ -20,6 +20,7 @@ class PersonalDocDetailController extends GetxController {
   final document = Rxn<DocumentModel>();
   final isLoading = true.obs;
   final isSaving = false.obs;
+  final formError = ''.obs;
 
   // Editable Form Controllers
   final titleController = TextEditingController();
@@ -45,10 +46,15 @@ class PersonalDocDetailController extends GetxController {
   // Role Permissions
   bool get canEdit {
     try {
-      final role = AuthService.to.currentProfile.value?.role.toLowerCase();
-      return role == 'admin' || role == 'super_admin' || role == 'editor';
-    } catch (_) {
-      return true;
+      return AuthService.to.canEdit;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'PERSONAL_DOC_DETAIL_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -91,8 +97,9 @@ class PersonalDocDetailController extends GetxController {
 
     insuranceCompanyController.text = meta?.insuranceCompany ?? '';
     policyTypeController.text = meta?.policyType ?? '';
-    sumInsuredController.text =
-        meta?.sumInsured != null ? meta!.sumInsured!.toStringAsFixed(0) : '';
+    sumInsuredController.text = meta?.sumInsured != null
+        ? meta!.sumInsured!.toStringAsFixed(0)
+        : '';
     premiumAmountController.text = meta?.premiumAmount != null
         ? meta!.premiumAmount!.toStringAsFixed(0)
         : '';
@@ -131,15 +138,22 @@ class PersonalDocDetailController extends GetxController {
 
   Future<void> _fetchDocById(String id) async {
     try {
-      final response = await _dataset.getPersonalDocuments(page: 1, pageSize: 100);
+      final response = await _dataset.getPersonalDocuments(
+        page: 1,
+        pageSize: 100,
+      );
       final match = response.documents.firstWhereOrNull((d) => d.id == id);
       if (match != null) {
         _populateFromDocument(match);
         await _loadHistory(match);
       }
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DETAIL_CTRL', 'Error fetching doc: $e',
-          error: e, stackTrace: st);
+      AppLogger.error(
+        'PERSONAL_DETAIL_CTRL',
+        'Error fetching doc: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -161,8 +175,12 @@ class PersonalDocDetailController extends GetxController {
         renewalHistory.assignAll([doc]);
       }
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DETAIL_CTRL', 'Error loading history: $e',
-          error: e, stackTrace: st);
+      AppLogger.error(
+        'PERSONAL_DETAIL_CTRL',
+        'Error loading history: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -184,6 +202,13 @@ class PersonalDocDetailController extends GetxController {
   }
 
   Future<void> saveDocumentDetails() async {
+    if (isSaving.value) return;
+    formError.value = '';
+    if (!canEdit) {
+      formError.value =
+          'Your role does not have permission to edit document details.';
+      return;
+    }
     final current = document.value;
     if (current == null) return;
 
@@ -192,15 +217,15 @@ class PersonalDocDetailController extends GetxController {
     final docType = docTypeNameController.text.trim();
 
     if (newTitle.isEmpty) {
-      AppSnackbar.showError('Validation Error', 'Document title is required.');
+      formError.value = 'Document title is required.';
       return;
     }
     if (personName.isEmpty) {
-      AppSnackbar.showError('Validation Error', 'Person name is required.');
+      formError.value = 'Person name is required.';
       return;
     }
     if (docType.isEmpty) {
-      AppSnackbar.showError('Validation Error', 'Document type is required.');
+      formError.value = 'Document type is required.';
       return;
     }
 
@@ -245,73 +270,47 @@ class PersonalDocDetailController extends GetxController {
             : null,
       );
 
-      // Refresh current document
-      final updatedMeta = current.personalMetadata?.copyWith(
-            personName: personName,
-            relationship: relationshipController.text.trim().isNotEmpty
-                ? relationshipController.text.trim()
-                : null,
-            docTypeName: docType,
-            idNumber: idNumberController.text.trim().isNotEmpty
-                ? idNumberController.text.trim()
-                : null,
-            issuingAuthority: issuingAuthorityController.text.trim().isNotEmpty
-                ? issuingAuthorityController.text.trim()
-                : null,
-            issueDate: issueDate.value,
-            expiryDate: effectiveExpiry,
-            clearExpiryDate: !hasExpiryDate.value,
-            insuranceCompany: insuranceCompanyController.text.trim().isNotEmpty
-                ? insuranceCompanyController.text.trim()
-                : null,
-            policyType: policyTypeController.text.trim().isNotEmpty
-                ? policyTypeController.text.trim()
-                : null,
-            sumInsured: sumInsured,
-            premiumAmount: premium,
-            tpaName: tpaNameController.text.trim().isNotEmpty
-                ? tpaNameController.text.trim()
-                : null,
-            notes: notesController.text.trim().isNotEmpty
-                ? notesController.text.trim()
-                : null,
-          ) ??
-          PersonalDocumentMetadataModel(
-            id: current.id,
-            documentId: current.id,
-            personName: personName,
-            docTypeName: docType,
-            relationship: relationshipController.text.trim().isNotEmpty
-                ? relationshipController.text.trim()
-                : null,
-            idNumber: idNumberController.text.trim().isNotEmpty
-                ? idNumberController.text.trim()
-                : null,
-            issuingAuthority: issuingAuthorityController.text.trim().isNotEmpty
-                ? issuingAuthorityController.text.trim()
-                : null,
-            issueDate: issueDate.value,
-            expiryDate: effectiveExpiry,
-            insuranceCompany: insuranceCompanyController.text.trim().isNotEmpty
-                ? insuranceCompanyController.text.trim()
-                : null,
-            policyType: policyTypeController.text.trim().isNotEmpty
-                ? policyTypeController.text.trim()
-                : null,
-            sumInsured: sumInsured,
-            premiumAmount: premium,
-            tpaName: tpaNameController.text.trim().isNotEmpty
-                ? tpaNameController.text.trim()
-                : null,
-            notes: notesController.text.trim().isNotEmpty
-                ? notesController.text.trim()
-                : null,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
+      final updatedMeta = PersonalDocumentMetadataModel(
+        id: current.personalMetadata?.id,
+        personId: current.personalMetadata?.personId,
+        docTypeId: current.personalMetadata?.docTypeId,
+        previousDocumentId: current.personalMetadata?.previousDocumentId,
+        renewalCount: current.personalMetadata?.renewalCount ?? 0,
+        documentId: current.id,
+        personName: personName,
+        docTypeName: docType,
+        relationship: relationshipController.text.trim().isNotEmpty
+            ? relationshipController.text.trim()
+            : null,
+        idNumber: idNumberController.text.trim().isNotEmpty
+            ? idNumberController.text.trim()
+            : null,
+        issuingAuthority: issuingAuthorityController.text.trim().isNotEmpty
+            ? issuingAuthorityController.text.trim()
+            : null,
+        issueDate: issueDate.value,
+        expiryDate: effectiveExpiry,
+        insuranceCompany: insuranceCompanyController.text.trim().isNotEmpty
+            ? insuranceCompanyController.text.trim()
+            : null,
+        policyType: policyTypeController.text.trim().isNotEmpty
+            ? policyTypeController.text.trim()
+            : null,
+        sumInsured: sumInsured,
+        premiumAmount: premium,
+        tpaName: tpaNameController.text.trim().isNotEmpty
+            ? tpaNameController.text.trim()
+            : null,
+        notes: notesController.text.trim().isNotEmpty
+            ? notesController.text.trim()
+            : null,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
 
       document.value = current.copyWith(
         title: newTitle,
+        subCategory: docType,
         description: descriptionController.text.trim().isNotEmpty
             ? descriptionController.text.trim()
             : null,
@@ -325,9 +324,13 @@ class PersonalDocDetailController extends GetxController {
         'Details for $newTitle have been updated successfully.',
       );
     } catch (e, st) {
-      AppLogger.error('PERSONAL_DETAIL_CTRL', 'Error saving doc details: $e',
-          error: e, stackTrace: st);
-      AppSnackbar.showError('Save Failed', 'Could not save document details: $e');
+      AppLogger.error(
+        'PERSONAL_DETAIL_CTRL',
+        'Error saving doc details: $e',
+        error: e,
+        stackTrace: st,
+      );
+      formError.value = 'Could not save document details: $e';
     } finally {
       isSaving.value = false;
     }
@@ -335,14 +338,15 @@ class PersonalDocDetailController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -372,7 +376,8 @@ class PersonalDocDetailController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -383,13 +388,19 @@ class PersonalDocDetailController extends GetxController {
         }
       }
 
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Downloaded', 'File downloading: ${doc.fileName}');
+      AppSnackbar.showSuccess(
+        'Downloaded',
+        'File downloading: ${doc.fileName}',
+      );
     } catch (e) {
       AppSnackbar.showError('Download Failed', 'Could not download file: $e');
     }
@@ -398,23 +409,24 @@ class PersonalDocDetailController extends GetxController {
   Future<void> openRenewDialog(DocumentModel doc) async {
     final success = await RenewPersonalDocDialog.show(
       previousDocument: doc,
-      onRenew: ({
-        required previousDocument,
-        required newMetadata,
-        required newTitle,
-        required fileBytes,
-        required fileName,
-        newDescription,
-      }) async {
-        await _dataset.renewPersonalDocument(
-          previousDocument: previousDocument,
-          newMetadata: newMetadata,
-          newTitle: newTitle,
-          fileBytes: fileBytes,
-          fileName: fileName,
-          newDescription: newDescription,
-        );
-      },
+      onRenew:
+          ({
+            required previousDocument,
+            required newMetadata,
+            required newTitle,
+            required fileBytes,
+            required fileName,
+            newDescription,
+          }) async {
+            await _dataset.renewPersonalDocument(
+              previousDocument: previousDocument,
+              newMetadata: newMetadata,
+              newTitle: newTitle,
+              fileBytes: fileBytes,
+              fileName: fileName,
+              newDescription: newDescription,
+            );
+          },
     );
 
     if (success == true) {

@@ -149,7 +149,8 @@ class DocumentUploadController extends GetxController {
   final isCompressing = false.obs;
   final compressionResult = Rxn<CompressionResult>();
   final useCompressed = false.obs; // Original Quality is default selected
-  final compressionPreset = 'recommended'.obs; // 'recommended', 'extreme', 'high', 'low', 'lossless', 'custom'
+  final compressionPreset = 'recommended'
+      .obs; // 'recommended', 'extreme', 'high', 'low', 'lossless', 'custom'
   final compressionQuality = 75.obs;
   final lastCompressedQuality = 75.obs;
 
@@ -157,7 +158,8 @@ class DocumentUploadController extends GetxController {
       compressionResult.value != null &&
       compressionQuality.value != lastCompressedQuality.value;
 
-  final pdfCompressionLevel = 'recommended'.obs; // Synchronized legacy alias for views
+  final pdfCompressionLevel =
+      'recommended'.obs; // Synchronized legacy alias for views
   final pdfQuality = 72.obs;
   final pdfDpi = 150.obs; // 96, 120, 150, 200, 300
   final maxDimension = Rxn<int>();
@@ -253,10 +255,12 @@ class DocumentUploadController extends GetxController {
   List<String> get availableProvidersForSelectedType {
     final currentSubcategory = selectedSubcategory.value.toLowerCase().trim();
     final matched = dynamicUtilityProviders
-        .where((p) =>
-            p.utilityType.toLowerCase().trim() == currentSubcategory ||
-            currentSubcategory.contains(p.utilityType.toLowerCase().trim()) ||
-            p.utilityType.toLowerCase().trim().contains(currentSubcategory))
+        .where(
+          (p) =>
+              p.utilityType.toLowerCase().trim() == currentSubcategory ||
+              currentSubcategory.contains(p.utilityType.toLowerCase().trim()) ||
+              p.utilityType.toLowerCase().trim().contains(currentSubcategory),
+        )
         .map((p) => p.name)
         .toList();
     if (matched.isEmpty) {
@@ -336,7 +340,11 @@ class DocumentUploadController extends GetxController {
     if (value) {
       final base = vehicleIssueDate.value ?? DateTime.now();
       if (vehicleTpExpiryDate.value == null) {
-        vehicleTpExpiryDate.value = DateTime(base.year + selectedVehicleBundledYears.value, base.month, base.day);
+        vehicleTpExpiryDate.value = DateTime(
+          base.year + selectedVehicleBundledYears.value,
+          base.month,
+          base.day,
+        );
       }
       if (vehicleExpiryDate.value == null && vehicleIssueDate.value != null) {
         vehicleExpiryDate.value = DateTime(base.year + 1, base.month, base.day);
@@ -347,22 +355,35 @@ class DocumentUploadController extends GetxController {
   void setVehicleBundledYears(int years) {
     selectedVehicleBundledYears.value = years;
     final base = vehicleIssueDate.value ?? DateTime.now();
-    vehicleTpExpiryDate.value = DateTime(base.year + years, base.month, base.day);
+    vehicleTpExpiryDate.value = DateTime(
+      base.year + years,
+      base.month,
+      base.day,
+    );
   }
 
   void onVehicleIssueDateChanged(DateTime picked) {
     vehicleIssueDate.value = picked;
     if (vehicleExpiryDate.value == null) {
-      vehicleExpiryDate.value = DateTime(picked.year + 1, picked.month, picked.day);
+      vehicleExpiryDate.value = DateTime(
+        picked.year + 1,
+        picked.month,
+        picked.day,
+      );
     }
     if (isVehicleBundledInsurance.value) {
-      vehicleTpExpiryDate.value = DateTime(picked.year + selectedVehicleBundledYears.value, picked.month, picked.day);
+      vehicleTpExpiryDate.value = DateTime(
+        picked.year + selectedVehicleBundledYears.value,
+        picked.month,
+        picked.day,
+      );
     }
   }
 
   bool get isVehiclePassDoc {
     final typeName = selectedVehicleDocTypeName.value.toLowerCase();
-    final typeCode = dynamicVehicleDocTypes
+    final typeCode =
+        dynamicVehicleDocTypes
             .firstWhereOrNull((t) => t.name == selectedVehicleDocTypeName.value)
             ?.code
             .toLowerCase() ??
@@ -423,10 +444,7 @@ class DocumentUploadController extends GetxController {
     isInitialLoading.value = true;
     formErrorMessage.value = '';
     try {
-      await Future.wait([
-        loadCategoriesAndFolders(),
-        loadMasterData(),
-      ]);
+      await Future.wait([loadCategoriesAndFolders(), loadMasterData()]);
     } catch (e, st) {
       AppLogger.error(
         'UPLOAD_CTRL',
@@ -434,7 +452,8 @@ class DocumentUploadController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      formErrorMessage.value = 'Error initializing configuration. Please refresh.';
+      formErrorMessage.value =
+          'Error initializing configuration. Please refresh.';
     } finally {
       isInitialLoading.value = false;
     }
@@ -484,9 +503,7 @@ class DocumentUploadController extends GetxController {
         }
       }
 
-      final personList = await _settingsDataset.getPersons(
-        activeOnly: true,
-      );
+      final personList = await _settingsDataset.getPersons(activeOnly: true);
       if (personList.isNotEmpty) {
         dynamicPersons.assignAll(personList);
         selectedPersonId.value = personList.first.id;
@@ -510,7 +527,9 @@ class DocumentUploadController extends GetxController {
         selectedVehicleName.value = vehicleList.first.displayName;
       }
 
-      final vehicleDocTypeList = await _settingsDataset.getVehicleDocTypes(activeOnly: true);
+      final vehicleDocTypeList = await _settingsDataset.getVehicleDocTypes(
+        activeOnly: true,
+      );
       if (vehicleDocTypeList.isNotEmpty) {
         dynamicVehicleDocTypes.assignAll(vehicleDocTypeList);
         selectedVehicleDocTypeId.value = vehicleDocTypeList.first.id;
@@ -558,7 +577,8 @@ class DocumentUploadController extends GetxController {
         error: e,
         stackTrace: st,
       );
-      formErrorMessage.value = 'Failed to load document categories and folders.';
+      formErrorMessage.value =
+          'Failed to load document categories and folders.';
     }
   }
 
@@ -601,15 +621,20 @@ class DocumentUploadController extends GetxController {
     selectedSubcategory.value = val;
     if (isPersonalDoc) {
       selectedPersonalDocTypeName.value = val;
-      final type = dynamicPersonalDocTypes.firstWhereOrNull((t) => t.name == val);
+      final type = dynamicPersonalDocTypes.firstWhereOrNull(
+        (t) => t.name == val,
+      );
       selectedPersonalDocTypeId.value = type?.id;
     } else if (isVehicleDoc) {
       selectedVehicleDocTypeName.value = val;
-      final type = dynamicVehicleDocTypes.firstWhereOrNull((t) => t.name == val);
+      final type = dynamicVehicleDocTypes.firstWhereOrNull(
+        (t) => t.name == val,
+      );
       selectedVehicleDocTypeId.value = type?.id;
     } else if (isUtilityBill) {
       final available = availableProvidersForSelectedType;
-      if (available.isNotEmpty && !available.contains(selectedProviderName.value)) {
+      if (available.isNotEmpty &&
+          !available.contains(selectedProviderName.value)) {
         selectedProviderName.value = available.first;
         if (available.first != 'Other') {
           utilityProviderController.text = available.first;
@@ -642,13 +667,18 @@ class DocumentUploadController extends GetxController {
     selectedVehicleNumber.value = vehicle.vehicleNumber;
     selectedVehicleName.value = vehicle.displayName;
 
-    final isTwoWheeler = vehicle.vehicleType.toLowerCase().contains('two') ||
+    final isTwoWheeler =
+        vehicle.vehicleType.toLowerCase().contains('two') ||
         vehicle.vehicleType.toLowerCase().contains('bike') ||
         vehicle.vehicleType.toLowerCase().contains('scooter');
     selectedVehicleBundledYears.value = isTwoWheeler ? 5 : 3;
     if (isVehicleBundledInsurance.value && vehicleIssueDate.value != null) {
       final base = vehicleIssueDate.value!;
-      vehicleTpExpiryDate.value = DateTime(base.year + selectedVehicleBundledYears.value, base.month, base.day);
+      vehicleTpExpiryDate.value = DateTime(
+        base.year + selectedVehicleBundledYears.value,
+        base.month,
+        base.day,
+      );
     }
   }
 
@@ -684,7 +714,9 @@ class DocumentUploadController extends GetxController {
             : VehicleDocsDataset(Get.find<SupabaseProvider>());
         final created = await dataset.createMasterVehicle(newVehicle);
         dynamicVehicles.add(created);
-        dynamicVehicles.sort((a, b) => a.vehicleNumber.compareTo(b.vehicleNumber));
+        dynamicVehicles.sort(
+          (a, b) => a.vehicleNumber.compareTo(b.vehicleNumber),
+        );
         updateSelectedVehicle(created);
       },
     );
@@ -703,7 +735,8 @@ class DocumentUploadController extends GetxController {
           : AppConstants.utilitySubcategories;
       selectedSubcategory.value = list.first;
       final available = availableProvidersForSelectedType;
-      if (available.isNotEmpty && !available.contains(selectedProviderName.value)) {
+      if (available.isNotEmpty &&
+          !available.contains(selectedProviderName.value)) {
         selectedProviderName.value = available.first;
         if (available.first != 'Other') {
           utilityProviderController.text = available.first;
@@ -719,13 +752,19 @@ class DocumentUploadController extends GetxController {
       final sub = list.isNotEmpty ? list.first : 'Aadhaar Card';
       selectedSubcategory.value = sub;
       selectedPersonalDocTypeName.value = sub;
-      selectedPersonalDocTypeId.value = dynamicPersonalDocTypes.firstWhereOrNull((t) => t.name == sub)?.id;
+      selectedPersonalDocTypeId.value = dynamicPersonalDocTypes
+          .firstWhereOrNull((t) => t.name == sub)
+          ?.id;
     } else if (catCode == 'vehicle_docs') {
       final list = dynamicVehicleDocTypes.map((t) => t.name).toList();
-      final sub = list.isNotEmpty ? list.first : 'RC Book (Registration Certificate)';
+      final sub = list.isNotEmpty
+          ? list.first
+          : 'RC Book (Registration Certificate)';
       selectedSubcategory.value = sub;
       selectedVehicleDocTypeName.value = sub;
-      selectedVehicleDocTypeId.value = dynamicVehicleDocTypes.firstWhereOrNull((t) => t.name == sub)?.id;
+      selectedVehicleDocTypeId.value = dynamicVehicleDocTypes
+          .firstWhereOrNull((t) => t.name == sub)
+          ?.id;
     } else {
       selectedSubcategory.value = 'General Document';
     }
@@ -741,7 +780,7 @@ class DocumentUploadController extends GetxController {
     AppLogger.info(
       'UPLOAD_CTRL',
       '🔘 [OPTION CHANGED] User selected upload version: '
-      '${compressed ? "COMPRESSED (OPTIMIZED VIA MEDIA ENGINE)" : "ORIGINAL QUALITY (NO COMPRESSION)"}',
+          '${compressed ? "COMPRESSED (OPTIMIZED VIA MEDIA ENGINE)" : "ORIGINAL QUALITY (NO COMPRESSION)"}',
     );
     useCompressed.value = compressed;
     if (compressed &&
@@ -760,11 +799,17 @@ class DocumentUploadController extends GetxController {
   Future<void> compressSelectedFile() async {
     final file = selectedFile.value;
     if (file == null || file.bytes == null) {
-      AppLogger.warning('UPLOAD_CTRL', '⚠️ [COMPRESS SKIP] Selected file or bytes are null');
+      AppLogger.warning(
+        'UPLOAD_CTRL',
+        '⚠️ [COMPRESS SKIP] Selected file or bytes are null',
+      );
       return;
     }
     if (!FileCompressor.isCompressible(file.name)) {
-      AppLogger.info('UPLOAD_CTRL', 'ℹ️ [COMPRESS SKIP] File ${file.name} is not a PDF or image');
+      AppLogger.info(
+        'UPLOAD_CTRL',
+        'ℹ️ [COMPRESS SKIP] File ${file.name} is not a PDF or image',
+      );
       compressionResult.value = null;
       compressionError.value = '';
       return;
@@ -782,12 +827,12 @@ class DocumentUploadController extends GetxController {
       AppLogger.info(
         'UPLOAD_CTRL',
         '┌──────────────────────────────────────────────────────────────────\n'
-        '│ ⚙️ [UPLOAD_CTRL] Dispatched to Media Engine API\n'
-        '│ 📄 File: ${file.name}\n'
-        '│ 📦 File Size: ${file.bytes!.length} bytes (${CompressionResult.formatFileSize(file.bytes!.length)})\n'
-        '│ 🏷️ Type: ${isPdf ? "PDF Document" : "Image"}\n'
-        '│ 🎛️ Target Quality: ${compressionQuality.value}%\n'
-        '└──────────────────────────────────────────────────────────────────',
+            '│ ⚙️ [UPLOAD_CTRL] Dispatched to Media Engine API\n'
+            '│ 📄 File: ${file.name}\n'
+            '│ 📦 File Size: ${file.bytes!.length} bytes (${CompressionResult.formatFileSize(file.bytes!.length)})\n'
+            '│ 🏷️ Type: ${isPdf ? "PDF Document" : "Image"}\n'
+            '│ 🎛️ Target Quality: ${compressionQuality.value}%\n'
+            '└──────────────────────────────────────────────────────────────────',
       );
 
       final result = await FileCompressor.compressFile(
@@ -797,7 +842,10 @@ class DocumentUploadController extends GetxController {
         onProgress: (progress, message) {
           compressionProgress.value = progress;
           compressionProgressText.value = message;
-          AppLogger.debug('UPLOAD_CTRL', '⏳ [PROGRESS ${(progress * 100).toInt()}%] $message');
+          AppLogger.debug(
+            'UPLOAD_CTRL',
+            '⏳ [PROGRESS ${(progress * 100).toInt()}%] $message',
+          );
         },
       );
 
@@ -810,8 +858,8 @@ class DocumentUploadController extends GetxController {
         AppLogger.info(
           'UPLOAD_CTRL',
           '🎉 [COMPRESSION SUCCESS] Optimized in ${stopwatch.elapsedMilliseconds}ms. '
-          'Original: ${result.originalSizeFormatted} -> Compressed: ${result.compressedSizeFormatted} '
-          '(${result.savingsFormatted})',
+              'Original: ${result.originalSizeFormatted} -> Compressed: ${result.compressedSizeFormatted} '
+              '(${result.savingsFormatted})',
         );
       } else {
         compressionProgressText.value =
@@ -832,7 +880,8 @@ class DocumentUploadController extends GetxController {
       );
       final cleanMsg = e.toString().replaceAll('Exception: ', '');
       compressionError.value = cleanMsg;
-      compressionProgressText.value = 'API Compression issue. Original file will be used.';
+      compressionProgressText.value =
+          'API Compression issue. Original file will be used.';
     } finally {
       isCompressing.value = false;
     }
@@ -840,11 +889,16 @@ class DocumentUploadController extends GetxController {
 
   void setCompressionPreset(String level) {
     if (compressionPreset.value == level) return;
-    AppLogger.info('UPLOAD_CTRL', '🎚️ [PRESET CHANGED] Compression preset set to "$level"');
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      '🎚️ [PRESET CHANGED] Compression preset set to "$level"',
+    );
     compressionPreset.value = level;
     pdfCompressionLevel.value = level;
 
-    final isPdf = selectedFile.value != null && FileCompressor.isPdf(selectedFile.value!.name);
+    final isPdf =
+        selectedFile.value != null &&
+        FileCompressor.isPdf(selectedFile.value!.name);
     if (isPdf) {
       switch (level) {
         case 'recommended':
@@ -904,7 +958,10 @@ class DocumentUploadController extends GetxController {
 
   void setCompressionQuality(int quality) {
     if (compressionQuality.value == quality) return;
-    AppLogger.info('UPLOAD_CTRL', '🎚️ [QUALITY CHANGED] Compression quality set to $quality%');
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      '🎚️ [QUALITY CHANGED] Compression quality set to $quality%',
+    );
     compressionQuality.value = quality;
     pdfQuality.value = quality;
   }
@@ -936,7 +993,10 @@ class DocumentUploadController extends GetxController {
 
   void toggleGrayscale(bool val) {
     if (isGrayscale.value == val) return;
-    AppLogger.info('UPLOAD_CTRL', '🎨 [GRAYSCALE CHANGED] Grayscale set to $val');
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      '🎨 [GRAYSCALE CHANGED] Grayscale set to $val',
+    );
     isGrayscale.value = val;
     if (useCompressed.value) {
       compressSelectedFile();
@@ -945,7 +1005,10 @@ class DocumentUploadController extends GetxController {
 
   void toggleStripMetadata(bool val) {
     if (stripMetadata.value == val) return;
-    AppLogger.info('UPLOAD_CTRL', '🧹 [STRIP METADATA CHANGED] Strip metadata set to $val');
+    AppLogger.info(
+      'UPLOAD_CTRL',
+      '🧹 [STRIP METADATA CHANGED] Strip metadata set to $val',
+    );
     stripMetadata.value = val;
     if (useCompressed.value) {
       compressSelectedFile();
@@ -992,7 +1055,8 @@ class DocumentUploadController extends GetxController {
   }
 
   void onFileSelected(PlatformFile file) {
-    useCompressed.value = false; // Always default to Original Quality on any file selection
+    useCompressed.value =
+        false; // Always default to Original Quality on any file selection
     compressionPreset.value = 'recommended';
     pdfCompressionLevel.value = 'recommended';
     compressionQuality.value = 75;
@@ -1009,12 +1073,12 @@ class DocumentUploadController extends GetxController {
     AppLogger.info(
       'UPLOAD_CTRL',
       '┌──────────────────────────────────────────────────────────────────\n'
-      '│ 📁 [FILE SELECTED IN DROPZONE]\n'
-      '│ 📄 Name: ${file.name}\n'
-      '│ ⚖️ Size: ${file.size} bytes (${CompressionResult.formatFileSize(file.size)})\n'
-      '│ 🔍 Compressible: ${FileCompressor.isCompressible(file.name)}\n'
-      '│ 🔘 Current Mode: ORIGINAL (Defaulted on file select)\n'
-      '└──────────────────────────────────────────────────────────────────',
+          '│ 📁 [FILE SELECTED IN DROPZONE]\n'
+          '│ 📄 Name: ${file.name}\n'
+          '│ ⚖️ Size: ${file.size} bytes (${CompressionResult.formatFileSize(file.size)})\n'
+          '│ 🔍 Compressible: ${FileCompressor.isCompressible(file.name)}\n'
+          '│ 🔘 Current Mode: ORIGINAL (Defaulted on file select)\n'
+          '└──────────────────────────────────────────────────────────────────',
     );
     selectedFile.value = file;
     compressionResult.value = null;
@@ -1042,7 +1106,10 @@ class DocumentUploadController extends GetxController {
   Future<void> scanSelectedDocument() async {
     final file = selectedFile.value;
     if (file == null || file.bytes == null) {
-      AppLogger.warning('UPLOAD_CTRL', 'Cannot scan document: selectedFile or bytes are null');
+      AppLogger.warning(
+        'UPLOAD_CTRL',
+        'Cannot scan document: selectedFile or bytes are null',
+      );
       return;
     }
 
@@ -1063,13 +1130,16 @@ class DocumentUploadController extends GetxController {
 
     // Smoothly advance progress percentage while background scan is processing
     _progressSimulationTimer?.cancel();
-    _progressSimulationTimer = Timer.periodic(const Duration(milliseconds: 70), (timer) {
-      if (!isScanning.value || currentSession != _scanSessionId) {
-        timer.cancel();
-      } else if (scanProgress.value < 0.88) {
-        scanProgress.value += 0.03;
-      }
-    });
+    _progressSimulationTimer = Timer.periodic(
+      const Duration(milliseconds: 70),
+      (timer) {
+        if (!isScanning.value || currentSession != _scanSessionId) {
+          timer.cancel();
+        } else if (scanProgress.value < 0.88) {
+          scanProgress.value += 0.03;
+        }
+      },
+    );
 
     try {
       final result = await DocumentScannerService.scanDocument(
@@ -1121,9 +1191,21 @@ class DocumentUploadController extends GetxController {
 
       try {
         HapticFeedback.lightImpact();
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'DOCUMENT_UPLOAD_CONTROLLER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     } catch (e, st) {
-      AppLogger.error('UPLOAD_CTRL', 'Error during document scan: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UPLOAD_CTRL',
+        'Error during document scan: $e',
+        error: e,
+        stackTrace: st,
+      );
       scanSummaryText.value = 'Could not auto-extract fields from this file.';
     } finally {
       if (currentSession == _scanSessionId) {
@@ -1182,7 +1264,10 @@ class DocumentUploadController extends GetxController {
     await scanSelectedDocument();
   }
 
-  void applyScanResultToCurrentCategory(DocumentScanResult result, {bool compatibleOnly = false}) {
+  void applyScanResultToCurrentCategory(
+    DocumentScanResult result, {
+    bool compatibleOnly = false,
+  }) {
     int filled = 0;
 
     // 1. Title
@@ -1225,7 +1310,9 @@ class DocumentUploadController extends GetxController {
           final pName = result.utilityFields['providerName'].toString();
           final available = availableProvidersForSelectedType;
           final match = available.firstWhereOrNull(
-            (p) => p.toLowerCase().contains(pName.toLowerCase()) || pName.toLowerCase().contains(p.toLowerCase()),
+            (p) =>
+                p.toLowerCase().contains(pName.toLowerCase()) ||
+                pName.toLowerCase().contains(p.toLowerCase()),
           );
           if (match != null) {
             onUtilityProviderChanged(match);
@@ -1237,12 +1324,14 @@ class DocumentUploadController extends GetxController {
         }
 
         if (result.utilityFields['consumerNumber'] != null) {
-          consumerNumberController.text = result.utilityFields['consumerNumber'].toString();
+          consumerNumberController.text = result.utilityFields['consumerNumber']
+              .toString();
           filled++;
         }
 
         if (result.utilityFields['meterNumber'] != null) {
-          meterNumberController.text = result.utilityFields['meterNumber'].toString();
+          meterNumberController.text = result.utilityFields['meterNumber']
+              .toString();
           filled++;
         }
 
@@ -1262,7 +1351,9 @@ class DocumentUploadController extends GetxController {
         }
       } else if (isApplianceWarranty) {
         if (result.applianceFields['storeVendorName'] != null) {
-          storeVendorNameController.text = result.applianceFields['storeVendorName'].toString();
+          storeVendorNameController.text = result
+              .applianceFields['storeVendorName']
+              .toString();
           filled++;
         }
 
@@ -1286,16 +1377,21 @@ class DocumentUploadController extends GetxController {
             (result.applianceFields['items'] as List).isNotEmpty &&
             applianceItems.isNotEmpty) {
           final item = applianceItems.first;
-          final firstItemData = (result.applianceFields['items'] as List).first as Map<String, dynamic>;
+          final firstItemData =
+              (result.applianceFields['items'] as List).first
+                  as Map<String, dynamic>;
 
           if (firstItemData['productName'] != null) {
-            item.productNameController.text = firstItemData['productName'].toString();
+            item.productNameController.text = firstItemData['productName']
+                .toString();
             filled++;
           }
 
           if (firstItemData['brand'] != null) {
             final b = firstItemData['brand'].toString();
-            final matchedBrand = dynamicBrands.firstWhereOrNull((x) => x.toLowerCase() == b.toLowerCase());
+            final matchedBrand = dynamicBrands.firstWhereOrNull(
+              (x) => x.toLowerCase() == b.toLowerCase(),
+            );
             if (matchedBrand != null) {
               item.selectedBrand.value = matchedBrand;
             } else {
@@ -1306,17 +1402,20 @@ class DocumentUploadController extends GetxController {
           }
 
           if (firstItemData['modelNumber'] != null) {
-            item.modelNumberController.text = firstItemData['modelNumber'].toString();
+            item.modelNumberController.text = firstItemData['modelNumber']
+                .toString();
             filled++;
           }
 
           if (firstItemData['serialNumber'] != null) {
-            item.serialNumberController.text = firstItemData['serialNumber'].toString();
+            item.serialNumberController.text = firstItemData['serialNumber']
+                .toString();
             filled++;
           }
 
           if (firstItemData['purchaseAmount'] != null) {
-            item.purchaseAmountController.text = (firstItemData['purchaseAmount'] as double).toStringAsFixed(0);
+            item.purchaseAmountController.text =
+                (firstItemData['purchaseAmount'] as double).toStringAsFixed(0);
           }
         }
       } else if (isPersonalDoc) {
@@ -1326,7 +1425,9 @@ class DocumentUploadController extends GetxController {
         }
 
         if (result.personalFields['issuingAuthority'] != null) {
-          personalIssuingAuthorityController.text = result.personalFields['issuingAuthority'].toString();
+          personalIssuingAuthorityController.text = result
+              .personalFields['issuingAuthority']
+              .toString();
           filled++;
         }
 
@@ -1359,7 +1460,11 @@ class DocumentUploadController extends GetxController {
         if (result.vehicleFields['vehicleNumber'] != null) {
           final vNum = result.vehicleFields['vehicleNumber'].toString();
           final matchedVehicle = dynamicVehicles.firstWhereOrNull(
-            (v) => v.vehicleNumber.replaceAll('-', '').replaceAll(' ', '').toUpperCase() ==
+            (v) =>
+                v.vehicleNumber
+                    .replaceAll('-', '')
+                    .replaceAll(' ', '')
+                    .toUpperCase() ==
                 vNum.replaceAll('-', '').replaceAll(' ', '').toUpperCase(),
           );
           if (matchedVehicle != null) {
@@ -1378,12 +1483,16 @@ class DocumentUploadController extends GetxController {
         }
 
         if (result.vehicleFields['insuranceCompany'] != null) {
-          vehicleInsuranceCompanyController.text = result.vehicleFields['insuranceCompany'].toString();
+          vehicleInsuranceCompanyController.text = result
+              .vehicleFields['insuranceCompany']
+              .toString();
           filled++;
         }
 
         if (result.amount != null && result.amount! > 0) {
-          vehiclePremiumAmountController.text = result.amount!.toStringAsFixed(0);
+          vehiclePremiumAmountController.text = result.amount!.toStringAsFixed(
+            0,
+          );
           filled++;
         }
 
@@ -1397,13 +1506,16 @@ class DocumentUploadController extends GetxController {
           filled++;
         }
 
-        if (result.vehicleFields['isBundled'] == true || result.vehicleFields['tpExpiryDate'] != null) {
+        if (result.vehicleFields['isBundled'] == true ||
+            result.vehicleFields['tpExpiryDate'] != null) {
           isVehicleBundledInsurance.value = true;
           if (result.vehicleFields['tpExpiryDate'] != null) {
-            vehicleTpExpiryDate.value = result.vehicleFields['tpExpiryDate'] as DateTime;
+            vehicleTpExpiryDate.value =
+                result.vehicleFields['tpExpiryDate'] as DateTime;
           }
           if (result.vehicleFields['bundledYears'] != null) {
-            selectedVehicleBundledYears.value = result.vehicleFields['bundledYears'] as int;
+            selectedVehicleBundledYears.value =
+                result.vehicleFields['bundledYears'] as int;
           }
           filled++;
         }
@@ -1420,12 +1532,13 @@ class DocumentUploadController extends GetxController {
   }
 
   void addApplianceItem({String? name, String? brand, String? category}) {
-    final defaultCat = category ??
+    final defaultCat =
+        category ??
         (dynamicApplianceSubcategories.isNotEmpty
             ? dynamicApplianceSubcategories.first
             : 'Ceiling / Table Fans');
-    final defaultBrand = brand ??
-        (dynamicBrands.isNotEmpty ? dynamicBrands.first : 'Havells');
+    final defaultBrand =
+        brand ?? (dynamicBrands.isNotEmpty ? dynamicBrands.first : 'Havells');
 
     final item = ApplianceItemFormState(
       initialName: name,
@@ -1500,7 +1613,8 @@ class DocumentUploadController extends GetxController {
     // Location is strictly mandatory for utility bills
     if (isUtilityBill) {
       final hasSelectedLoc = selectedLocation.value != null;
-      final hasManualLoc = areaLocalityController.text.trim().isNotEmpty ||
+      final hasManualLoc =
+          areaLocalityController.text.trim().isNotEmpty ||
           premiseNameController.text.trim().isNotEmpty;
       if (!hasSelectedLoc && !hasManualLoc) {
         formErrorMessage.value =
@@ -1526,32 +1640,39 @@ class DocumentUploadController extends GetxController {
               selectedLocation.value != null)) {
         final loc = selectedLocation.value;
         address = AddressModel(
-          premiseName: loc?.premiseName ??
+          premiseName:
+              loc?.premiseName ??
               (premiseNameController.text.trim().isNotEmpty
                   ? premiseNameController.text.trim()
                   : (loc?.name)),
-          flatHouseNo: loc?.flatHouseNo ??
+          flatHouseNo:
+              loc?.flatHouseNo ??
               (flatHouseNoController.text.trim().isNotEmpty
                   ? flatHouseNoController.text.trim()
                   : null),
-          buildingName: loc?.buildingName ??
+          buildingName:
+              loc?.buildingName ??
               (buildingNameController.text.trim().isNotEmpty
                   ? buildingNameController.text.trim()
                   : null),
-          streetAddress: loc?.streetAddress ??
+          streetAddress:
+              loc?.streetAddress ??
               (streetAddressController.text.trim().isNotEmpty
                   ? streetAddressController.text.trim()
                   : null),
-          areaLocality: loc?.areaLocality ??
+          areaLocality:
+              loc?.areaLocality ??
               (areaLocalityController.text.trim().isNotEmpty
                   ? areaLocalityController.text.trim()
                   : (loc?.name ?? 'General')),
           city: loc?.city ?? selectedCity.value,
-          state: loc?.state ??
+          state:
+              loc?.state ??
               (stateController.text.trim().isNotEmpty
                   ? stateController.text.trim()
                   : 'Gujarat'),
-          postalCode: loc?.postalCode ??
+          postalCode:
+              loc?.postalCode ??
               (postalCodeController.text.trim().isNotEmpty
                   ? postalCodeController.text.trim()
                   : null),
@@ -1566,8 +1687,8 @@ class DocumentUploadController extends GetxController {
         final pName = selectedProviderName.value == 'Other'
             ? utilityProviderController.text.trim()
             : (selectedProviderName.value.isNotEmpty
-                ? selectedProviderName.value
-                : utilityProviderController.text.trim());
+                  ? selectedProviderName.value
+                  : utilityProviderController.text.trim());
         utilityMeta = UtilityMetadataModel(
           utilityType: selectedSubcategory.value,
           providerName: pName.isNotEmpty ? pName : 'Generic Provider',
@@ -1593,7 +1714,8 @@ class DocumentUploadController extends GetxController {
         double computedTotal = 0.0;
 
         for (var item in applianceItems) {
-          final iBrand = item.selectedBrand.value == 'Other' &&
+          final iBrand =
+              item.selectedBrand.value == 'Other' &&
                   item.customBrandController.text.isNotEmpty
               ? item.customBrandController.text.trim()
               : item.selectedBrand.value;
@@ -1632,12 +1754,12 @@ class DocumentUploadController extends GetxController {
           );
         }
 
-        final explicitTotal =
-            double.tryParse(purchaseAmountController.text.trim());
-        final totalAmount =
-            (explicitTotal != null && explicitTotal > 0)
-                ? explicitTotal
-                : computedTotal;
+        final explicitTotal = double.tryParse(
+          purchaseAmountController.text.trim(),
+        );
+        final totalAmount = (explicitTotal != null && explicitTotal > 0)
+            ? explicitTotal
+            : computedTotal;
 
         applianceMeta = ApplianceWarrantyModel(
           items: items,
@@ -1679,11 +1801,12 @@ class DocumentUploadController extends GetxController {
 
       VehicleDocumentMetadataModel? vehicleMeta;
       if (isVehicleDoc) {
-        final bool isBundled = isVehicleInsuranceDoc && isVehicleBundledInsurance.value;
+        final bool isBundled =
+            isVehicleInsuranceDoc && isVehicleBundledInsurance.value;
         final String? insuranceType = isVehicleInsuranceDoc
             ? (isBundled
-                ? 'Bundled (1-Yr OD + ${selectedVehicleBundledYears.value}-Yr TP)'
-                : 'Comprehensive')
+                  ? 'Bundled (1-Yr OD + ${selectedVehicleBundledYears.value}-Yr TP)'
+                  : 'Comprehensive')
             : null;
         final DateTime? odExpiry = isBundled ? vehicleExpiryDate.value : null;
         final DateTime? tpExpiry = isBundled ? vehicleTpExpiryDate.value : null;
@@ -1700,24 +1823,21 @@ class DocumentUploadController extends GetxController {
           docTypeName: selectedVehicleDocTypeName.value,
           policyOrCertNumber:
               vehiclePolicyOrCertNumberController.text.trim().isNotEmpty
-                  ? vehiclePolicyOrCertNumberController.text.trim()
-                  : null,
+              ? vehiclePolicyOrCertNumberController.text.trim()
+              : null,
           issueDate: vehicleIssueDate.value,
           expiryDate: vehicleExpiryDate.value,
           insuranceCompany:
               vehicleInsuranceCompanyController.text.trim().isNotEmpty
-                  ? vehicleInsuranceCompanyController.text.trim()
-                  : null,
+              ? vehicleInsuranceCompanyController.text.trim()
+              : null,
           premiumAmount: double.tryParse(
             vehiclePremiumAmountController.text.trim(),
           ),
-          serviceCenter:
-              vehicleServiceCenterController.text.trim().isNotEmpty
-                  ? vehicleServiceCenterController.text.trim()
-                  : null,
-          odometerReading: int.tryParse(
-            vehicleOdometerController.text.trim(),
-          ),
+          serviceCenter: vehicleServiceCenterController.text.trim().isNotEmpty
+              ? vehicleServiceCenterController.text.trim()
+              : null,
+          odometerReading: int.tryParse(vehicleOdometerController.text.trim()),
           notes: vehicleNotesController.text.trim().isNotEmpty
               ? vehicleNotesController.text.trim()
               : null,
@@ -1739,31 +1859,33 @@ class DocumentUploadController extends GetxController {
       String uploadFileName = file.name;
       String uploadMimeType = mimeType;
 
-      if (useCompressed.value && compressionResult.value != null && compressionResult.value!.hasSizeReduction) {
+      if (useCompressed.value &&
+          compressionResult.value != null &&
+          compressionResult.value!.hasSizeReduction) {
         uploadBytes = compressionResult.value!.compressedBytes;
         uploadFileName = compressionResult.value!.compressedFileName;
         uploadMimeType = compressionResult.value!.mimeType;
         AppLogger.info(
           'UPLOAD_CTRL',
           '┌──────────────────────────────────────────────────────────────────\n'
-          '│ 🚀 [UPLOADING TO VAULT: COMPRESSED]\n'
-          '│ 📄 File Name: $uploadFileName\n'
-          '│ 📦 Compressed Size: ${uploadBytes.length} bytes (${CompressionResult.formatFileSize(uploadBytes.length)})\n'
-          '│ ⚖️ Original Size: ${file.bytes!.length} bytes (${CompressionResult.formatFileSize(file.bytes!.length)})\n'
-          '│ 🔥 Bandwidth Saved: ${compressionResult.value!.savingsFormatted}\n'
-          '│ 🏷️ MIME Type: $uploadMimeType\n'
-          '└──────────────────────────────────────────────────────────────────',
+              '│ 🚀 [UPLOADING TO VAULT: COMPRESSED]\n'
+              '│ 📄 File Name: $uploadFileName\n'
+              '│ 📦 Compressed Size: ${uploadBytes.length} bytes (${CompressionResult.formatFileSize(uploadBytes.length)})\n'
+              '│ ⚖️ Original Size: ${file.bytes!.length} bytes (${CompressionResult.formatFileSize(file.bytes!.length)})\n'
+              '│ 🔥 Bandwidth Saved: ${compressionResult.value!.savingsFormatted}\n'
+              '│ 🏷️ MIME Type: $uploadMimeType\n'
+              '└──────────────────────────────────────────────────────────────────',
         );
       } else {
         AppLogger.info(
           'UPLOAD_CTRL',
           '┌──────────────────────────────────────────────────────────────────\n'
-          '│ 🚀 [UPLOADING TO VAULT: ORIGINAL QUALITY]\n'
-          '│ 📄 File Name: $uploadFileName\n'
-          '│ 📦 Size: ${uploadBytes.length} bytes (${CompressionResult.formatFileSize(uploadBytes.length)})\n'
-          '│ 🏷️ MIME Type: $uploadMimeType\n'
-          '│ ℹ️ Compression: Skipped (Original Quality selected)\n'
-          '└──────────────────────────────────────────────────────────────────',
+              '│ 🚀 [UPLOADING TO VAULT: ORIGINAL QUALITY]\n'
+              '│ 📄 File Name: $uploadFileName\n'
+              '│ 📦 Size: ${uploadBytes.length} bytes (${CompressionResult.formatFileSize(uploadBytes.length)})\n'
+              '│ 🏷️ MIME Type: $uploadMimeType\n'
+              '│ ℹ️ Compression: Skipped (Original Quality selected)\n'
+              '└──────────────────────────────────────────────────────────────────',
         );
       }
 
@@ -1776,11 +1898,11 @@ class DocumentUploadController extends GetxController {
         documentNumber: documentNumberController.text.trim().isNotEmpty
             ? documentNumberController.text.trim()
             : (invoiceNumberController.text.trim().isNotEmpty
-                ? invoiceNumberController.text.trim()
-                : (personalMeta?.idNumber ??
-                    vehicleMeta?.policyOrCertNumber ??
-                    applianceMeta?.invoiceNumber ??
-                    utilityMeta?.consumerNumber)),
+                  ? invoiceNumberController.text.trim()
+                  : (personalMeta?.idNumber ??
+                        vehicleMeta?.policyOrCertNumber ??
+                        applianceMeta?.invoiceNumber ??
+                        utilityMeta?.consumerNumber)),
         categoryId: selectedCategoryId.value,
         subCategory: selectedSubcategory.value,
         folderId: selectedFolderId.value,

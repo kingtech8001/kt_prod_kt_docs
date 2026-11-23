@@ -1,179 +1,8 @@
-import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_scan_result.dart';
-
-class GameFallingItem {
-  final String id;
-  final String emoji;
-  final int points;
-  double x; // 0.0 to 1.0
-  double y; // 0.0 to 1.0
-  final double speed;
-
-  GameFallingItem({
-    required this.id,
-    required this.emoji,
-    required this.points,
-    required this.x,
-    this.y = 0.0,
-    required this.speed,
-  });
-}
-
-class VaultMiniGameController extends GetxController {
-  final playerX = 0.5.obs; // 0.0 (left) to 1.0 (right)
-  final score = 0.obs;
-  final highScore = 0.obs;
-  final items = <GameFallingItem>[].obs;
-  final isPlaying = true.obs;
-  final catchEffectEmoji = ''.obs;
-
-  Timer? _gameLoopTimer;
-  Timer? _spawnTimer;
-  final _random = Random();
-
-  @override
-  void onInit() {
-    super.onInit();
-    startGame();
-  }
-
-  void startGame() {
-    score.value = 0;
-    items.clear();
-    playerX.value = 0.5;
-    isPlaying.value = true;
-    _gameLoopTimer?.cancel();
-    _spawnTimer?.cancel();
-
-    // Spawn 2 initial items immediately with staggered positions
-    items.add(
-      GameFallingItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}_init1',
-        emoji: '📄',
-        points: 10,
-        x: 0.35,
-        y: 0.15,
-        speed: 0.024,
-      ),
-    );
-    items.add(
-      GameFallingItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}_init2',
-        emoji: '🛡️',
-        points: 15,
-        x: 0.65,
-        y: 0.35,
-        speed: 0.022,
-      ),
-    );
-
-    // 60 FPS update loop
-    _gameLoopTimer = Timer.periodic(const Duration(milliseconds: 33), (_) {
-      _updateGameStep();
-    });
-
-    // Spawn falling items every 650ms
-    _spawnTimer = Timer.periodic(const Duration(milliseconds: 650), (_) {
-      if (isPlaying.value) {
-        _spawnItem();
-      }
-    });
-  }
-
-  void _spawnItem() {
-    final typeRoll = _random.nextInt(10);
-    String emoji = '📄';
-    int pts = 10;
-    double spd = 0.02 + (_random.nextDouble() * 0.015);
-
-    if (typeRoll == 0 || typeRoll == 1) {
-      emoji = '🔑';
-      pts = 25;
-      spd += 0.008;
-    } else if (typeRoll == 2 || typeRoll == 3) {
-      emoji = '🛡️';
-      pts = 15;
-    } else if (typeRoll == 4) {
-      emoji = '⭐';
-      pts = 30;
-      spd += 0.01;
-    }
-
-    items.add(
-      GameFallingItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}',
-        emoji: emoji,
-        points: pts,
-        x: 0.08 + (_random.nextDouble() * 0.84),
-        speed: spd,
-      ),
-    );
-  }
-
-  void _updateGameStep() {
-    if (!isPlaying.value) return;
-
-    final caughtList = <GameFallingItem>[];
-    final missedList = <GameFallingItem>[];
-
-    for (final item in items) {
-      item.y += item.speed;
-
-      // Check collision with player paddle (at y ~ 0.78 to 0.94)
-      if (item.y >= 0.78 && item.y <= 0.94) {
-        final dist = (item.x - playerX.value).abs();
-        if (dist <= 0.13) {
-          caughtList.add(item);
-        }
-      } else if (item.y > 1.05) {
-        missedList.add(item);
-      }
-    }
-
-    for (final caught in caughtList) {
-      items.remove(caught);
-      score.value += caught.points;
-      if (score.value > highScore.value) {
-        highScore.value = score.value;
-      }
-      catchEffectEmoji.value = '+${caught.points} ${caught.emoji}';
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (catchEffectEmoji.value.startsWith('+${caught.points}')) {
-          catchEffectEmoji.value = '';
-        }
-      });
-    }
-
-    for (final missed in missedList) {
-      items.remove(missed);
-    }
-
-    items.refresh();
-  }
-
-  void moveLeft() {
-    playerX.value = (playerX.value - 0.09).clamp(0.06, 0.94);
-  }
-
-  void moveRight() {
-    playerX.value = (playerX.value + 0.09).clamp(0.06, 0.94);
-  }
-
-  void setPlayerPosition(double normalizedX) {
-    playerX.value = normalizedX.clamp(0.06, 0.94);
-  }
-
-  @override
-  void onClose() {
-    _gameLoopTimer?.cancel();
-    _spawnTimer?.cancel();
-    super.onClose();
-  }
-}
+import 'package:kt_prod_kt_docs/app/modules/document_upload/controllers/vault_mini_game_controller.dart';
 
 class VaultMiniGameWidget extends StatelessWidget {
   final VoidCallback onDismiss;
@@ -193,14 +22,7 @@ class VaultMiniGameWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gameController = Get.isRegistered<VaultMiniGameController>()
-        ? Get.find<VaultMiniGameController>()
-        : Get.put(VaultMiniGameController());
-
-    // Ensure game is actively running with items
-    if (!gameController.isPlaying.value || gameController.items.isEmpty) {
-      gameController.startGame();
-    }
+    final gameController = Get.find<VaultMiniGameController>();
 
     return Focus(
       autofocus: true,
@@ -241,9 +63,7 @@ class VaultMiniGameWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFF1E293B)),
-                ),
+                border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
               ),
               child: Row(
                 children: [
@@ -348,9 +168,7 @@ class VaultMiniGameWidget extends StatelessWidget {
                       children: [
                         // Grid lines
                         Positioned.fill(
-                          child: CustomPaint(
-                            painter: _GridPainter(),
-                          ),
+                          child: CustomPaint(painter: _GridPainter()),
                         ),
 
                         // Score Pop Effect
@@ -359,7 +177,9 @@ class VaultMiniGameWidget extends StatelessWidget {
                           if (effect.isEmpty) return const SizedBox.shrink();
                           return Positioned(
                             bottom: 50,
-                            left: (gameController.playerX.value * arenaWidth) - 30,
+                            left:
+                                (gameController.playerX.value * arenaWidth) -
+                                30,
                             child: AnimatedOpacity(
                               duration: const Duration(milliseconds: 200),
                               opacity: 0.95,
@@ -420,7 +240,9 @@ class VaultMiniGameWidget extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                                    color: const Color(
+                                      0xFF38BDF8,
+                                    ).withValues(alpha: 0.4),
                                     blurRadius: 10,
                                     offset: const Offset(0, 2),
                                   ),
@@ -429,7 +251,11 @@ class VaultMiniGameWidget extends StatelessWidget {
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.shield_rounded, color: Colors.white, size: 16),
+                                  Icon(
+                                    Icons.shield_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                   SizedBox(width: 4),
                                   Text(
                                     'VAULT',
@@ -456,9 +282,7 @@ class VaultMiniGameWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: Color(0xFF1E293B)),
-                ),
+                border: Border(top: BorderSide(color: Color(0xFF1E293B))),
               ),
               child: Row(
                 children: [
@@ -490,7 +314,10 @@ class VaultMiniGameWidget extends StatelessWidget {
                       Get.delete<VaultMiniGameController>();
                       onDismiss();
                     },
-                    child: const Text('Close Game ✕', style: TextStyle(fontSize: 12)),
+                    child: const Text(
+                      'Close Game ✕',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -512,7 +339,10 @@ class VaultMiniGameWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF064E3B), // Deep Emerald
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF34D399), width: 1.5),
+                  border: Border.all(
+                    color: const Color(0xFF34D399),
+                    width: 1.5,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFF10B981).withValues(alpha: 0.25),
@@ -555,7 +385,10 @@ class VaultMiniGameWidget extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF10B981),
                                       borderRadius: BorderRadius.circular(8),
@@ -594,12 +427,24 @@ class VaultMiniGameWidget extends StatelessWidget {
                         runSpacing: 4,
                         children: [
                           if (result.vehicleFields['vehicleNumber'] != null &&
-                              result.vehicleFields['vehicleNumber'].toString().isNotEmpty)
-                            _buildDetailChip('🚗 Reg', result.vehicleFields['vehicleNumber'].toString()),
-                          if (result.documentNumber != null && result.documentNumber!.isNotEmpty)
-                            _buildDetailChip('📄 Doc/Policy #', result.documentNumber!),
+                              result.vehicleFields['vehicleNumber']
+                                  .toString()
+                                  .isNotEmpty)
+                            _buildDetailChip(
+                              '🚗 Reg',
+                              result.vehicleFields['vehicleNumber'].toString(),
+                            ),
+                          if (result.documentNumber != null &&
+                              result.documentNumber!.isNotEmpty)
+                            _buildDetailChip(
+                              '📄 Doc/Policy #',
+                              result.documentNumber!,
+                            ),
                           if (result.amount != null && result.amount! > 0)
-                            _buildDetailChip('💰 Amount', '₹${result.amount!.toStringAsFixed(2)}'),
+                            _buildDetailChip(
+                              '💰 Amount',
+                              '₹${result.amount!.toStringAsFixed(2)}',
+                            ),
                           if (result.secondaryDate != null)
                             _buildDetailChip(
                               '📅 Due/Expiry',
@@ -615,12 +460,20 @@ class VaultMiniGameWidget extends StatelessWidget {
                       children: [
                         OutlinedButton.icon(
                           icon: const Icon(Icons.refresh_rounded, size: 15),
-                          label: const Text('Play Again 🕹️', style: TextStyle(fontSize: 11)),
+                          label: const Text(
+                            'Play Again 🕹️',
+                            style: TextStyle(fontSize: 11),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF94A3B8),
                             side: const BorderSide(color: Color(0xFF475569)),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                           onPressed: () {
                             gameController.startGame();
@@ -628,16 +481,27 @@ class VaultMiniGameWidget extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
-                          icon: const Icon(Icons.arrow_forward_rounded, size: 15),
+                          icon: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 15,
+                          ),
                           label: const Text(
                             'View Extracted Form ➔',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                            ),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF10B981),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             elevation: 3,
                           ),
                           onPressed: () {

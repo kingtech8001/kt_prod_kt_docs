@@ -1,3 +1,4 @@
+import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/settings_dataset.dart';
@@ -25,7 +26,12 @@ class UtilityConnectionDetailController extends GetxController {
   final connection = Rxn<UtilityConnectionAccount>();
   final isLoading = true.obs;
   final isSaving = false.obs;
+  final formError = ''.obs;
   final historyBills = <DocumentModel>[].obs;
+  final historyPage = 0.obs;
+  final hasMoreHistory = true.obs;
+  final isLoadingHistory = false.obs;
+  final historyError = ''.obs;
 
   // Settings Locations
   final dynamicLocations = <MasterLocationModel>[].obs;
@@ -50,8 +56,14 @@ class UtilityConnectionDetailController extends GetxController {
   bool get canEdit {
     try {
       return AuthService.to.canEdit;
-    } catch (_) {
-      return true;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'UTILITY_CONNECTION_DETAIL_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -70,12 +82,18 @@ class UtilityConnectionDetailController extends GetxController {
       final locs = await _settingsDataset.getLocations(activeOnly: true);
       dynamicLocations.assignAll(locs);
     } catch (e, st) {
-      AppLogger.error('UTILITY_DETAIL_CTRL', 'Error loading settings locations: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UTILITY_DETAIL_CTRL',
+        'Error loading settings locations: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
 
     final args = Get.arguments;
     if (args is UtilityConnectionAccount) {
       _populateFromAccount(args);
+      await reloadHistory();
     } else {
       // Fallback: check query parameter
       final consumer = Get.parameters['consumerNumber'];
@@ -93,12 +111,16 @@ class UtilityConnectionDetailController extends GetxController {
 
     // Try to match setting location
     if (dynamicLocations.isNotEmpty) {
-      final accPremise = (acc.premiseName ?? acc.displayName).toLowerCase().trim();
-      final match = dynamicLocations.firstWhereOrNull((l) =>
-          (l.premiseName?.toLowerCase().trim() == accPremise) ||
-          (l.name.toLowerCase().trim() == accPremise) ||
-          (accPremise.contains(l.name.toLowerCase().trim())) ||
-          (l.name.toLowerCase().trim().contains(accPremise)));
+      final accPremise = (acc.premiseName ?? acc.displayName)
+          .toLowerCase()
+          .trim();
+      final match = dynamicLocations.firstWhereOrNull(
+        (l) =>
+            (l.premiseName?.toLowerCase().trim() == accPremise) ||
+            (l.name.toLowerCase().trim() == accPremise) ||
+            (accPremise.contains(l.name.toLowerCase().trim())) ||
+            (l.name.toLowerCase().trim().contains(accPremise)),
+      );
       selectedLocation.value = match ?? dynamicLocations.first;
       if (match != null) {
         premiseNameController.text = match.premiseName ?? match.name;
@@ -171,39 +193,72 @@ class UtilityConnectionDetailController extends GetxController {
         final accounts = UtilityConnectionAccount.groupFromDocuments(bills);
         if (accounts.isNotEmpty) {
           _populateFromAccount(accounts.first);
+          historyPage.value = 1;
+          hasMoreHistory.value = bills.length == AppConstants.historyPageSize;
         }
       }
     } catch (e, st) {
-      AppLogger.error('UTILITY_DETAIL_CTRL', 'Error fetching account: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'UTILITY_DETAIL_CTRL',
+        'Error fetching account: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoading.value = false;
     }
   }
 
   Future<void> reloadHistory() async {
+    if (isLoadingHistory.value) return;
+    historyPage.value = 0;
+    hasMoreHistory.value = true;
+    await loadNextHistoryPage(reset: true);
+  }
+
+  Future<void> loadNextHistoryPage({bool reset = false}) async {
     final current = connection.value;
-    if (current == null) return;
+    if (current == null || isLoadingHistory.value || !hasMoreHistory.value)
+      return;
+    isLoadingHistory.value = true;
+    historyError.value = '';
     try {
-      final bills = await _dataset.getUtilityConnectionHistory(current.consumerNumber);
-      historyBills.assignAll(bills);
-      if (bills.isNotEmpty) {
-        final accounts = UtilityConnectionAccount.groupFromDocuments(bills);
-        if (accounts.isNotEmpty) {
-          connection.value = accounts.first;
-        }
+      final page = historyPage.value + 1;
+      final bills = await _dataset.getUtilityConnectionHistory(
+        current.consumerNumber,
+        page: page,
+      );
+      if (isClosed) return;
+      if (reset) {
+        historyBills.assignAll(bills);
+      } else {
+        historyBills.addAll(bills);
       }
+      historyPage.value = page;
+      hasMoreHistory.value = bills.length == AppConstants.historyPageSize;
       _calculateTotalSpent();
-    } catch (e, st) {
-      AppLogger.error('UTILITY_DETAIL_CTRL', 'Error reloading history: $e', error: e, stackTrace: st);
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'UTILITY_DETAIL_CTRL',
+        'Failed to load bill history.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      historyError.value = 'Could not load bill history. Please retry.';
+    } finally {
+      isLoadingHistory.value = false;
     }
   }
 
   Future<void> saveConnectionDetails() async {
+    if (isSaving.value) return;
+    formError.value = '';
     final current = connection.value;
     if (current == null) return;
 
     if (!canEdit) {
-      AppSnackbar.showWarning('Permission Denied', 'Your role does not have permission to edit connection details.');
+      formError.value =
+          'Your role does not have permission to edit connection details.';
       return;
     }
 
@@ -213,45 +268,55 @@ class UtilityConnectionDetailController extends GetxController {
         : premiseNameController.text.trim();
     final newConsumer = consumerNumberController.text.trim();
     final newProvider = providerNameController.text.trim();
-    final newCity = loc?.city ?? (cityController.text.trim().isNotEmpty ? cityController.text.trim() : 'Rajkot');
+    final newCity =
+        loc?.city ??
+        (cityController.text.trim().isNotEmpty
+            ? cityController.text.trim()
+            : 'Rajkot');
 
     if (newConsumer.isEmpty) {
-      AppSnackbar.showError('Validation Error', 'Consumer number is required.');
+      formError.value = 'Consumer number is required.';
       return;
     }
     if (newProvider.isEmpty) {
-      AppSnackbar.showError('Validation Error', 'Provider name is required.');
+      formError.value = 'Provider name is required.';
       return;
     }
 
     isSaving.value = true;
     try {
-      final newFlat = loc?.flatHouseNo ??
+      final newFlat =
+          loc?.flatHouseNo ??
           (flatHouseNoController.text.trim().isNotEmpty
               ? flatHouseNoController.text.trim()
               : null);
-      final newBuilding = loc?.buildingName ??
+      final newBuilding =
+          loc?.buildingName ??
           (buildingNameController.text.trim().isNotEmpty
               ? buildingNameController.text.trim()
               : null);
-      final newStreet = loc?.streetAddress ??
+      final newStreet =
+          loc?.streetAddress ??
           (streetAddressController.text.trim().isNotEmpty
               ? streetAddressController.text.trim()
               : null);
       final newArea = loc != null
           ? loc.areaLocality
           : (areaLocalityController.text.trim().isNotEmpty
-              ? areaLocalityController.text.trim()
-              : 'General');
-      final newPostal = loc?.postalCode ??
+                ? areaLocalityController.text.trim()
+                : 'General');
+      final newPostal =
+          loc?.postalCode ??
           (postalCodeController.text.trim().isNotEmpty
               ? postalCodeController.text.trim()
               : null);
-      final newState = loc?.state ??
+      final newState =
+          loc?.state ??
           (stateController.text.trim().isNotEmpty
               ? stateController.text.trim()
               : 'Gujarat');
-      final newCountry = loc?.country ??
+      final newCountry =
+          loc?.country ??
           (countryController.text.trim().isNotEmpty
               ? countryController.text.trim()
               : 'India');
@@ -283,8 +348,13 @@ class UtilityConnectionDetailController extends GetxController {
         'Account & address details updated successfully for $newPremise.',
       );
     } catch (e, st) {
-      AppLogger.error('UTILITY_DETAIL_CTRL', 'Error saving account details: $e', error: e, stackTrace: st);
-      AppSnackbar.showError('Save Failed', 'Could not save account details: $e');
+      AppLogger.error(
+        'UTILITY_DETAIL_CTRL',
+        'Error saving account details: $e',
+        error: e,
+        stackTrace: st,
+      );
+      formError.value = 'Could not save account details: $e';
     } finally {
       isSaving.value = false;
     }
@@ -293,33 +363,34 @@ class UtilityConnectionDetailController extends GetxController {
   Future<void> openEditBillCycleDialog(DocumentModel bill) async {
     final success = await EditUtilityBillDialog.show(
       bill: bill,
-      onSave: ({
-        required documentId,
-        required title,
-        description,
-        required billAmount,
-        required billDate,
-        dueDate,
-        required paymentStatus,
-        paymentDate,
-        paymentReferenceId,
-        meterNumber,
-        unitsConsumed,
-      }) async {
-        await _dataset.updateUtilityBillCycle(
-          documentId: documentId,
-          title: title,
-          description: description,
-          billAmount: billAmount,
-          billDate: billDate,
-          dueDate: dueDate,
-          paymentStatus: paymentStatus,
-          paymentDate: paymentDate,
-          paymentReferenceId: paymentReferenceId,
-          meterNumber: meterNumber,
-          unitsConsumed: unitsConsumed,
-        );
-      },
+      onSave:
+          ({
+            required documentId,
+            required title,
+            description,
+            required billAmount,
+            required billDate,
+            dueDate,
+            required paymentStatus,
+            paymentDate,
+            paymentReferenceId,
+            meterNumber,
+            unitsConsumed,
+          }) async {
+            await _dataset.updateUtilityBillCycle(
+              documentId: documentId,
+              title: title,
+              description: description,
+              billAmount: billAmount,
+              billDate: billDate,
+              dueDate: dueDate,
+              paymentStatus: paymentStatus,
+              paymentDate: paymentDate,
+              paymentReferenceId: paymentReferenceId,
+              meterNumber: meterNumber,
+              unitsConsumed: unitsConsumed,
+            );
+          },
     );
 
     if (success == true) {
@@ -337,57 +408,58 @@ class UtilityConnectionDetailController extends GetxController {
 
     final success = await UploadNextUtilityBillDialog.show(
       connection: current,
-      onLogBill: ({
-        required consumerNumber,
-        meterNumber,
-        required providerName,
-        required utilityType,
-        premiseName,
-        flatHouseNo,
-        buildingName,
-        streetAddress,
-        areaLocality,
-        city,
-        state,
-        postalCode,
-        country,
-        required title,
-        description,
-        required billAmount,
-        required billDate,
-        dueDate,
-        required paymentStatus,
-        paymentDate,
-        paymentReferenceId,
-        required fileBytes,
-        required fileName,
-      }) async {
-        await _dataset.logNextUtilityBill(
-          consumerNumber: consumerNumber,
-          meterNumber: meterNumber,
-          providerName: providerName,
-          utilityType: utilityType,
-          premiseName: premiseName,
-          flatHouseNo: flatHouseNo,
-          buildingName: buildingName,
-          streetAddress: streetAddress,
-          areaLocality: areaLocality,
-          city: city,
-          state: state,
-          postalCode: postalCode,
-          country: country,
-          title: title,
-          description: description,
-          billAmount: billAmount,
-          billDate: billDate,
-          dueDate: dueDate,
-          paymentStatus: paymentStatus,
-          paymentDate: paymentDate,
-          paymentReferenceId: paymentReferenceId,
-          fileBytes: fileBytes,
-          fileName: fileName,
-        );
-      },
+      onLogBill:
+          ({
+            required consumerNumber,
+            meterNumber,
+            required providerName,
+            required utilityType,
+            premiseName,
+            flatHouseNo,
+            buildingName,
+            streetAddress,
+            areaLocality,
+            city,
+            state,
+            postalCode,
+            country,
+            required title,
+            description,
+            required billAmount,
+            required billDate,
+            dueDate,
+            required paymentStatus,
+            paymentDate,
+            paymentReferenceId,
+            required fileBytes,
+            required fileName,
+          }) async {
+            await _dataset.logNextUtilityBill(
+              consumerNumber: consumerNumber,
+              meterNumber: meterNumber,
+              providerName: providerName,
+              utilityType: utilityType,
+              premiseName: premiseName,
+              flatHouseNo: flatHouseNo,
+              buildingName: buildingName,
+              streetAddress: streetAddress,
+              areaLocality: areaLocality,
+              city: city,
+              state: state,
+              postalCode: postalCode,
+              country: country,
+              title: title,
+              description: description,
+              billAmount: billAmount,
+              billDate: billDate,
+              dueDate: dueDate,
+              paymentStatus: paymentStatus,
+              paymentDate: paymentDate,
+              paymentReferenceId: paymentReferenceId,
+              fileBytes: fileBytes,
+              fileName: fileName,
+            );
+          },
     );
 
     if (success == true) {
@@ -410,7 +482,9 @@ class UtilityConnectionDetailController extends GetxController {
       await _dataset.updatePaymentStatus(
         metadataId: meta.id ?? doc.id,
         isPaid: newPaid,
-        paymentDate: newPaid ? DateTime.now().toIso8601String().split('T').first : null,
+        paymentDate: newPaid
+            ? DateTime.now().toIso8601String().split('T').first
+            : null,
       );
 
       final index = historyBills.indexWhere((d) => d.id == doc.id);
@@ -441,20 +515,24 @@ class UtilityConnectionDetailController extends GetxController {
         '${doc.title} marked as ${newPaid ? "PAID" : "PENDING"}.',
       );
     } catch (e) {
-      AppSnackbar.showError('Update Failed', 'Failed to update payment status: $e');
+      AppSnackbar.showError(
+        'Update Failed',
+        'Failed to update payment status: $e',
+      );
     }
   }
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -484,7 +562,8 @@ class UtilityConnectionDetailController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -495,13 +574,19 @@ class UtilityConnectionDetailController extends GetxController {
         }
       }
 
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
+      AppSnackbar.showSuccess(
+        'Download Started',
+        '${doc.fileName} is downloading.',
+      );
     } catch (e) {
       AppSnackbar.showError('Download Failed', 'Could not download file: $e');
     }

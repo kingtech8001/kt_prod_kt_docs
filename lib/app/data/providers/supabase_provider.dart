@@ -20,13 +20,12 @@ class SupabaseProvider {
       'Uploading ${fileBytes.lengthInBytes} bytes to "$storagePath" with mime: $mimeType',
     );
     try {
-      final response = await client.storage.from(AppConstants.storageBucket).uploadBinary(
+      final response = await client.storage
+          .from(AppConstants.storageBucket)
+          .uploadBinary(
             storagePath,
             fileBytes,
-            fileOptions: FileOptions(
-              contentType: mimeType,
-              upsert: true,
-            ),
+            fileOptions: FileOptions(contentType: mimeType, upsert: true),
           );
       AppLogger.info('SUPABASE_STORAGE', 'Upload successful: $response');
       return storagePath;
@@ -47,7 +46,9 @@ class SupabaseProvider {
     int expiresInSeconds = 3600,
     bool download = false,
   }) async {
-    final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+    final cleanPath = storagePath.startsWith('/')
+        ? storagePath.substring(1)
+        : storagePath;
     if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
       return cleanPath;
     }
@@ -55,15 +56,14 @@ class SupabaseProvider {
       final fileId = cleanPath.replaceFirst('gdrive://', '').trim();
       return 'https://drive.google.com/file/d/$fileId/view?usp=sharing';
     }
-    AppLogger.debug('SUPABASE_STORAGE', 'Creating signed URL for: $cleanPath (expires in: ${expiresInSeconds}s)');
+    AppLogger.debug(
+      'SUPABASE_STORAGE',
+      'Creating signed URL for: $cleanPath (expires in: ${expiresInSeconds}s)',
+    );
     try {
       final response = await client.storage
           .from(AppConstants.storageBucket)
-          .createSignedUrl(
-            cleanPath,
-            expiresInSeconds,
-            transform: null,
-          );
+          .createSignedUrl(cleanPath, expiresInSeconds, transform: null);
       AppLogger.info('SUPABASE_STORAGE', 'Signed URL created successfully.');
       if (download) {
         final separator = response.contains('?') ? '&' : '?';
@@ -78,12 +78,21 @@ class SupabaseProvider {
         stackTrace: st,
       );
       try {
-        final publicUrl = client.storage.from(AppConstants.storageBucket).getPublicUrl(cleanPath);
+        final publicUrl = client.storage
+            .from(AppConstants.storageBucket)
+            .getPublicUrl(cleanPath);
         if (publicUrl.isNotEmpty) {
           final sep = publicUrl.contains('?') ? '&' : '?';
           return download ? '$publicUrl${sep}download=true' : publicUrl;
         }
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'SUPABASE_PROVIDER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
       rethrow;
     }
   }
@@ -94,7 +103,10 @@ class SupabaseProvider {
       final bytes = await client.storage
           .from(AppConstants.storageBucket)
           .download(storagePath);
-      AppLogger.info('SUPABASE_STORAGE', 'Downloaded ${bytes.lengthInBytes} bytes for: $storagePath');
+      AppLogger.info(
+        'SUPABASE_STORAGE',
+        'Downloaded ${bytes.lengthInBytes} bytes for: $storagePath',
+      );
       return bytes;
     } catch (e, st) {
       AppLogger.error(
@@ -110,10 +122,15 @@ class SupabaseProvider {
   Future<void> deleteDocumentFile(String storagePath) async {
     AppLogger.debug('SUPABASE_STORAGE', 'Deleting file: $storagePath');
     try {
-      await client.storage.from(AppConstants.storageBucket).remove([storagePath]);
+      await client.storage.from(AppConstants.storageBucket).remove([
+        storagePath,
+      ]);
       AppLogger.info('SUPABASE_STORAGE', 'File deleted: $storagePath');
     } catch (e, st) {
-      AppLogger.warning('SUPABASE_STORAGE', 'Failed to delete file from storage: $e ($st)');
+      AppLogger.warning(
+        'SUPABASE_STORAGE',
+        'Failed to delete file from storage: $e ($st)',
+      );
     }
   }
 }

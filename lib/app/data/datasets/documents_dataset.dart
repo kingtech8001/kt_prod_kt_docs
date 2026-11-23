@@ -94,7 +94,10 @@ class DocumentsDataset {
     int offset = 0,
   }) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: Returning filtered demo documents.');
+      AppLogger.info(
+        'DOCUMENTS_DATASET',
+        'Demo Mode: Returning filtered demo documents.',
+      );
       var list = DemoDataService.getAllDocuments();
       if (categoryId != null && categoryId.isNotEmpty) {
         list = list.where((d) => d.categoryId == categoryId).toList();
@@ -103,19 +106,26 @@ class DocumentsDataset {
         list = list.where((d) => d.folderId == folderId).toList();
       }
       if (status != null && status.isNotEmpty && status != 'all') {
-        list = list.where((d) => d.status.toLowerCase() == status.toLowerCase()).toList();
+        list = list
+            .where((d) => d.status.toLowerCase() == status.toLowerCase())
+            .toList();
       }
       if (city != null && city.isNotEmpty && city != 'All Cities') {
-        list = list.where((d) => d.address?.city.toLowerCase() == city.toLowerCase()).toList();
+        list = list
+            .where((d) => d.address?.city.toLowerCase() == city.toLowerCase())
+            .toList();
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.toLowerCase().trim();
-        list = list.where((d) =>
-          d.title.toLowerCase().contains(q) ||
-          d.subCategory.toLowerCase().contains(q) ||
-          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
-          d.fileName.toLowerCase().contains(q)
-        ).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.title.toLowerCase().contains(q) ||
+                  d.subCategory.toLowerCase().contains(q) ||
+                  (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+                  d.fileName.toLowerCase().contains(q),
+            )
+            .toList();
       }
       return list;
     }
@@ -129,7 +139,9 @@ class DocumentsDataset {
     });
 
     try {
-      var query = _client.from('documents').select('''
+      var query = _client
+          .from('documents')
+          .select('''
         *,
         document_categories(id, name, code, color_hex, icon),
         folders(id, name),
@@ -140,7 +152,8 @@ class DocumentsDataset {
         personal_document_metadata(*),
         vehicle_document_metadata(*),
         document_favorites(document_id, user_id)
-      ''').isFilter('deleted_at', null);
+      ''')
+          .isFilter('deleted_at', null);
 
       if (categoryId != null && categoryId.isNotEmpty) {
         query = query.eq('category_id', categoryId);
@@ -191,8 +204,12 @@ class DocumentsDataset {
   }
 
   /// Obtains signed preview URL from Supabase storage or passes through external URLs.
-  Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+  Future<String> getSignedPreviewUrl(
+    String storagePath, {
+    bool download = false,
+  }) async {
+    if (storagePath.startsWith('http://') ||
+        storagePath.startsWith('https://')) {
       return storagePath;
     }
     if (storagePath.startsWith('gdrive://')) {
@@ -202,7 +219,9 @@ class DocumentsDataset {
     if (DemoDataService.isDemoMode) {
       return 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=80';
     }
-    final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+    final cleanPath = storagePath.startsWith('/')
+        ? storagePath.substring(1)
+        : storagePath;
     return await _provider.createSignedUrl(
       storagePath: cleanPath,
       expiresInSeconds: 3600,
@@ -300,7 +319,10 @@ class DocumentsDataset {
   /// Soft deletes document using RPC `soft_delete_document` with fallback.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: soft-deleted document $documentId');
+      AppLogger.info(
+        'DOCUMENTS_DATASET',
+        'Demo Mode: soft-deleted document $documentId',
+      );
       return;
     }
     final user = _provider.currentUser;
@@ -311,18 +333,22 @@ class DocumentsDataset {
 
     try {
       try {
-        await _client.rpc('soft_delete_document', params: {
-          'p_doc_id': documentId,
-        });
+        await _client.rpc(
+          'soft_delete_document',
+          params: {'p_doc_id': documentId},
+        );
       } catch (rpcErr) {
         AppLogger.warning(
           'DOCUMENTS_DATASET',
           'RPC soft_delete_document fallback to direct update: $rpcErr',
         );
-        await _client.from('documents').update({
-          'deleted_at': DateTime.now().toIso8601String(),
-          'deleted_by': user?.id,
-        }).eq('id', documentId);
+        await _client
+            .from('documents')
+            .update({
+              'deleted_at': DateTime.now().toIso8601String(),
+              'deleted_by': user?.id,
+            })
+            .eq('id', documentId);
 
         await _client.from('document_activity_logs').insert({
           'document_id': documentId,
@@ -363,7 +389,10 @@ class DocumentsDataset {
     String? attachmentUrl,
   }) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: updated document details for $documentId');
+      AppLogger.info(
+        'DOCUMENTS_DATASET',
+        'Demo Mode: updated document details for $documentId',
+      );
       DemoDataService.updateDocumentMock(
         documentId: documentId,
         title: title,
@@ -386,7 +415,9 @@ class DocumentsDataset {
 
     try {
       String sanitizedTitle = title;
-      if (newFileBytes != null && newFileName != null && sanitizedTitle.contains('(Google Drive)')) {
+      if (newFileBytes != null &&
+          newFileName != null &&
+          sanitizedTitle.contains('(Google Drive)')) {
         sanitizedTitle = sanitizedTitle
             .replaceAll('(Google Drive)', '')
             .replaceAll(RegExp(r'\s+'), ' ')
@@ -401,9 +432,17 @@ class DocumentsDataset {
       };
 
       if (newFileBytes != null && newFileName != null) {
-        final sanitizedFileName = newFileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-        final catFolder = categoryCode?.isNotEmpty == true ? categoryCode! : 'documents';
-        final subCatFolder = (subCategory ?? '').trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_').toLowerCase();
+        final sanitizedFileName = newFileName.replaceAll(
+          RegExp(r'[^a-zA-Z0-9._-]'),
+          '_',
+        );
+        final catFolder = categoryCode?.isNotEmpty == true
+            ? categoryCode!
+            : 'documents';
+        final subCatFolder = (subCategory ?? '')
+            .trim()
+            .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')
+            .toLowerCase();
         final storagePath = subCatFolder.isNotEmpty
             ? '$catFolder/$subCatFolder/$documentId-$sanitizedFileName'
             : '$catFolder/$documentId-$sanitizedFileName';
@@ -436,7 +475,9 @@ class DocumentsDataset {
               .eq('id', documentId)
               .maybeSingle();
           final extras = currentDoc?['extra_attributes'] != null
-              ? Map<String, dynamic>.from(currentDoc!['extra_attributes'] as Map)
+              ? Map<String, dynamic>.from(
+                  currentDoc!['extra_attributes'] as Map,
+                )
               : <String, dynamic>{};
           extras.removeWhere((k, v) {
             final lk = k.toLowerCase();
@@ -448,12 +489,22 @@ class DocumentsDataset {
           extras['storage_provider'] = 'supabase';
           extras['is_google_attachment'] = false;
           docUpdates['extra_attributes'] = extras;
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'DOCUMENTS_DATASET',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       } else if (newFileName != null && newFileName.trim().isNotEmpty) {
         final sanitizedFileName = newFileName.trim();
         docUpdates['file_name'] = sanitizedFileName;
         if (sanitizedFileName.contains('.')) {
-          docUpdates['file_type'] = sanitizedFileName.split('.').last.toLowerCase();
+          docUpdates['file_type'] = sanitizedFileName
+              .split('.')
+              .last
+              .toLowerCase();
         }
         AppLogger.info(
           'DOCUMENTS_DATASET',
@@ -463,8 +514,12 @@ class DocumentsDataset {
       } else if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
         docUpdates['file_path'] = attachmentUrl;
         final uri = Uri.tryParse(attachmentUrl);
-        final lastSeg = uri != null && uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'Google Drive Document';
-        docUpdates['file_name'] = lastSeg.isNotEmpty ? lastSeg : 'Google Drive Document';
+        final lastSeg = uri != null && uri.pathSegments.isNotEmpty
+            ? uri.pathSegments.last
+            : 'Google Drive Document';
+        docUpdates['file_name'] = lastSeg.isNotEmpty
+            ? lastSeg
+            : 'Google Drive Document';
         docUpdates['file_type'] = 'gdrive';
         docUpdates['mime_type'] = 'application/vnd.google-apps.document';
         try {
@@ -474,19 +529,30 @@ class DocumentsDataset {
               .eq('id', documentId)
               .maybeSingle();
           final extras = currentDoc?['extra_attributes'] != null
-              ? Map<String, dynamic>.from(currentDoc!['extra_attributes'] as Map)
+              ? Map<String, dynamic>.from(
+                  currentDoc!['extra_attributes'] as Map,
+                )
               : <String, dynamic>{};
           extras['is_google_attachment'] = true;
           extras['google_drive_url'] = attachmentUrl;
           extras.remove('storage_provider');
           docUpdates['extra_attributes'] = extras;
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'DOCUMENTS_DATASET',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
 
       if (applianceWarranty != null) {
         Map<String, dynamic> extras;
         if (docUpdates['extra_attributes'] != null) {
-          extras = Map<String, dynamic>.from(docUpdates['extra_attributes'] as Map);
+          extras = Map<String, dynamic>.from(
+            docUpdates['extra_attributes'] as Map,
+          );
         } else {
           try {
             final currentDoc = await _client
@@ -495,15 +561,24 @@ class DocumentsDataset {
                 .eq('id', documentId)
                 .maybeSingle();
             extras = currentDoc?['extra_attributes'] != null
-                ? Map<String, dynamic>.from(currentDoc!['extra_attributes'] as Map)
+                ? Map<String, dynamic>.from(
+                    currentDoc!['extra_attributes'] as Map,
+                  )
                 : <String, dynamic>{};
-          } catch (_) {
+          } catch (error, stackTrace) {
+            AppLogger.error(
+              'DOCUMENTS_DATASET',
+              'Operation failed; applying fallback.',
+              error: error,
+              stackTrace: stackTrace,
+            );
             extras = <String, dynamic>{};
           }
         }
         if (applianceWarranty.items.isNotEmpty) {
-          extras['appliance_items'] =
-              applianceWarranty.items.map((i) => i.toJson()).toList();
+          extras['appliance_items'] = applianceWarranty.items
+              .map((i) => i.toJson())
+              .toList();
         }
         extras['warranty_type'] = applianceWarranty.warrantyType;
         if (applianceWarranty.policyNumber != null) {
@@ -554,7 +629,9 @@ class DocumentsDataset {
             'Non-fatal fallback updating warrantyMap: $tableErr. Retrying update by document_id.',
           );
           final cleanMap = Map<String, dynamic>.from(warrantyPayload)
-            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
+            ..removeWhere(
+              (k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k),
+            );
           await _client
               .from('appliance_warranty_metadata')
               .update(cleanMap)
@@ -576,10 +653,7 @@ class DocumentsDataset {
         'document_id': documentId,
         'user_id': user?.id,
         'action': 'updated',
-        'details': {
-          'title': title,
-          'document_number': documentNumber,
-        },
+        'details': {'title': title, 'document_number': documentNumber},
       });
       AppLogger.info(
         'DOCUMENTS_DATASET',
@@ -602,13 +676,24 @@ class DocumentsDataset {
       final docs = DemoDataService.getAllDocuments();
       try {
         return docs.firstWhere((d) => d.id == documentId);
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'DOCUMENTS_DATASET',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         return docs.isNotEmpty ? docs.first : null;
       }
     }
-    AppLogger.debug('DOCUMENTS_DATASET', 'Fetching document by ID: $documentId');
+    AppLogger.debug(
+      'DOCUMENTS_DATASET',
+      'Fetching document by ID: $documentId',
+    );
     try {
-      final response = await _client.from('documents').select('''
+      final response = await _client
+          .from('documents')
+          .select('''
         *,
         document_categories(id, name, code, color_hex, icon),
         folders(id, name),
@@ -619,7 +704,9 @@ class DocumentsDataset {
         personal_document_metadata(*),
         vehicle_document_metadata(*),
         document_favorites(document_id, user_id)
-      ''').eq('id', documentId).maybeSingle();
+      ''')
+          .eq('id', documentId)
+          .maybeSingle();
 
       if (response == null) return null;
       return DocumentModel.fromJson(response);
@@ -653,19 +740,26 @@ class DocumentsDataset {
   }) async {
     final docId = const Uuid().v4();
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('DOCUMENTS_DATASET', 'Demo Mode: Mocking document creation for "$title"');
+      AppLogger.info(
+        'DOCUMENTS_DATASET',
+        'Demo Mode: Mocking document creation for "$title"',
+      );
       final extraAttrs = <String, dynamic>{'storage_provider': 'demo'};
       if (vehicleMetadata != null) {
         if (vehicleMetadata.insuranceType != null) {
           extraAttrs['insurance_type'] = vehicleMetadata.insuranceType;
         }
         if (vehicleMetadata.odExpiryDate != null) {
-          extraAttrs['od_expiry_date'] =
-              vehicleMetadata.odExpiryDate!.toIso8601String().split('T').first;
+          extraAttrs['od_expiry_date'] = vehicleMetadata.odExpiryDate!
+              .toIso8601String()
+              .split('T')
+              .first;
         }
         if (vehicleMetadata.tpExpiryDate != null) {
-          extraAttrs['tp_expiry_date'] =
-              vehicleMetadata.tpExpiryDate!.toIso8601String().split('T').first;
+          extraAttrs['tp_expiry_date'] = vehicleMetadata.tpExpiryDate!
+              .toIso8601String()
+              .split('T')
+              .first;
         }
         if (vehicleMetadata.previousDocumentId != null) {
           extraAttrs['previous_document_id'] =
@@ -683,21 +777,27 @@ class DocumentsDataset {
         folderId: folderId,
         fileName: fileName,
         filePath: 'demo/$docId-$fileName',
-        fileType: fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'pdf',
+        fileType: fileName.contains('.')
+            ? fileName.split('.').last.toLowerCase()
+            : 'pdf',
         mimeType: mimeType,
         fileSize: fileBytes.lengthInBytes,
         documentNumber: documentNumber,
         status: 'active',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
-        categoryName: DemoDataService.getCategories().firstWhere(
-          (c) => c.id == categoryId,
-          orElse: () => DemoDataService.getCategories().first,
-        ).name,
-        categoryCode: DemoDataService.getCategories().firstWhere(
-          (c) => c.id == categoryId,
-          orElse: () => DemoDataService.getCategories().first,
-        ).code,
+        categoryName: DemoDataService.getCategories()
+            .firstWhere(
+              (c) => c.id == categoryId,
+              orElse: () => DemoDataService.getCategories().first,
+            )
+            .name,
+        categoryCode: DemoDataService.getCategories()
+            .firstWhere(
+              (c) => c.id == categoryId,
+              orElse: () => DemoDataService.getCategories().first,
+            )
+            .code,
         extraAttributes: extraAttrs,
         address: address,
         utilityMetadata: utilityMetadata,
@@ -730,9 +830,18 @@ class DocumentsDataset {
         if (catRes != null && catRes['code'] != null) {
           categoryFolder = catRes['code'] as String;
         } else {
-          categoryFolder = categoryId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+          categoryFolder = categoryId.replaceAll(
+            RegExp(r'[^a-zA-Z0-9_-]'),
+            '_',
+          );
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'DOCUMENTS_DATASET',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         categoryFolder = categoryId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
       }
 
@@ -758,8 +867,9 @@ class DocumentsDataset {
 
       if (applianceWarranty != null) {
         if (applianceWarranty.items.isNotEmpty) {
-          extraAttributes['appliance_items'] =
-              applianceWarranty.items.map((i) => i.toJson()).toList();
+          extraAttributes['appliance_items'] = applianceWarranty.items
+              .map((i) => i.toJson())
+              .toList();
         }
         extraAttributes['warranty_type'] = applianceWarranty.warrantyType;
         if (applianceWarranty.policyNumber != null) {
@@ -786,12 +896,16 @@ class DocumentsDataset {
           extraAttributes['insurance_type'] = vehicleMetadata.insuranceType;
         }
         if (vehicleMetadata.odExpiryDate != null) {
-          extraAttributes['od_expiry_date'] =
-              vehicleMetadata.odExpiryDate!.toIso8601String().split('T').first;
+          extraAttributes['od_expiry_date'] = vehicleMetadata.odExpiryDate!
+              .toIso8601String()
+              .split('T')
+              .first;
         }
         if (vehicleMetadata.tpExpiryDate != null) {
-          extraAttributes['tp_expiry_date'] =
-              vehicleMetadata.tpExpiryDate!.toIso8601String().split('T').first;
+          extraAttributes['tp_expiry_date'] = vehicleMetadata.tpExpiryDate!
+              .toIso8601String()
+              .split('T')
+              .first;
         }
         if (vehicleMetadata.previousDocumentId != null) {
           extraAttributes['previous_document_id'] =
@@ -823,49 +937,57 @@ class DocumentsDataset {
           .insert(docData)
           .select()
           .single();
-      AppLogger.info('DOCUMENTS_DATASET', 'Inserted main document record: $docId');
+      AppLogger.info(
+        'DOCUMENTS_DATASET',
+        'Inserted main document record: $docId',
+      );
 
       if (address != null) {
         final addrMap = address.toJson();
         addrMap['document_id'] = docId;
         await _client.from('document_addresses').insert(addrMap);
-        AppLogger.info('DOCUMENTS_DATASET', 'Inserted address metadata for $docId');
+        AppLogger.info(
+          'DOCUMENTS_DATASET',
+          'Inserted address metadata for $docId',
+        );
       }
 
       if (utilityMetadata != null) {
         final utilMap = utilityMetadata.toJson();
         utilMap['document_id'] = docId;
         await _client.from('utility_metadata').insert(utilMap);
-        AppLogger.info('DOCUMENTS_DATASET', 'Inserted utility metadata for $docId');
+        AppLogger.info(
+          'DOCUMENTS_DATASET',
+          'Inserted utility metadata for $docId',
+        );
       }
 
       if (applianceWarranty != null) {
         final warrantyMap = applianceWarranty.toSupabaseMap()..remove('id');
         warrantyMap['document_id'] = docId;
         try {
-          await _client
-              .from('appliance_warranty_metadata')
-              .insert(warrantyMap);
+          await _client.from('appliance_warranty_metadata').insert(warrantyMap);
         } catch (tableErr) {
           AppLogger.warning(
             'DOCUMENTS_DATASET',
             'Non-fatal fallback inserting warrantyMap: $tableErr. Retrying with strictly safe schema columns.',
           );
           final legacyMap = Map<String, dynamic>.from(warrantyMap)
-            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
-          await _client
-              .from('appliance_warranty_metadata')
-              .insert(legacyMap);
+            ..removeWhere(
+              (k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k),
+            );
+          await _client.from('appliance_warranty_metadata').insert(legacyMap);
         }
-        AppLogger.info('DOCUMENTS_DATASET', 'Inserted warranty metadata for $docId');
+        AppLogger.info(
+          'DOCUMENTS_DATASET',
+          'Inserted warranty metadata for $docId',
+        );
       }
 
       if (personalMetadata != null) {
         final personalMap = personalMetadata.toJson();
         personalMap['document_id'] = docId;
-        await _client
-            .from('personal_document_metadata')
-            .insert(personalMap);
+        await _client.from('personal_document_metadata').insert(personalMap);
         AppLogger.info(
           'DOCUMENTS_DATASET',
           'Inserted personal document metadata for $docId',
@@ -875,9 +997,7 @@ class DocumentsDataset {
       if (vehicleMetadata != null) {
         final vehicleMap = vehicleMetadata.toJson();
         vehicleMap['document_id'] = docId;
-        await _client
-            .from('vehicle_document_metadata')
-            .insert(vehicleMap);
+        await _client.from('vehicle_document_metadata').insert(vehicleMap);
         AppLogger.info(
           'DOCUMENTS_DATASET',
           'Inserted vehicle document metadata for $docId',

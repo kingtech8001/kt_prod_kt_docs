@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:kt_prod_kt_docs/app/modules/document_upload/controllers/vault_mini_game_controller.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/documents_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/folder_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/settings_dataset.dart';
@@ -8,6 +9,10 @@ import 'package:kt_prod_kt_docs/app/modules/document_upload/controllers/document
 class DocumentUploadBinding extends Bindings {
   @override
   void dependencies() {
+    Get.lazyPut<VaultMiniGameController>(
+      () => VaultMiniGameController(),
+      fenix: true,
+    );
     if (!Get.isRegistered<SupabaseProvider>()) {
       Get.lazyPut<SupabaseProvider>(() => SupabaseProvider());
     }
@@ -36,4 +41,3 @@ class DocumentUploadBinding extends Bindings {
     );
   }
 }
-

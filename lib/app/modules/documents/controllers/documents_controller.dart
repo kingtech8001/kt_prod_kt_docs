@@ -49,7 +49,10 @@ class DocumentsController extends GetxController {
   }
 
   Future<void> loadInitialData() async {
-    AppLogger.debug('DOCS_CTRL', 'Loading categories, cities, and documents concurrently...');
+    AppLogger.debug(
+      'DOCS_CTRL',
+      'Loading categories, cities, and documents concurrently...',
+    );
     isLoading.value = true;
     try {
       final results = await Future.wait([
@@ -68,7 +71,7 @@ class DocumentsController extends GetxController {
         ),
       ]);
 
-      categories.assignAll(results[0] as List<CategoryModel>);  
+      categories.assignAll(results[0] as List<CategoryModel>);
       final cities = results[1] as List<MasterCityModel>;
       dynamicCities.assignAll(cities.map((c) => c.name));
       documents.assignAll(results[2] as List<DocumentModel>);
@@ -150,14 +153,15 @@ class DocumentsController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -193,7 +197,8 @@ class DocumentsController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -203,13 +208,19 @@ class DocumentsController extends GetxController {
           return;
         }
       }
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
+      AppSnackbar.showSuccess(
+        'Download Started',
+        '${doc.fileName} is downloading.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'DOCS_CTRL',
@@ -218,12 +229,21 @@ class DocumentsController extends GetxController {
         stackTrace: st,
       );
       try {
-        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(
+          doc.filePath,
+          download: true,
+        );
         final uri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'DOCUMENTS_CONTROLLER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         AppSnackbar.showError('Download Error', e.toString());
       }
     }
@@ -280,44 +300,45 @@ class DocumentsController extends GetxController {
   void openEditDocumentDialog(DocumentModel doc) async {
     final updated = await DocumentEditDialog.show(
       document: doc,
-      onSave: ({
-        required title,
-        description,
-        documentNumber,
-        applianceWarranty,
-        vehicleMetadata,
-        newFileName,
-        newFileBytes,
-        newMimeType,
-        attachmentUrl,
-      }) async {
-        try {
-          await _dataset.updateDocumentDetails(
-            documentId: doc.id,
-            title: title,
-            description: description,
-            documentNumber: documentNumber,
-            applianceWarranty: applianceWarranty,
-            vehicleMetadata: vehicleMetadata,
-            newFileName: newFileName,
-            newFileBytes: newFileBytes,
-            newMimeType: newMimeType,
-            categoryCode: doc.categoryCode,
-            subCategory: doc.subCategory,
-            attachmentUrl: attachmentUrl,
-          );
-          await fetchFilteredDocuments();
-        } catch (e, st) {
-          AppLogger.error(
-            'DOCS_CTRL',
-            'Error editing document: $e',
-            error: e,
-            stackTrace: st,
-          );
-          // Inline modal error handling: rethrow so the dialog can display the error inside without closing
-          rethrow;
-        }
-      },
+      onSave:
+          ({
+            required title,
+            description,
+            documentNumber,
+            applianceWarranty,
+            vehicleMetadata,
+            newFileName,
+            newFileBytes,
+            newMimeType,
+            attachmentUrl,
+          }) async {
+            try {
+              await _dataset.updateDocumentDetails(
+                documentId: doc.id,
+                title: title,
+                description: description,
+                documentNumber: documentNumber,
+                applianceWarranty: applianceWarranty,
+                vehicleMetadata: vehicleMetadata,
+                newFileName: newFileName,
+                newFileBytes: newFileBytes,
+                newMimeType: newMimeType,
+                categoryCode: doc.categoryCode,
+                subCategory: doc.subCategory,
+                attachmentUrl: attachmentUrl,
+              );
+              await fetchFilteredDocuments();
+            } catch (e, st) {
+              AppLogger.error(
+                'DOCS_CTRL',
+                'Error editing document: $e',
+                error: e,
+                stackTrace: st,
+              );
+              // Inline modal error handling: rethrow so the dialog can display the error inside without closing
+              rethrow;
+            }
+          },
     );
 
     if (updated == true) {

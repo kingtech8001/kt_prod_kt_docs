@@ -48,7 +48,8 @@ class VehicleDocsController extends GetxController {
   // Selection & Filters
   final selectedVehicle = Rx<MasterVehicleModel?>(null);
   final selectedDocType = 'All Docs'.obs;
-  final selectedExpiryFilter = 'All'.obs; // 'All', 'Active', 'Expiring in 30 Days', 'Expired'
+  final selectedExpiryFilter =
+      'All'.obs; // 'All', 'Active', 'Expiring in 30 Days', 'Expired'
   final searchQuery = ''.obs;
   final isGridView = true.obs;
 
@@ -64,17 +65,28 @@ class VehicleDocsController extends GetxController {
   bool get canDelete {
     try {
       return AuthService.to.isAdmin;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'VEHICLE_DOCS_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return false;
     }
   }
 
   bool get canEdit {
     try {
-      final role = AuthService.to.currentProfile.value?.role.toLowerCase();
-      return role == 'admin' || role == 'super_admin' || role == 'editor';
-    } catch (_) {
-      return true;
+      return AuthService.to.canEdit;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'VEHICLE_DOCS_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -111,7 +123,9 @@ class VehicleDocsController extends GetxController {
       final vehicles = await _dataset.getMasterVehicles(activeOnly: true);
       masterVehicles.assignAll(vehicles);
 
-      final docTypes = await _dataset.getMasterVehicleDocTypes(activeOnly: true);
+      final docTypes = await _dataset.getMasterVehicleDocTypes(
+        activeOnly: true,
+      );
       masterDocTypes.assignAll(docTypes);
     } catch (e, st) {
       AppLogger.error(
@@ -261,7 +275,9 @@ class VehicleDocsController extends GetxController {
       onSave: (newVehicle) async {
         final created = await _dataset.createMasterVehicle(newVehicle);
         masterVehicles.add(created);
-        masterVehicles.sort((a, b) => a.vehicleNumber.compareTo(b.vehicleNumber));
+        masterVehicles.sort(
+          (a, b) => a.vehicleNumber.compareTo(b.vehicleNumber),
+        );
         selectedVehicle.value = created;
         loadVehicleDocuments(resetPage: true);
         loadVehicleServices();
@@ -374,10 +390,7 @@ class VehicleDocsController extends GetxController {
       try {
         await _dataset.deleteVehicleService(service.id);
         vehicleServices.removeWhere((s) => s.id == service.id);
-        AppSnackbar.showSuccess(
-          'Deleted',
-          'Service record has been removed.',
-        );
+        AppSnackbar.showSuccess('Deleted', 'Service record has been removed.');
       } catch (e) {
         AppSnackbar.showError(
           'Delete Failed',
@@ -392,26 +405,25 @@ class VehicleDocsController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     try {
       AppLogger.info('VEHICLE_DOCS_CTRL', 'Opening preview for doc: ${doc.id}');
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       final mime = doc.mimeType.toLowerCase();
       final fileType = doc.fileType.toLowerCase();
-      final isImage = mime.contains('image') ||
+      final isImage =
+          mime.contains('image') ||
           ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(fileType);
 
       if (isImage) {
-        ImageLightboxDialog.show(
-          title: doc.title,
-          imageUrl: resolvedUrl,
-        );
+        ImageLightboxDialog.show(title: doc.title, imageUrl: resolvedUrl);
       } else {
         PdfViewerDialog.show(
           title: doc.title,
@@ -442,7 +454,8 @@ class VehicleDocsController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -535,8 +548,9 @@ class VehicleDocsController extends GetxController {
       await _dataset.softDeleteDocument(doc.id);
       vehicleDocuments.removeWhere((d) => d.id == doc.id);
       totalCount.value = totalCount.value > 0 ? totalCount.value - 1 : 0;
-      totalDocumentsCount.value =
-          totalDocumentsCount.value > 0 ? totalDocumentsCount.value - 1 : 0;
+      totalDocumentsCount.value = totalDocumentsCount.value > 0
+          ? totalDocumentsCount.value - 1
+          : 0;
 
       AppSnackbar.showSuccess(
         'Moved to Trash',
@@ -567,43 +581,44 @@ class VehicleDocsController extends GetxController {
 
     final updated = await DocumentEditDialog.show(
       document: doc,
-      onSave: ({
-        required title,
-        description,
-        documentNumber,
-        applianceWarranty,
-        vehicleMetadata,
-        newFileName,
-        newFileBytes,
-        newMimeType,
-        attachmentUrl,
-      }) async {
-        try {
-          await _dataset.updateDocumentDetails(
-            documentId: doc.id,
-            title: title,
-            description: description,
-            documentNumber: documentNumber,
-            vehicleMetadata: vehicleMetadata,
-            applianceWarranty: applianceWarranty,
-            newFileName: newFileName,
-            newFileBytes: newFileBytes,
-            newMimeType: newMimeType,
-            categoryCode: doc.categoryCode,
-            subCategory: doc.subCategory,
-            attachmentUrl: attachmentUrl,
-          );
-          await loadVehicleDocuments();
-        } catch (e, st) {
-          AppLogger.error(
-            'VEHICLE_DOCS_CTRL',
-            'Error editing vehicle document: $e',
-            error: e,
-            stackTrace: st,
-          );
-          rethrow;
-        }
-      },
+      onSave:
+          ({
+            required title,
+            description,
+            documentNumber,
+            applianceWarranty,
+            vehicleMetadata,
+            newFileName,
+            newFileBytes,
+            newMimeType,
+            attachmentUrl,
+          }) async {
+            try {
+              await _dataset.updateDocumentDetails(
+                documentId: doc.id,
+                title: title,
+                description: description,
+                documentNumber: documentNumber,
+                vehicleMetadata: vehicleMetadata,
+                applianceWarranty: applianceWarranty,
+                newFileName: newFileName,
+                newFileBytes: newFileBytes,
+                newMimeType: newMimeType,
+                categoryCode: doc.categoryCode,
+                subCategory: doc.subCategory,
+                attachmentUrl: attachmentUrl,
+              );
+              await loadVehicleDocuments();
+            } catch (e, st) {
+              AppLogger.error(
+                'VEHICLE_DOCS_CTRL',
+                'Error editing vehicle document: $e',
+                error: e,
+                stackTrace: st,
+              );
+              rethrow;
+            }
+          },
     );
 
     if (updated == true) {
@@ -641,33 +656,34 @@ class VehicleDocsController extends GetxController {
 
     final success = await RenewVehicleDocDialog.show(
       previousDocument: doc,
-      onRenew: ({
-        required previousDocument,
-        required newMetadata,
-        required newTitle,
-        required fileBytes,
-        required fileName,
-        newDescription,
-      }) async {
-        try {
-          await _dataset.renewVehicleDocument(
-            previousDocument: previousDocument,
-            newMetadata: newMetadata,
-            newTitle: newTitle,
-            fileBytes: fileBytes,
-            fileName: fileName,
-            newDescription: newDescription,
-          );
-        } catch (e, st) {
-          AppLogger.error(
-            'VEHICLE_DOCS_CTRL',
-            'Error submitting vehicle document renewal: $e',
-            error: e,
-            stackTrace: st,
-          );
-          rethrow;
-        }
-      },
+      onRenew:
+          ({
+            required previousDocument,
+            required newMetadata,
+            required newTitle,
+            required fileBytes,
+            required fileName,
+            newDescription,
+          }) async {
+            try {
+              await _dataset.renewVehicleDocument(
+                previousDocument: previousDocument,
+                newMetadata: newMetadata,
+                newTitle: newTitle,
+                fileBytes: fileBytes,
+                fileName: fileName,
+                newDescription: newDescription,
+              );
+            } catch (e, st) {
+              AppLogger.error(
+                'VEHICLE_DOCS_CTRL',
+                'Error submitting vehicle document renewal: $e',
+                error: e,
+                stackTrace: st,
+              );
+              rethrow;
+            }
+          },
     );
 
     if (success == true) {

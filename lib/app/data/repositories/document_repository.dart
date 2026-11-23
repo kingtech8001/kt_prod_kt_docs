@@ -239,9 +239,18 @@ class DocumentRepository {
         if (catRes != null && catRes['code'] != null) {
           categoryFolder = catRes['code'] as String;
         } else {
-          categoryFolder = categoryId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+          categoryFolder = categoryId.replaceAll(
+            RegExp(r'[^a-zA-Z0-9_-]'),
+            '_',
+          );
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'DOCUMENT_REPOSITORY',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         categoryFolder = categoryId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
       }
 
@@ -267,8 +276,9 @@ class DocumentRepository {
 
       if (applianceWarranty != null) {
         if (applianceWarranty.items.isNotEmpty) {
-          extraAttributes['appliance_items'] =
-              applianceWarranty.items.map((i) => i.toJson()).toList();
+          extraAttributes['appliance_items'] = applianceWarranty.items
+              .map((i) => i.toJson())
+              .toList();
         }
         extraAttributes['warranty_type'] = applianceWarranty.warrantyType;
         if (applianceWarranty.policyNumber != null) {
@@ -342,7 +352,9 @@ class DocumentRepository {
             'Non-fatal fallback inserting warrantyMap: $tableErr. Retrying with strictly safe schema columns.',
           );
           final legacyMap = Map<String, dynamic>.from(warrantyMap)
-            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
+            ..removeWhere(
+              (k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k),
+            );
           await _provider.client
               .from('appliance_warranty_metadata')
               .insert(legacyMap);
@@ -454,14 +466,25 @@ class DocumentRepository {
               .select('extra_attributes')
               .eq('id', documentId)
               .maybeSingle();
-          if (currentDoc?['extra_attributes'] != null && currentDoc!['extra_attributes'] is Map) {
-            extras = Map<String, dynamic>.from(currentDoc['extra_attributes'] as Map);
+          if (currentDoc?['extra_attributes'] != null &&
+              currentDoc!['extra_attributes'] is Map) {
+            extras = Map<String, dynamic>.from(
+              currentDoc['extra_attributes'] as Map,
+            );
           }
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'DOCUMENT_REPOSITORY',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
 
         if (applianceWarranty.items.isNotEmpty) {
-          extras['appliance_items'] =
-              applianceWarranty.items.map((i) => i.toJson()).toList();
+          extras['appliance_items'] = applianceWarranty.items
+              .map((i) => i.toJson())
+              .toList();
         }
         extras['warranty_type'] = applianceWarranty.warrantyType;
         if (applianceWarranty.policyNumber != null) {
@@ -501,7 +524,9 @@ class DocumentRepository {
           if (res.isEmpty) {
             final insertMap = applianceWarranty.toSupabaseMap()..remove('id');
             insertMap['document_id'] = documentId;
-            await _provider.client.from('appliance_warranty_metadata').insert(insertMap);
+            await _provider.client
+                .from('appliance_warranty_metadata')
+                .insert(insertMap);
           }
         } catch (wErr) {
           AppLogger.warning(
@@ -509,7 +534,9 @@ class DocumentRepository {
             'Warranty update fallback: $wErr. Retrying update by document_id.',
           );
           final cleanMap = Map<String, dynamic>.from(warrantyPayload)
-            ..removeWhere((k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k));
+            ..removeWhere(
+              (k, v) => !ApplianceWarrantyModel.supabaseColumns.contains(k),
+            );
           await _provider.client
               .from('appliance_warranty_metadata')
               .update(cleanMap)
@@ -573,9 +600,9 @@ class DocumentRepository {
     );
     try {
       try {
-        await _provider.client.storage
-            .from(AppConstants.storageBucket)
-            .remove([filePath]);
+        await _provider.client.storage.from(AppConstants.storageBucket).remove([
+          filePath,
+        ]);
       } catch (storageErr) {
         AppLogger.warning(
           'DOC_REPO',
@@ -636,8 +663,12 @@ class DocumentRepository {
     }
   }
 
-  Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+  Future<String> getSignedPreviewUrl(
+    String storagePath, {
+    bool download = false,
+  }) async {
+    if (storagePath.startsWith('http://') ||
+        storagePath.startsWith('https://')) {
       return storagePath;
     }
     if (storagePath.startsWith('gdrive://')) {

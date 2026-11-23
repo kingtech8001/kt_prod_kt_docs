@@ -13,7 +13,6 @@ import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-
 class UtilityBillsResponse {
   final List<DocumentModel> documents;
   final int totalCount;
@@ -42,7 +41,9 @@ class UtilityBillsDataset {
   SupabaseClient get _client => _provider.client;
 
   /// Fetches active cities from master data.
-  Future<List<MasterCityModel>> getMasterCities({bool activeOnly = true}) async {
+  Future<List<MasterCityModel>> getMasterCities({
+    bool activeOnly = true,
+  }) async {
     if (DemoDataService.isDemoMode) {
       return DemoDataService.getCities();
     }
@@ -96,8 +97,9 @@ class UtilityBillsDataset {
 
       final list = (response as List)
           .map(
-            (json) =>
-                MasterUtilityProviderModel.fromJson(json as Map<String, dynamic>),
+            (json) => MasterUtilityProviderModel.fromJson(
+              json as Map<String, dynamic>,
+            ),
           )
           .toList();
       return list;
@@ -125,7 +127,14 @@ class UtilityBillsDataset {
       if (res != null && res['id'] != null) {
         _cachedUtilityCategoryId = res['id'] as String;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'UTILITY_BILLS_DATASET',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     _cachedUtilityCategoryId ??= '2b6f8867-c5e2-4fc5-ba5e-8042845f6f6c';
     return _cachedUtilityCategoryId!;
   }
@@ -141,16 +150,32 @@ class UtilityBillsDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-2' || d.categoryId == 'cat-utility' || d.categoryCode == 'utility_bills' || d.utilityMetadata != null)
+          .where(
+            (d) =>
+                d.categoryId == 'cat-2' ||
+                d.categoryId == 'cat-utility' ||
+                d.categoryCode == 'utility_bills' ||
+                d.utilityMetadata != null,
+          )
           .toList();
 
       if (city != null && city.isNotEmpty && city != 'All Cities') {
-        list = list.where((d) => d.address?.city.toLowerCase() == city.toLowerCase()).toList();
+        list = list
+            .where((d) => d.address?.city.toLowerCase() == city.toLowerCase())
+            .toList();
       }
-      if (subCategory != null && subCategory.isNotEmpty && subCategory != 'All Utilities') {
-        list = list.where((d) => d.subCategory.toLowerCase() == subCategory.toLowerCase()).toList();
+      if (subCategory != null &&
+          subCategory.isNotEmpty &&
+          subCategory != 'All Utilities') {
+        list = list
+            .where(
+              (d) => d.subCategory.toLowerCase() == subCategory.toLowerCase(),
+            )
+            .toList();
       }
-      if (paymentStatus != null && paymentStatus.isNotEmpty && paymentStatus != 'all') {
+      if (paymentStatus != null &&
+          paymentStatus.isNotEmpty &&
+          paymentStatus != 'all') {
         list = list.where((d) {
           final s = d.utilityMetadata?.paymentStatus.toLowerCase() ?? 'pending';
           if (paymentStatus == 'paid') return s == 'paid' || s == 'auto_debit';
@@ -164,12 +189,18 @@ class UtilityBillsDataset {
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.toLowerCase().trim();
-        list = list.where((d) =>
-          d.title.toLowerCase().contains(q) ||
-          d.subCategory.toLowerCase().contains(q) ||
-          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
-          (d.utilityMetadata?.consumerNumber.toLowerCase().contains(q) ?? false)
-        ).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.title.toLowerCase().contains(q) ||
+                  d.subCategory.toLowerCase().contains(q) ||
+                  (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+                  (d.utilityMetadata?.consumerNumber.toLowerCase().contains(
+                        q,
+                      ) ??
+                      false),
+            )
+            .toList();
       }
 
       double totalAmt = 0.0;
@@ -242,8 +273,7 @@ class UtilityBillsDataset {
       }
 
       // 4. Fetch documents
-      final response = await query
-          .order('created_at', ascending: false);
+      final response = await query.order('created_at', ascending: false);
 
       var list = (response as List)
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
@@ -340,7 +370,10 @@ class UtilityBillsDataset {
     String? paymentDate,
   }) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('UTILITY_DATASET', 'Demo Mode: Updated payment status for $metadataId');
+      AppLogger.info(
+        'UTILITY_DATASET',
+        'Demo Mode: Updated payment status for $metadataId',
+      );
       return;
     }
     AppLogger.debug(
@@ -348,10 +381,13 @@ class UtilityBillsDataset {
       'Updating payment status for metadata $metadataId -> isPaid: $isPaid',
     );
     try {
-      await _client.from('utility_metadata').update({
-        'payment_status': isPaid ? 'paid' : 'pending',
-        'payment_date': paymentDate,
-      }).eq('id', metadataId);
+      await _client
+          .from('utility_metadata')
+          .update({
+            'payment_status': isPaid ? 'paid' : 'pending',
+            'payment_date': paymentDate,
+          })
+          .eq('id', metadataId);
 
       AppLogger.info('UTILITY_DATASET', 'Payment status updated successfully.');
     } catch (e, st) {
@@ -484,16 +520,20 @@ class UtilityBillsDataset {
               .inFilter('document_id', existingAddrDocIds.toList());
         }
 
-        final missingAddrDocIds = docIds.where((id) => !existingAddrDocIds.contains(id)).toList();
+        final missingAddrDocIds = docIds
+            .where((id) => !existingAddrDocIds.contains(id))
+            .toList();
         if (missingAddrDocIds.isNotEmpty) {
-          final insertPayloads = missingAddrDocIds.map((id) => {
-            'document_id': id,
-            ...addrUpdatePayload,
-          }).toList();
+          final insertPayloads = missingAddrDocIds
+              .map((id) => {'document_id': id, ...addrUpdatePayload})
+              .toList();
           try {
             await _client.from('document_addresses').insert(insertPayloads);
           } catch (e) {
-            AppLogger.warning('UTILITY_DATASET', 'Non-fatal inserting missing addresses: $e');
+            AppLogger.warning(
+              'UTILITY_DATASET',
+              'Non-fatal inserting missing addresses: $e',
+            );
           }
         }
 
@@ -506,7 +546,10 @@ class UtilityBillsDataset {
             })
             .inFilter('id', docIds);
       }
-      AppLogger.info('UTILITY_DATASET', 'Connection account details updated successfully.');
+      AppLogger.info(
+        'UTILITY_DATASET',
+        'Connection account details updated successfully.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'UTILITY_DATASET',
@@ -521,16 +564,22 @@ class UtilityBillsDataset {
   /// Soft deletes a document (moves to trash) and writes an audit log.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('UTILITY_DATASET', 'Demo Mode: Moved doc to trash $documentId');
+      AppLogger.info(
+        'UTILITY_DATASET',
+        'Demo Mode: Moved doc to trash $documentId',
+      );
       return;
     }
     final user = _provider.currentUser;
     AppLogger.debug('UTILITY_DATASET', 'Moving document to trash: $documentId');
     try {
-      await _client.from('documents').update({
-        'deleted_at': DateTime.now().toIso8601String(),
-        'deleted_by': user?.id,
-      }).eq('id', documentId);
+      await _client
+          .from('documents')
+          .update({
+            'deleted_at': DateTime.now().toIso8601String(),
+            'deleted_by': user?.id,
+          })
+          .eq('id', documentId);
 
       await _client.from('document_activity_logs').insert({
         'document_id': documentId,
@@ -539,7 +588,10 @@ class UtilityBillsDataset {
         'details': {'reason': 'User moved utility bill to trash'},
       });
 
-      AppLogger.info('UTILITY_DATASET', 'Document moved to trash successfully.');
+      AppLogger.info(
+        'UTILITY_DATASET',
+        'Document moved to trash successfully.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'UTILITY_DATASET',
@@ -582,14 +634,20 @@ class UtilityBillsDataset {
       return;
     }
 
-    AppLogger.debug('UTILITY_DATASET', 'Updating bill cycle: $documentId ($title)');
+    AppLogger.debug(
+      'UTILITY_DATASET',
+      'Updating bill cycle: $documentId ($title)',
+    );
     try {
       // 1. Update documents title and description
-      await _client.from('documents').update({
-        'title': title,
-        'description': description,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', documentId);
+      await _client
+          .from('documents')
+          .update({
+            'title': title,
+            'description': description,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', documentId);
 
       // 2. Update utility_metadata
       final metaUpdate = <String, dynamic>{
@@ -599,7 +657,8 @@ class UtilityBillsDataset {
         'payment_status': paymentStatus,
         'payment_date': paymentDate?.toIso8601String().split('T').first,
         'payment_reference_id': paymentReferenceId,
-        if (meterNumber != null && meterNumber.isNotEmpty) 'meter_number': meterNumber,
+        if (meterNumber != null && meterNumber.isNotEmpty)
+          'meter_number': meterNumber,
         'units_consumed': ?unitsConsumed,
       };
 
@@ -608,7 +667,10 @@ class UtilityBillsDataset {
           .update(metaUpdate)
           .eq('document_id', documentId);
 
-      AppLogger.info('UTILITY_DATASET', 'Bill cycle $documentId updated successfully.');
+      AppLogger.info(
+        'UTILITY_DATASET',
+        'Bill cycle $documentId updated successfully.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'UTILITY_DATASET',
@@ -652,7 +714,10 @@ class UtilityBillsDataset {
   }
 
   /// Obtains a signed preview URL for downloading or viewing.
-  Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+  Future<String> getSignedPreviewUrl(
+    String filePath, {
+    bool download = false,
+  }) async {
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       return filePath;
     }
@@ -678,7 +743,6 @@ class UtilityBillsDataset {
     return await _provider.downloadFileBytes(filePath);
   }
 
-
   /// Creates a share link for a document.
   Future<String> createShareLink(String documentId) async {
     if (DemoDataService.isDemoMode) {
@@ -691,8 +755,9 @@ class UtilityBillsDataset {
       'shared_by': user?.id,
       'share_token': token,
       'access_type': 'view',
-      'expires_at':
-          DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+      'expires_at': DateTime.now()
+          .add(const Duration(days: 7))
+          .toIso8601String(),
     });
     return token;
   }
@@ -724,15 +789,21 @@ class UtilityBillsDataset {
     required String fileName,
   }) async {
     final catId = await _getUtilityCategoryId();
-    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'pdf';
-    final mimeType = ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
-    final storagePath = 'utility_bills/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final ext = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : 'pdf';
+    final mimeType = ext == 'pdf'
+        ? 'application/pdf'
+        : 'application/octet-stream';
+    final storagePath =
+        'utility_bills/${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
-    final effectiveAreaLocality = (areaLocality != null && areaLocality.trim().isNotEmpty)
+    final effectiveAreaLocality =
+        (areaLocality != null && areaLocality.trim().isNotEmpty)
         ? areaLocality.trim()
         : (premiseName != null && premiseName.trim().isNotEmpty
-            ? premiseName.trim()
-            : (city ?? 'Rajkot'));
+              ? premiseName.trim()
+              : (city ?? 'Rajkot'));
     final effectiveCity = city ?? 'Rajkot';
     final effectiveState = state ?? 'Gujarat';
     final effectiveCountry = country ?? 'India';
@@ -785,7 +856,9 @@ class UtilityBillsDataset {
     }
 
     // 1. Upload new bill binary to Supabase Storage
-    await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+    await _client.storage
+        .from(AppConstants.storageBucket)
+        .uploadBinary(
           storagePath,
           fileBytes,
           fileOptions: const FileOptions(upsert: true),
@@ -805,12 +878,14 @@ class UtilityBillsDataset {
       'document_number': consumerNumber,
       'status': 'active',
       'uploaded_by': _client.auth.currentUser?.id,
-      'extra_attributes': {
-        'storage_provider': 'supabase',
-      },
+      'extra_attributes': {'storage_provider': 'supabase'},
     };
 
-    final docRes = await _client.from('documents').insert(docPayload).select().single();
+    final docRes = await _client
+        .from('documents')
+        .insert(docPayload)
+        .select()
+        .single();
     final newDocId = docRes['id'] as String;
 
     // 3. Insert utility metadata
@@ -821,16 +896,22 @@ class UtilityBillsDataset {
       'consumer_number': consumerNumber,
       'meter_number': meterNumber,
       'bill_date': billDate.toIso8601String().split('T').first,
-      if (dueDate != null) 'due_date': dueDate.toIso8601String().split('T').first,
+      if (dueDate != null)
+        'due_date': dueDate.toIso8601String().split('T').first,
       'bill_amount': billAmount,
       'payment_status': paymentStatus,
-      if (paymentDate != null) 'payment_date': paymentDate.toIso8601String().split('T').first,
-      if (paymentReferenceId != null && paymentReferenceId.isNotEmpty) 'payment_reference_id': paymentReferenceId,
+      if (paymentDate != null)
+        'payment_date': paymentDate.toIso8601String().split('T').first,
+      if (paymentReferenceId != null && paymentReferenceId.isNotEmpty)
+        'payment_reference_id': paymentReferenceId,
     };
     await _client.from('utility_metadata').insert(utilPayload);
 
     // 4. Insert address if available
-    if (city != null || premiseName != null || flatHouseNo != null || areaLocality != null) {
+    if (city != null ||
+        premiseName != null ||
+        flatHouseNo != null ||
+        areaLocality != null) {
       final addrPayload = {
         'document_id': newDocId,
         'premise_name': premiseName,
@@ -897,20 +978,27 @@ class UtilityBillsDataset {
     );
   }
 
-  /// Fetches all bill cycles for a specific consumer account, sorted newest first.
-  Future<List<DocumentModel>> getUtilityConnectionHistory(String consumerNumber) async {
+  /// Fetches one bounded page of bill cycles for a consumer account.
+  Future<List<DocumentModel>> getUtilityConnectionHistory(
+    String consumerNumber, {
+    int page = 1,
+    int pageSize = AppConstants.historyPageSize,
+  }) async {
+    if (page < 1 || pageSize < 1 || pageSize > 100) {
+      throw ArgumentError('Invalid utility history page bounds');
+    }
     if (DemoDataService.isDemoMode) {
       final clean = consumerNumber.trim().toLowerCase();
       final docs = DemoDataService.getAllDocuments().where((d) {
-        final cNum = d.utilityMetadata?.consumerNumber.trim().toLowerCase() ?? '';
+        final cNum =
+            d.utilityMetadata?.consumerNumber.trim().toLowerCase() ?? '';
         return cNum.isNotEmpty && cNum == clean;
       }).toList();
       docs.sort((a, b) {
-        final aDate = a.utilityMetadata?.billDate ?? a.createdAt;
-        final bDate = b.utilityMetadata?.billDate ?? b.createdAt;
-        return bDate.compareTo(aDate);
+        final byCreatedAt = b.createdAt.compareTo(a.createdAt);
+        return byCreatedAt != 0 ? byCreatedAt : a.id.compareTo(b.id);
       });
-      return docs;
+      return docs.skip((page - 1) * pageSize).take(pageSize).toList();
     }
 
     try {
@@ -927,17 +1015,13 @@ class UtilityBillsDataset {
           ''')
           .eq('utility_metadata.consumer_number', consumerNumber)
           .isFilter('deleted_at', null)
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .order('id', ascending: true)
+          .range((page - 1) * pageSize, page * pageSize - 1);
 
       final list = (response as List)
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
           .toList();
-
-      list.sort((a, b) {
-        final aDate = a.utilityMetadata?.billDate ?? a.createdAt;
-        final bDate = b.utilityMetadata?.billDate ?? b.createdAt;
-        return bDate.compareTo(aDate);
-      });
 
       return list;
     } catch (e, st) {
@@ -947,7 +1031,7 @@ class UtilityBillsDataset {
         error: e,
         stackTrace: st,
       );
-      return [];
+      rethrow;
     }
   }
 }

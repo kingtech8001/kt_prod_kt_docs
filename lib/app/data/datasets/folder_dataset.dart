@@ -16,18 +16,32 @@ class FolderDataset {
   SupabaseClient get _client => _provider.client;
 
   /// Fetches all folders with accurate document counts.
-  Future<List<FolderModel>> getFolders({String? parentId, String? searchQuery}) async {
+  Future<List<FolderModel>> getFolders({
+    String? parentId,
+    String? searchQuery,
+  }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getFolders();
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.toLowerCase().trim();
-        list = list.where((f) => f.name.toLowerCase().contains(q) || (f.description?.toLowerCase().contains(q) ?? false)).toList();
+        list = list
+            .where(
+              (f) =>
+                  f.name.toLowerCase().contains(q) ||
+                  (f.description?.toLowerCase().contains(q) ?? false),
+            )
+            .toList();
       }
       return list;
     }
-    AppLogger.debug('FOLDER_DATASET', 'Fetching folders (parentId: $parentId, search: $searchQuery)...');
+    AppLogger.debug(
+      'FOLDER_DATASET',
+      'Fetching folders (parentId: $parentId, search: $searchQuery)...',
+    );
     try {
-      var query = _client.from('folders').select('*, documents(id, deleted_at)');
+      var query = _client
+          .from('folders')
+          .select('*, documents(id, deleted_at)');
 
       if (parentId != null) {
         query = query.eq('parent_id', parentId);
@@ -43,10 +57,18 @@ class FolderDataset {
           .map((json) => FolderModel.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      AppLogger.info('FOLDER_DATASET', 'Loaded ${list.length} folders successfully.');
+      AppLogger.info(
+        'FOLDER_DATASET',
+        'Loaded ${list.length} folders successfully.',
+      );
       return list;
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error in getFolders: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error in getFolders: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -57,7 +79,13 @@ class FolderDataset {
       final folders = DemoDataService.getFolders();
       try {
         return folders.firstWhere((f) => f.id == id);
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'FOLDER_DATASET',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         return folders.isNotEmpty ? folders.first : null;
       }
     }
@@ -72,26 +100,42 @@ class FolderDataset {
       if (response == null) return null;
       return FolderModel.fromJson(response);
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error in getFolderById: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error in getFolderById: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
 
   /// Fetches all active documents inside a specific folder with full relations.
-  Future<List<DocumentModel>> getFolderDocuments(String folderId, {String? searchQuery}) async {
+  Future<List<DocumentModel>> getFolderDocuments(
+    String folderId, {
+    String? searchQuery,
+  }) async {
     if (DemoDataService.isDemoMode) {
-      var list = DemoDataService.getAllDocuments().where((d) => d.folderId == folderId).toList();
+      var list = DemoDataService.getAllDocuments()
+          .where((d) => d.folderId == folderId)
+          .toList();
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.toLowerCase().trim();
-        list = list.where((d) =>
-          d.title.toLowerCase().contains(q) ||
-          d.subCategory.toLowerCase().contains(q) ||
-          (d.documentNumber?.toLowerCase().contains(q) ?? false)
-        ).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.title.toLowerCase().contains(q) ||
+                  d.subCategory.toLowerCase().contains(q) ||
+                  (d.documentNumber?.toLowerCase().contains(q) ?? false),
+            )
+            .toList();
       }
       return list;
     }
-    AppLogger.debug('FOLDER_DATASET', 'Fetching documents for folder: $folderId (search: $searchQuery)');
+    AppLogger.debug(
+      'FOLDER_DATASET',
+      'Fetching documents for folder: $folderId (search: $searchQuery)',
+    );
     try {
       var query = _client
           .from('documents')
@@ -111,7 +155,9 @@ class FolderDataset {
 
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.trim();
-        query = query.or('title.ilike.%$q%,document_number.ilike.%$q%,file_name.ilike.%$q%');
+        query = query.or(
+          'title.ilike.%$q%,document_number.ilike.%$q%,file_name.ilike.%$q%',
+        );
       }
 
       final response = await query.order('created_at', ascending: false);
@@ -119,20 +165,35 @@ class FolderDataset {
           .map((json) => DocumentModel.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      AppLogger.info('FOLDER_DATASET', 'Loaded ${list.length} documents for folder $folderId.');
+      AppLogger.info(
+        'FOLDER_DATASET',
+        'Loaded ${list.length} documents for folder $folderId.',
+      );
       return list;
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error in getFolderDocuments: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error in getFolderDocuments: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
 
   /// Fetches active documents not currently assigned to this folder.
-  Future<List<DocumentModel>> getAvailableDocumentsForFolder(String folderId) async {
+  Future<List<DocumentModel>> getAvailableDocumentsForFolder(
+    String folderId,
+  ) async {
     if (DemoDataService.isDemoMode) {
-      return DemoDataService.getAllDocuments().where((d) => d.folderId != folderId).toList();
+      return DemoDataService.getAllDocuments()
+          .where((d) => d.folderId != folderId)
+          .toList();
     }
-    AppLogger.debug('FOLDER_DATASET', 'Fetching available documents to add to folder $folderId');
+    AppLogger.debug(
+      'FOLDER_DATASET',
+      'Fetching available documents to add to folder $folderId',
+    );
     try {
       final response = await _client
           .from('documents')
@@ -158,7 +219,12 @@ class FolderDataset {
 
       return list;
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error in getAvailableDocumentsForFolder: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error in getAvailableDocumentsForFolder: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -182,7 +248,10 @@ class FolderDataset {
       );
     }
     final user = _provider.currentUser;
-    AppLogger.info('FOLDER_DATASET', 'Creating folder "$name" for user: ${user?.id}');
+    AppLogger.info(
+      'FOLDER_DATASET',
+      'Creating folder "$name" for user: ${user?.id}',
+    );
     try {
       final response = await _client
           .from('folders')
@@ -198,7 +267,12 @@ class FolderDataset {
 
       return FolderModel.fromJson(response);
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error creating folder: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error creating folder: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -236,7 +310,12 @@ class FolderDataset {
 
       return FolderModel.fromJson(response);
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error updating folder: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error updating folder: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -247,9 +326,17 @@ class FolderDataset {
     AppLogger.debug('FOLDER_DATASET', 'Deleting folder ID: $folderId');
     try {
       await _client.from('folders').delete().eq('id', folderId);
-      AppLogger.info('FOLDER_DATASET', 'Folder $folderId deleted successfully.');
+      AppLogger.info(
+        'FOLDER_DATASET',
+        'Folder $folderId deleted successfully.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error deleting folder: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error deleting folder: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -260,7 +347,10 @@ class FolderDataset {
     required List<String> documentIds,
   }) async {
     if (DemoDataService.isDemoMode) return;
-    AppLogger.debug('FOLDER_DATASET', 'Adding ${documentIds.length} documents to folder $folderId');
+    AppLogger.debug(
+      'FOLDER_DATASET',
+      'Adding ${documentIds.length} documents to folder $folderId',
+    );
     try {
       await _client
           .from('documents')
@@ -270,9 +360,17 @@ class FolderDataset {
           })
           .inFilter('id', documentIds);
 
-      AppLogger.info('FOLDER_DATASET', 'Successfully added ${documentIds.length} documents to folder $folderId.');
+      AppLogger.info(
+        'FOLDER_DATASET',
+        'Successfully added ${documentIds.length} documents to folder $folderId.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error adding documents to folder: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error adding documents to folder: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -280,23 +378,41 @@ class FolderDataset {
   /// Unlinks a document from its folder.
   Future<void> removeDocumentFromFolder(String documentId) async {
     if (DemoDataService.isDemoMode) return;
-    AppLogger.debug('FOLDER_DATASET', 'Removing document $documentId from folder');
+    AppLogger.debug(
+      'FOLDER_DATASET',
+      'Removing document $documentId from folder',
+    );
     try {
-      await _client.from('documents').update({
-        'folder_id': null,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', documentId);
+      await _client
+          .from('documents')
+          .update({
+            'folder_id': null,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', documentId);
 
-      AppLogger.info('FOLDER_DATASET', 'Document $documentId removed from folder.');
+      AppLogger.info(
+        'FOLDER_DATASET',
+        'Document $documentId removed from folder.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error removing document from folder: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error removing document from folder: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
 
   /// Obtains signed preview URL for viewing or downloading.
-  Future<String> getSignedPreviewUrl(String storagePath, {bool download = false}) async {
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+  Future<String> getSignedPreviewUrl(
+    String storagePath, {
+    bool download = false,
+  }) async {
+    if (storagePath.startsWith('http://') ||
+        storagePath.startsWith('https://')) {
       return storagePath;
     }
     if (storagePath.startsWith('gdrive://')) {
@@ -328,7 +444,10 @@ class FolderDataset {
     }
     final user = _provider.currentUser;
     if (user == null) return false;
-    AppLogger.debug('FOLDER_DATASET', 'toggleFavorite doc: $documentId, currentlyFav: $currentlyFavorite');
+    AppLogger.debug(
+      'FOLDER_DATASET',
+      'toggleFavorite doc: $documentId, currentlyFav: $currentlyFavorite',
+    );
     try {
       if (currentlyFavorite) {
         await _client.from('document_favorites').delete().match({
@@ -344,7 +463,12 @@ class FolderDataset {
         return true;
       }
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error in toggleFavorite: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error in toggleFavorite: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }
@@ -352,22 +476,32 @@ class FolderDataset {
   /// Soft deletes document using RPC `soft_delete_document` with fallback.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('FOLDER_DATASET', 'Demo Mode: Soft deleted document $documentId');
+      AppLogger.info(
+        'FOLDER_DATASET',
+        'Demo Mode: Soft deleted document $documentId',
+      );
       return;
     }
     final user = _provider.currentUser;
     AppLogger.debug('FOLDER_DATASET', 'softDeleteDocument for ID: $documentId');
     try {
       try {
-        await _client.rpc('soft_delete_document', params: {
-          'p_doc_id': documentId,
-        });
+        await _client.rpc(
+          'soft_delete_document',
+          params: {'p_doc_id': documentId},
+        );
       } catch (rpcErr) {
-        AppLogger.warning('FOLDER_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
-        await _client.from('documents').update({
-          'deleted_at': DateTime.now().toIso8601String(),
-          'deleted_by': user?.id,
-        }).eq('id', documentId);
+        AppLogger.warning(
+          'FOLDER_DATASET',
+          'RPC soft_delete_document fallback: $rpcErr',
+        );
+        await _client
+            .from('documents')
+            .update({
+              'deleted_at': DateTime.now().toIso8601String(),
+              'deleted_by': user?.id,
+            })
+            .eq('id', documentId);
 
         await _client.from('document_activity_logs').insert({
           'document_id': documentId,
@@ -377,9 +511,17 @@ class FolderDataset {
         });
       }
 
-      AppLogger.info('FOLDER_DATASET', 'Document $documentId soft-deleted successfully.');
+      AppLogger.info(
+        'FOLDER_DATASET',
+        'Document $documentId soft-deleted successfully.',
+      );
     } catch (e, st) {
-      AppLogger.error('FOLDER_DATASET', 'Error in softDeleteDocument: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'FOLDER_DATASET',
+        'Error in softDeleteDocument: $e',
+        error: e,
+        stackTrace: st,
+      );
       rethrow;
     }
   }

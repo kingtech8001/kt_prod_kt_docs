@@ -14,14 +14,15 @@ import 'package:kt_prod_kt_docs/core/utils/platform_file_compat.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 
 /// Callback typedef for renewing appliance warranty or logging AMC / extended warranty
-typedef ApplianceWarrantyRenewCallback = Future<void> Function({
-  required DocumentModel previousDocument,
-  required ApplianceWarrantyModel newWarranty,
-  required String newTitle,
-  required Uint8List fileBytes,
-  required String fileName,
-  String? newDescription,
-});
+typedef ApplianceWarrantyRenewCallback =
+    Future<void> Function({
+      required DocumentModel previousDocument,
+      required ApplianceWarrantyModel newWarranty,
+      required String newTitle,
+      required Uint8List fileBytes,
+      required String fileName,
+      String? newDescription,
+    });
 
 class RenewApplianceWarrantyDialog extends StatelessWidget {
   final DocumentModel previousDocument;
@@ -50,7 +51,8 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = previousDocument.applianceWarranty;
     final primaryItem = w?.primaryItem;
-    final productName = primaryItem?.productName ?? w?.productName ?? previousDocument.title;
+    final productName =
+        primaryItem?.productName ?? w?.productName ?? previousDocument.title;
     final brand = primaryItem?.brand ?? w?.brand ?? 'Brand';
     final serialNumber = primaryItem?.serialNumber ?? w?.serialNumber ?? '';
     final modelNumber = primaryItem?.modelNumber ?? w?.modelNumber ?? '';
@@ -74,7 +76,8 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
     // Reactive State
     final selectedNewFile = Rx<PlatformFile?>(null);
     final selectedNewBytes = Rx<Uint8List?>(null);
-    final selectedWarrantyType = 'extended'.obs; // 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
+    final selectedWarrantyType = 'extended'
+        .obs; // 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
     final selectedExpiryDate = Rx<DateTime>(defaultNewExpiry);
     final hasValidity = true.obs;
 
@@ -89,11 +92,11 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
       text: w?.policyNumber ?? '',
     );
     final renewalCostController = TextEditingController(
-      text: w?.renewalAmount != null ? w!.renewalAmount!.toStringAsFixed(0) : '',
+      text: w?.renewalAmount != null
+          ? w!.renewalAmount!.toStringAsFixed(0)
+          : '',
     );
-    final notesController = TextEditingController(
-      text: w?.renewalNotes ?? '',
-    );
+    final notesController = TextEditingController(text: w?.renewalNotes ?? '');
     final titleController = TextEditingController(
       text: '${productName.trim()} - Extended Warranty',
     );
@@ -112,7 +115,11 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
       final base = (prevExpiry != null && prevExpiry.isAfter(today))
           ? prevExpiry
           : today;
-      selectedExpiryDate.value = DateTime(base.year + years, base.month, base.day);
+      selectedExpiryDate.value = DateTime(
+        base.year + years,
+        base.month,
+        base.day,
+      );
       hasValidity.value = true;
     }
 
@@ -193,15 +200,24 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                       }
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.error.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: AppColors.error.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.error_outline, size: 18, color: AppColors.error),
+                            const Icon(
+                              Icons.error_outline,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -231,7 +247,11 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
+                              const Icon(
+                                Icons.shield_outlined,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
                               const SizedBox(width: 8),
                               const Text(
                                 'CURRENT APPLIANCE DETAILS',
@@ -276,7 +296,9 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                               Expanded(
                                 child: _buildInfoItem(
                                   'Serial Number',
-                                  serialNumber.isNotEmpty ? serialNumber : 'Not recorded',
+                                  serialNumber.isNotEmpty
+                                      ? serialNumber
+                                      : 'Not recorded',
                                 ),
                               ),
                               Expanded(
@@ -394,11 +416,17 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.picture_as_pdf_outlined, color: AppColors.primary, size: 24),
+                              const Icon(
+                                Icons.picture_as_pdf_outlined,
+                                color: AppColors.primary,
+                                size: 24,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -429,8 +457,18 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                                   selectedNewFile.value = null;
                                   selectedNewBytes.value = null;
                                 },
-                                icon: const Icon(Icons.close, size: 16, color: AppColors.error),
-                                label: const Text('Change', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                                icon: const Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: AppColors.error,
+                                ),
+                                label: const Text(
+                                  'Change',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -452,14 +490,21 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                     Obx(() {
                       if (!hasValidity.value) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.border.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.info_outline, size: 18, color: AppColors.textSecondary),
+                              const Icon(
+                                Icons.info_outline,
+                                size: 18,
+                                color: AppColors.textSecondary,
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -496,10 +541,22 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                               Wrap(
                                 spacing: 6,
                                 children: [
-                                  _buildPresetChip('+1 Year', () => setPresetDuration(1)),
-                                  _buildPresetChip('+2 Years', () => setPresetDuration(2)),
-                                  _buildPresetChip('+3 Years', () => setPresetDuration(3)),
-                                  _buildPresetChip('+5 Years', () => setPresetDuration(5)),
+                                  _buildPresetChip(
+                                    '+1 Year',
+                                    () => setPresetDuration(1),
+                                  ),
+                                  _buildPresetChip(
+                                    '+2 Years',
+                                    () => setPresetDuration(2),
+                                  ),
+                                  _buildPresetChip(
+                                    '+3 Years',
+                                    () => setPresetDuration(3),
+                                  ),
+                                  _buildPresetChip(
+                                    '+5 Years',
+                                    () => setPresetDuration(5),
+                                  ),
                                 ],
                               ),
                             ],
@@ -519,7 +576,10 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
@@ -527,10 +587,16 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.event_available_outlined, size: 18, color: AppColors.primary),
+                                  const Icon(
+                                    Icons.event_available_outlined,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
                                   const SizedBox(width: 10),
                                   Text(
-                                    AppFormatters.formatDate(selectedExpiryDate.value),
+                                    AppFormatters.formatDate(
+                                      selectedExpiryDate.value,
+                                    ),
                                     style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -578,10 +644,15 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                                   hintText: 'e.g. Samsung Care+, Urban Company',
                                   filled: true,
                                   fillColor: AppColors.surface,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(color: AppColors.border),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.border,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -608,10 +679,15 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                                   hintText: 'e.g. AMC-2026-99128',
                                   filled: true,
                                   fillColor: AppColors.surface,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(color: AppColors.border),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.border,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -640,16 +716,24 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                               const SizedBox(height: 6),
                               TextField(
                                 controller: renewalCostController,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 decoration: InputDecoration(
                                   hintText: 'e.g. 4500',
                                   prefixText: '₹ ',
                                   filled: true,
                                   fillColor: AppColors.surface,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(color: AppColors.border),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.border,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -676,10 +760,15 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                                   hintText: 'Document title',
                                   filled: true,
                                   fillColor: AppColors.surface,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(color: AppColors.border),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.border,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -707,13 +796,16 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                           controller: notesController,
                           maxLines: 2,
                           decoration: InputDecoration(
-                            hintText: 'e.g. Includes 2 preventive maintenance visits & gas replenishment',
+                            hintText:
+                                'e.g. Includes 2 preventive maintenance visits & gas replenishment',
                             filled: true,
                             fillColor: AppColors.surface,
                             contentPadding: const EdgeInsets.all(12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                           ),
                         ),
@@ -730,7 +822,9 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 border: Border(top: BorderSide(color: AppColors.border)),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(16),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -746,13 +840,16 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                           ? null
                           : () async {
                               // Validation
-                              if (selectedNewBytes.value == null || selectedNewFile.value == null) {
-                                errorMessage.value = 'Please select or drop the renewal invoice / AMC document.';
+                              if (selectedNewBytes.value == null ||
+                                  selectedNewFile.value == null) {
+                                errorMessage.value =
+                                    'Please select or drop the renewal invoice / AMC document.';
                                 return;
                               }
 
                               if (titleController.text.trim().isEmpty) {
-                                errorMessage.value = 'Please provide a document title.';
+                                errorMessage.value =
+                                    'Please provide a document title.';
                                 return;
                               }
 
@@ -760,50 +857,91 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                               errorMessage.value = '';
 
                               try {
-                                final cost = double.tryParse(renewalCostController.text.trim());
+                                final cost = double.tryParse(
+                                  renewalCostController.text.trim(),
+                                );
                                 final wType = selectedWarrantyType.value;
-                                final hasExp = hasValidity.value && wType != 'lifetime' && wType != 'no_warranty';
+                                final hasExp =
+                                    hasValidity.value &&
+                                    wType != 'lifetime' &&
+                                    wType != 'no_warranty';
 
                                 // Construct updated ApplianceItemModel list
-                                final updatedItems = (w?.items ?? []).map((item) {
+                                final updatedItems = (w?.items ?? []).map((
+                                  item,
+                                ) {
                                   return item.copyWith(
-                                    extendedWarrantyUpto: hasExp ? selectedExpiryDate.value : null,
+                                    extendedWarrantyUpto: hasExp
+                                        ? selectedExpiryDate.value
+                                        : null,
                                     warrantyType: wType,
-                                    policyNumber: policyNumberController.text.trim().isNotEmpty
+                                    policyNumber:
+                                        policyNumberController.text
+                                            .trim()
+                                            .isNotEmpty
                                         ? policyNumberController.text.trim()
                                         : item.policyNumber,
-                                    amcProvider: providerController.text.trim().isNotEmpty
+                                    amcProvider:
+                                        providerController.text
+                                            .trim()
+                                            .isNotEmpty
                                         ? providerController.text.trim()
                                         : item.amcProvider,
                                     warrantyStatus: hasExp
-                                        ? (selectedExpiryDate.value.isBefore(DateTime.now())
-                                            ? 'expired'
-                                            : 'active')
-                                        : (wType == 'lifetime' ? 'active' : 'no_warranty'),
+                                        ? (selectedExpiryDate.value.isBefore(
+                                                DateTime.now(),
+                                              )
+                                              ? 'expired'
+                                              : 'active')
+                                        : (wType == 'lifetime'
+                                              ? 'active'
+                                              : 'no_warranty'),
                                   );
                                 }).toList();
 
-                                final newWarranty = (w ?? ApplianceWarrantyModel(
-                                  billingName: previousDocument.title,
-                                  storeVendorName: providerController.text.trim(),
-                                  invoiceNumber: policyNumberController.text.trim(),
-                                  purchaseDate: DateTime.now(),
-                                  purchaseAmount: cost ?? 0.0,
-                                )).copyWith(
-                                  warrantyType: wType,
-                                  extendedWarrantyUpto: hasExp ? selectedExpiryDate.value : null,
-                                  policyNumber: policyNumberController.text.trim().isNotEmpty
-                                      ? policyNumberController.text.trim()
-                                      : null,
-                                  amcProvider: providerController.text.trim().isNotEmpty
-                                      ? providerController.text.trim()
-                                      : null,
-                                  renewalAmount: cost,
-                                  renewalNotes: notesController.text.trim().isNotEmpty
-                                      ? notesController.text.trim()
-                                      : null,
-                                  items: updatedItems.isNotEmpty ? updatedItems : null,
-                                );
+                                final newWarranty =
+                                    (w ??
+                                            ApplianceWarrantyModel(
+                                              billingName:
+                                                  previousDocument.title,
+                                              storeVendorName:
+                                                  providerController.text
+                                                      .trim(),
+                                              invoiceNumber:
+                                                  policyNumberController.text
+                                                      .trim(),
+                                              purchaseDate: DateTime.now(),
+                                              purchaseAmount: cost ?? 0.0,
+                                            ))
+                                        .copyWith(
+                                          warrantyType: wType,
+                                          extendedWarrantyUpto: hasExp
+                                              ? selectedExpiryDate.value
+                                              : null,
+                                          policyNumber:
+                                              policyNumberController.text
+                                                  .trim()
+                                                  .isNotEmpty
+                                              ? policyNumberController.text
+                                                    .trim()
+                                              : null,
+                                          amcProvider:
+                                              providerController.text
+                                                  .trim()
+                                                  .isNotEmpty
+                                              ? providerController.text.trim()
+                                              : null,
+                                          renewalAmount: cost,
+                                          renewalNotes:
+                                              notesController.text
+                                                  .trim()
+                                                  .isNotEmpty
+                                              ? notesController.text.trim()
+                                              : null,
+                                          items: updatedItems.isNotEmpty
+                                              ? updatedItems
+                                              : null,
+                                        );
 
                                 await onRenew(
                                   previousDocument: previousDocument,
@@ -811,7 +949,8 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                                   newTitle: titleController.text.trim(),
                                   fileBytes: selectedNewBytes.value!,
                                   fileName: selectedNewFile.value!.name,
-                                  newDescription: notesController.text.trim().isNotEmpty
+                                  newDescription:
+                                      notesController.text.trim().isNotEmpty
                                       ? notesController.text.trim()
                                       : null,
                                 );
@@ -824,7 +963,10 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                                   error: e,
                                   stackTrace: st,
                                 );
-                                errorMessage.value = e.toString().replaceFirst('Exception: ', '');
+                                errorMessage.value = e.toString().replaceFirst(
+                                  'Exception: ',
+                                  '',
+                                );
                               } finally {
                                 isSubmitting.value = false;
                               }
@@ -833,10 +975,17 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Icon(Icons.check_circle_outline, size: 18),
-                      label: Text(isSubmitting.value ? 'Renewing...' : 'Save & Renew Warranty'),
+                      label: Text(
+                        isSubmitting.value
+                            ? 'Renewing...'
+                            : 'Save & Renew Warranty',
+                      ),
                     );
                   }),
                 ],
@@ -848,13 +997,21 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoItem(String label, String value, {bool isHighlighted = false}) {
+  Widget _buildInfoItem(
+    String label,
+    String value, {
+    bool isHighlighted = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textMuted,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
@@ -884,7 +1041,9 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surface,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -927,7 +1086,11 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
         ),
       ),
     );
@@ -950,7 +1113,14 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
           );
           pf.bytes = bytes;
           onFilePicked(pf, bytes);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'RENEW_APPLIANCE_WARRANTY_DIALOG',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       },
       child: InkWell(
         onTap: () async {
@@ -964,7 +1134,14 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
               final bytes = chosen.bytes ?? await chosen.loadBytes();
               onFilePicked(chosen, bytes);
             }
-          } catch (_) {}
+          } catch (error, stackTrace) {
+            AppLogger.error(
+              'RENEW_APPLIANCE_WARRANTY_DIALOG',
+              'Operation failed; applying fallback.',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }
         },
         borderRadius: BorderRadius.circular(10),
         child: Container(
@@ -980,26 +1157,30 @@ class RenewApplianceWarrantyDialog extends StatelessWidget {
           ),
           child: const Column(
             mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.cloud_upload_outlined, size: 36, color: AppColors.primary),
-                SizedBox(height: 8),
-                Text(
-                  'Click to browse or drag & drop renewal slip',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+            children: [
+              Icon(
+                Icons.cloud_upload_outlined,
+                size: 36,
+                color: AppColors.primary,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Click to browse or drag & drop renewal slip',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Supports PDF, JPG, PNG up to 25 MB',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-              ],
-            ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Supports PDF, JPG, PNG up to 25 MB',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 }

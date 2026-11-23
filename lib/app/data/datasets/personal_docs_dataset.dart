@@ -36,7 +36,9 @@ class PersonalDocsDataset {
   SupabaseClient get _client => _provider.client;
 
   /// Fetches active master persons.
-  Future<List<MasterPersonModel>> getMasterPersons({bool activeOnly = true}) async {
+  Future<List<MasterPersonModel>> getMasterPersons({
+    bool activeOnly = true,
+  }) async {
     if (DemoDataService.isDemoMode) {
       return DemoDataService.getPersons();
     }
@@ -54,7 +56,9 @@ class PersonalDocsDataset {
           .order('full_name', ascending: true);
 
       final list = (response as List)
-          .map((json) => MasterPersonModel.fromJson(json as Map<String, dynamic>))
+          .map(
+            (json) => MasterPersonModel.fromJson(json as Map<String, dynamic>),
+          )
           .toList();
       return list;
     } catch (e, st) {
@@ -110,7 +114,8 @@ class PersonalDocsDataset {
   String? _cachedIdentityDocsCategoryId;
 
   Future<String> _getIdentityDocsCategoryId() async {
-    if (_cachedIdentityDocsCategoryId != null) return _cachedIdentityDocsCategoryId!;
+    if (_cachedIdentityDocsCategoryId != null)
+      return _cachedIdentityDocsCategoryId!;
     try {
       final res = await _client
           .from('document_categories')
@@ -120,7 +125,14 @@ class PersonalDocsDataset {
       if (res != null && res['id'] != null) {
         _cachedIdentityDocsCategoryId = res['id'] as String;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'PERSONAL_DOCS_DATASET',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     _cachedIdentityDocsCategoryId ??= '9bed19e3-ee7d-41c3-9664-31ae69c2c423';
     return _cachedIdentityDocsCategoryId!;
   }
@@ -135,29 +147,52 @@ class PersonalDocsDataset {
   }) async {
     if (DemoDataService.isDemoMode) {
       var list = DemoDataService.getAllDocuments()
-          .where((d) => d.categoryId == 'cat-4' || d.categoryId == 'cat-personal' || d.categoryCode == 'identity_docs' || d.personalMetadata != null)
+          .where(
+            (d) =>
+                d.categoryId == 'cat-4' ||
+                d.categoryId == 'cat-personal' ||
+                d.categoryCode == 'identity_docs' ||
+                d.personalMetadata != null,
+          )
           .toList();
 
-      if (personName != null && personName.isNotEmpty && personName != 'All Persons') {
-        list = list.where((d) =>
-          d.personalMetadata?.personName.toLowerCase() == personName.toLowerCase()
-        ).toList();
+      if (personName != null &&
+          personName.isNotEmpty &&
+          personName != 'All Persons') {
+        list = list
+            .where(
+              (d) =>
+                  d.personalMetadata?.personName.toLowerCase() ==
+                  personName.toLowerCase(),
+            )
+            .toList();
       }
-      if (docType != null && docType.isNotEmpty && docType != 'All Document Types') {
-        list = list.where((d) =>
-          (d.personalMetadata?.docTypeName.toLowerCase() == docType.toLowerCase()) ||
-          (d.subCategory.toLowerCase() == docType.toLowerCase())
-        ).toList();
+      if (docType != null &&
+          docType.isNotEmpty &&
+          docType != 'All Document Types') {
+        list = list
+            .where(
+              (d) =>
+                  (d.personalMetadata?.docTypeName.toLowerCase() ==
+                      docType.toLowerCase()) ||
+                  (d.subCategory.toLowerCase() == docType.toLowerCase()),
+            )
+            .toList();
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.toLowerCase().trim();
-        list = list.where((d) =>
-          d.title.toLowerCase().contains(q) ||
-          d.subCategory.toLowerCase().contains(q) ||
-          (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
-          (d.personalMetadata?.personName.toLowerCase().contains(q) ?? false) ||
-          (d.personalMetadata?.idNumber?.toLowerCase().contains(q) ?? false)
-        ).toList();
+        list = list
+            .where(
+              (d) =>
+                  d.title.toLowerCase().contains(q) ||
+                  d.subCategory.toLowerCase().contains(q) ||
+                  (d.documentNumber?.toLowerCase().contains(q) ?? false) ||
+                  (d.personalMetadata?.personName.toLowerCase().contains(q) ??
+                      false) ||
+                  (d.personalMetadata?.idNumber?.toLowerCase().contains(q) ??
+                      false),
+            )
+            .toList();
       }
 
       final personSet = <String>{};
@@ -241,8 +276,10 @@ class PersonalDocsDataset {
             .toList();
         if (ids.isEmpty) {
           query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-          countQuery =
-              countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          countQuery = countQuery.eq(
+            'id',
+            '00000000-0000-0000-0000-000000000000',
+          );
         } else {
           query = query.inFilter('id', ids);
           countQuery = countQuery.inFilter('id', ids);
@@ -263,8 +300,10 @@ class PersonalDocsDataset {
             .toList();
         if (ids.isEmpty) {
           query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-          countQuery =
-              countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          countQuery = countQuery.eq(
+            'id',
+            '00000000-0000-0000-0000-000000000000',
+          );
         } else {
           query = query.inFilter('id', ids);
           countQuery = countQuery.inFilter('id', ids);
@@ -399,7 +438,10 @@ class PersonalDocsDataset {
   /// Soft deletes a personal document by setting deleted_at timestamp.
   Future<void> softDeleteDocument(String documentId) async {
     if (DemoDataService.isDemoMode) {
-      AppLogger.info('PERSONAL_DOCS_DATASET', 'Demo Mode: Soft deleted personal doc $documentId');
+      AppLogger.info(
+        'PERSONAL_DOCS_DATASET',
+        'Demo Mode: Soft deleted personal doc $documentId',
+      );
       return;
     }
     AppLogger.info(
@@ -411,16 +453,20 @@ class PersonalDocsDataset {
       try {
         await _client.rpc(
           'soft_delete_document',
-          params: {
-            'p_doc_id': documentId,
-          },
+          params: {'p_doc_id': documentId},
         );
       } catch (rpcErr) {
-        AppLogger.warning('PERSONAL_DOCS_DATASET', 'RPC soft_delete_document fallback: $rpcErr');
-        await _client.from('documents').update({
-          'deleted_at': DateTime.now().toIso8601String(),
-          'deleted_by': userId,
-        }).eq('id', documentId);
+        AppLogger.warning(
+          'PERSONAL_DOCS_DATASET',
+          'RPC soft_delete_document fallback: $rpcErr',
+        );
+        await _client
+            .from('documents')
+            .update({
+              'deleted_at': DateTime.now().toIso8601String(),
+              'deleted_by': userId,
+            })
+            .eq('id', documentId);
         await _client.from('document_activity_logs').insert({
           'document_id': documentId,
           'user_id': userId,
@@ -468,6 +514,7 @@ class PersonalDocsDataset {
           id: oldMeta?.id,
           documentId: documentId,
           personName: personName,
+          relationship: relationship,
           docTypeName: docTypeName,
           idNumber: idNumber,
           issuingAuthority: issuingAuthority,
@@ -492,29 +539,64 @@ class PersonalDocsDataset {
       return;
     }
 
-    AppLogger.debug('PERSONAL_DOCS_DATASET', 'Updating personal doc metadata: $documentId');
+    AppLogger.debug(
+      'PERSONAL_DOCS_DATASET',
+      'Updating personal doc metadata: $documentId',
+    );
     try {
-      await _client.from('documents').update({
-        'title': title,
-        'description': description,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', documentId);
+      final existing = await _client
+          .from('documents')
+          .select('extra_attributes')
+          .eq('id', documentId)
+          .single();
+      final attributes =
+          Map<String, dynamic>.from(
+            (existing['extra_attributes'] as Map?) ?? {},
+          )..addAll({
+            'relationship': relationship,
+            'insurance_company': insuranceCompany,
+            'policy_type': policyType,
+            'sum_insured': sumInsured,
+            'premium_amount': premiumAmount,
+            'tpa_name': tpaName,
+          });
 
-      await _client.from('personal_document_metadata').update({
+      // Only actual table columns belong in this payload. Extended fields
+      // live in documents.extra_attributes, matching the upload/read paths.
+      final metadataPayload = {
         'person_name': personName,
-        'relationship': relationship,
         'doc_type_name': docTypeName,
         'id_number': idNumber,
         'issuing_authority': issuingAuthority,
         'issue_date': issueDate?.toIso8601String(),
         'expiry_date': expiryDate?.toIso8601String(),
-        'insurance_company': insuranceCompany,
-        'policy_type': policyType,
-        'sum_insured': sumInsured,
-        'premium_amount': premiumAmount,
-        'tpa_name': tpaName,
         'notes': notes,
-      }).eq('document_id', documentId);
+      };
+      final updatedRows = await _client
+          .from('personal_document_metadata')
+          .update(metadataPayload)
+          .eq('document_id', documentId)
+          .select('document_id');
+      if (updatedRows.isEmpty) {
+        await _client
+            .from('personal_document_metadata')
+            .insert({...metadataPayload, 'document_id': documentId})
+            .select('document_id')
+            .single();
+      }
+
+      await _client
+          .from('documents')
+          .update({
+            'title': title,
+            'description': description,
+            'sub_category': docTypeName,
+            'extra_attributes': attributes,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', documentId)
+          .select('id')
+          .single();
     } catch (e, st) {
       AppLogger.error(
         'PERSONAL_DOCS_DATASET',
@@ -527,7 +609,10 @@ class PersonalDocsDataset {
   }
 
   /// Generates a signed preview URL for viewing or downloading.
-  Future<String> getSignedPreviewUrl(String filePath, {bool download = false}) async {
+  Future<String> getSignedPreviewUrl(
+    String filePath, {
+    bool download = false,
+  }) async {
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       return filePath;
     }
@@ -699,13 +784,16 @@ class PersonalDocsDataset {
       final ext = fileName.contains('.')
           ? fileName.split('.').last.toLowerCase()
           : 'pdf';
-      final mimeType =
-          ext == 'pdf' ? 'application/pdf' : 'application/octet-stream';
+      final mimeType = ext == 'pdf'
+          ? 'application/pdf'
+          : 'application/octet-stream';
       final storagePath =
           'personal/${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
       // 1. Upload new policy binary
-      await _client.storage.from(AppConstants.storageBucket).uploadBinary(
+      await _client.storage
+          .from(AppConstants.storageBucket)
+          .uploadBinary(
             storagePath,
             fileBytes,
             fileOptions: const FileOptions(upsert: true),
@@ -736,7 +824,8 @@ class PersonalDocsDataset {
         extraAttrs['tpa_name'] = newMetadata.tpaName;
       }
 
-      final resolvedCategoryId = (previousDocument.categoryId != null &&
+      final resolvedCategoryId =
+          (previousDocument.categoryId != null &&
               previousDocument.categoryId!.isNotEmpty)
           ? previousDocument.categoryId!
           : await _getIdentityDocsCategoryId();
@@ -744,8 +833,8 @@ class PersonalDocsDataset {
       final resolvedSubCategory = previousDocument.subCategory.isNotEmpty
           ? previousDocument.subCategory
           : (newMetadata.docTypeName.isNotEmpty
-              ? newMetadata.docTypeName
-              : 'Personal Document');
+                ? newMetadata.docTypeName
+                : 'Personal Document');
 
       final newDocPayload = {
         'title': newTitle,
@@ -773,29 +862,28 @@ class PersonalDocsDataset {
       final newDocId = docRes['id'] as String;
 
       // 3. Insert new personal document metadata with lineage reference
-      final metaPayload = newMetadata
-          .copyWith(
-            documentId: newDocId,
-            previousDocumentId: previousDocument.id,
-            renewalCount: nextRenewalCount,
-          )
-          .toJson(forSupabaseTable: true)
-        ..remove('id');
+      final metaPayload =
+          newMetadata
+              .copyWith(
+                documentId: newDocId,
+                previousDocumentId: previousDocument.id,
+                renewalCount: nextRenewalCount,
+              )
+              .toJson(forSupabaseTable: true)
+            ..remove('id');
 
       await _client.from('personal_document_metadata').insert(metaPayload);
 
       // 4. ONLY AFTER new document & metadata succeed, mark previous document as archived
-      final prevExtra =
-          Map<String, dynamic>.from(previousDocument.extraAttributes);
+      final prevExtra = Map<String, dynamic>.from(
+        previousDocument.extraAttributes,
+      );
       prevExtra['archived_reason'] = 'renewed';
       prevExtra['archived_at'] = DateTime.now().toIso8601String();
       prevExtra['superseded_by'] = newDocId;
       await _client
           .from('documents')
-          .update({
-            'status': 'archived',
-            'extra_attributes': prevExtra,
-          })
+          .update({'status': 'archived', 'extra_attributes': prevExtra})
           .eq('id', previousDocument.id);
 
       return DocumentModel(
@@ -813,8 +901,7 @@ class PersonalDocsDataset {
         fileType: ext,
         mimeType: mimeType,
         fileSize: fileBytes.length,
-        documentNumber:
-            newMetadata.idNumber ?? previousDocument.documentNumber,
+        documentNumber: newMetadata.idNumber ?? previousDocument.documentNumber,
         status: 'active',
         isFavorite: false,
         createdAt: DateTime.now(),

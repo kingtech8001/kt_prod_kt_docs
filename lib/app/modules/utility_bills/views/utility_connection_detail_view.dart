@@ -1,4 +1,6 @@
+import 'package:kt_prod_kt_docs/app/widgets/inline_form_error.dart';
 import 'package:flutter/material.dart';
+import 'package:kt_prod_kt_docs/core/values/app_strings.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/master_data_models.dart';
 import 'package:kt_prod_kt_docs/app/data/models/utility_connection_account.dart';
@@ -35,8 +37,11 @@ class UtilityConnectionDetailView
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline_rounded,
-                    size: 48, color: AppColors.error),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: AppColors.error,
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'Connection account not found',
@@ -65,6 +70,7 @@ class UtilityConnectionDetailView
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    InlineFormError(message: controller.formError.value),
                     // 1. Back Navigation Row
                     _buildBackNavigationRow(acc),
                     const SizedBox(height: AppConstants.paddingMedium),
@@ -80,7 +86,8 @@ class UtilityConnectionDetailView
                     // 4. Main Body: Split into Address/Details Form & Billing Cycles History
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final isDesktop = constraints.maxWidth >=
+                        final isDesktop =
+                            constraints.maxWidth >=
                             AppConstants.desktopBreakpoint;
 
                         if (isDesktop) {
@@ -194,8 +201,9 @@ class UtilityConnectionDetailView
                 height: 52,
                 decoration: BoxDecoration(
                   color: acc.accentColor.withValues(alpha: 0.12),
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.radiusMedium,
+                  ),
                   border: Border.all(
                     color: acc.accentColor.withValues(alpha: 0.3),
                   ),
@@ -290,8 +298,9 @@ class UtilityConnectionDetailView
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusSmall),
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.radiusSmall,
+                    ),
                   ),
                 ),
                 icon: const Icon(Icons.post_add_rounded, size: 18),
@@ -329,7 +338,7 @@ class UtilityConnectionDetailView
     return LayoutBuilder(
       builder: (context, constraints) {
         final card1 = MetricCard(
-          title: 'TOTAL SPEND (ALL CYCLES)',
+          title: AppStrings.loadedBillsSpend,
           value: AppFormatters.formatCurrency(controller.totalSpent.value),
           icon: Icons.account_balance_wallet_outlined,
           accentColor: AppColors.financeBlue,
@@ -424,8 +433,7 @@ class UtilityConnectionDetailView
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.primarySurface,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusSmall),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 ),
                 child: const Icon(
                   Icons.edit_location_alt_rounded,
@@ -466,7 +474,11 @@ class UtilityConnectionDetailView
             children: [
               const Row(
                 children: [
-                  Icon(Icons.location_on_outlined, size: 16, color: AppColors.primary),
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'Premises Location (From Settings) *',
@@ -483,7 +495,11 @@ class UtilityConnectionDetailView
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.settings_outlined, size: 13, color: AppColors.primary),
+                        Icon(
+                          Icons.settings_outlined,
+                          size: 13,
+                          color: AppColors.primary,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'Manage in Settings',
@@ -525,8 +541,11 @@ class UtilityConnectionDetailView
                       value: loc,
                       child: Row(
                         children: [
-                          const Icon(Icons.apartment_rounded,
-                              size: 16, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.apartment_rounded,
+                            size: 16,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -534,7 +553,9 @@ class UtilityConnectionDetailView
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: isEnabled ? AppColors.textPrimary : AppColors.textMuted,
+                                color: isEnabled
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -544,7 +565,9 @@ class UtilityConnectionDetailView
                       ),
                     );
                   }).toList(),
-                  onChanged: isEnabled ? (loc) => controller.onLocationSelected(loc) : null,
+                  onChanged: isEnabled
+                      ? (loc) => controller.onLocationSelected(loc)
+                      : null,
                 ),
               ),
             );
@@ -570,7 +593,9 @@ class UtilityConnectionDetailView
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -588,7 +613,9 @@ class UtilityConnectionDetailView
                       Text(
                         loc.city,
                         style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -616,15 +643,18 @@ class UtilityConnectionDetailView
                   children: [
                     const Text(
                       'Provider Name *',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.providerNameController,
                       enabled: controller.canEdit,
-                      decoration:
-                          const InputDecoration(hintText: 'e.g. PGVCL, Torrent'),
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. PGVCL, Torrent',
+                      ),
                     ),
                   ],
                 ),
@@ -636,8 +666,10 @@ class UtilityConnectionDetailView
                   children: [
                     const Text(
                       'Utility Type',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     TextField(
@@ -663,8 +695,10 @@ class UtilityConnectionDetailView
                   children: [
                     const Text(
                       'Consumer Number / ID *',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     TextField(
@@ -684,15 +718,18 @@ class UtilityConnectionDetailView
                   children: [
                     const Text(
                       'Meter Number',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.meterNumberController,
                       enabled: controller.canEdit,
-                      decoration:
-                          const InputDecoration(hintText: 'e.g. MTR-1118'),
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. MTR-1118',
+                      ),
                     ),
                   ],
                 ),
@@ -712,8 +749,9 @@ class UtilityConnectionDetailView
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.radiusSmall),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSmall,
+                      ),
                     ),
                   ),
                   icon: controller.isSaving.value
@@ -763,8 +801,7 @@ class UtilityConnectionDetailView
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceMuted,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusSmall),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 ),
                 child: const Icon(
                   Icons.history_edu_rounded,
@@ -787,7 +824,7 @@ class UtilityConnectionDetailView
                     ),
                     Obx(
                       () => Text(
-                        'Chronological ledger of all ${controller.historyBills.length} recorded bill cycles',
+                        '${controller.historyBills.length} bill cycles loaded',
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
@@ -830,8 +867,9 @@ class UtilityConnectionDetailView
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceMuted.withValues(alpha: 0.5),
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusSmall),
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.radiusSmall,
+                    ),
                     border: Border.all(
                       color: isOverdue
                           ? AppColors.error.withValues(alpha: 0.4)
@@ -925,8 +963,8 @@ class UtilityConnectionDetailView
                             type: isPaid
                                 ? StatusBadgeType.success
                                 : (isOverdue
-                                    ? StatusBadgeType.error
-                                    : StatusBadgeType.warning),
+                                      ? StatusBadgeType.error
+                                      : StatusBadgeType.warning),
                           ),
                         ],
                       ),
@@ -939,10 +977,14 @@ class UtilityConnectionDetailView
                           IconButton(
                             icon: const Icon(Icons.edit_outlined, size: 18),
                             tooltip: 'Edit Bill Cycle Details',
-                            onPressed: () => controller.openEditBillCycleDialog(doc),
+                            onPressed: () =>
+                                controller.openEditBillCycleDialog(doc),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.visibility_outlined, size: 18),
+                            icon: const Icon(
+                              Icons.visibility_outlined,
+                              size: 18,
+                            ),
                             tooltip: 'Preview Bill',
                             onPressed: () => controller.previewDocument(doc),
                           ),
@@ -961,8 +1003,11 @@ class UtilityConnectionDetailView
                                   : AppColors.textMuted,
                               size: 18,
                             ),
-                            tooltip: isPaid ? 'Mark as Pending' : 'Mark as Paid',
-                            onPressed: () => controller.togglePaymentStatus(doc),
+                            tooltip: isPaid
+                                ? 'Mark as Pending'
+                                : 'Mark as Paid',
+                            onPressed: () =>
+                                controller.togglePaymentStatus(doc),
                           ),
                         ],
                       ),
@@ -972,6 +1017,23 @@ class UtilityConnectionDetailView
               },
             );
           }),
+          Obx(
+            () => Column(
+              children: [
+                InlineFormError(message: controller.historyError.value),
+                if (controller.isLoadingHistory.value)
+                  const BottomShimmerLoader()
+                else if (controller.hasMoreHistory.value)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: controller.loadNextHistoryPage,
+                      child: const Text(AppStrings.loadMore),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );

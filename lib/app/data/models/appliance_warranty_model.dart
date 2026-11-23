@@ -12,8 +12,10 @@ class ApplianceItemModel {
   final DateTime warrantyValidUpto;
   final DateTime? extendedWarrantyUpto;
   final String? customerCareNumber;
-  final String warrantyStatus; // 'active', 'expiring_soon', 'expired', 'no_warranty'
-  final String? warrantyType; // 'standard', 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
+  final String
+  warrantyStatus; // 'active', 'expiring_soon', 'expired', 'no_warranty'
+  final String?
+  warrantyType; // 'standard', 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
   final String? policyNumber;
   final String? amcProvider;
 
@@ -40,7 +42,10 @@ class ApplianceItemModel {
   bool get isLifetime => warrantyType == 'lifetime';
 
   bool get hasWarranty =>
-      isLifetime || (warrantyPeriodMonths > 0 && warrantyStatus != 'no_warranty' && warrantyType != 'no_warranty');
+      isLifetime ||
+      (warrantyPeriodMonths > 0 &&
+          warrantyStatus != 'no_warranty' &&
+          warrantyType != 'no_warranty');
 
   bool get isExpired {
     if (!hasWarranty || isLifetime) return false;
@@ -65,7 +70,9 @@ class ApplianceItemModel {
 
   String get warrantyStatusDisplay {
     if (isLifetime) return 'LIFETIME';
-    if (!hasWarranty || warrantyStatus == 'no_warranty' || warrantyType == 'no_warranty') {
+    if (!hasWarranty ||
+        warrantyStatus == 'no_warranty' ||
+        warrantyType == 'no_warranty') {
       return 'NO WARRANTY';
     }
     if (warrantyType == 'amc') {
@@ -137,7 +144,9 @@ class ApplianceItemModel {
 
     final effectiveDate = extUpto ?? validUpto;
     String computedStatus = 'active';
-    if (json['warranty_status'] == 'no_warranty' || periodMonths == 0 || wType == 'no_warranty') {
+    if (json['warranty_status'] == 'no_warranty' ||
+        periodMonths == 0 ||
+        wType == 'no_warranty') {
       computedStatus = 'no_warranty';
     } else if (wType == 'lifetime') {
       computedStatus = 'active';
@@ -176,8 +185,14 @@ class ApplianceItemModel {
       'serial_number': serialNumber,
       'purchase_amount': purchaseAmount,
       'warranty_period_months': warrantyPeriodMonths,
-      'warranty_valid_upto': warrantyValidUpto.toIso8601String().split('T').first,
-      'extended_warranty_upto': extendedWarrantyUpto?.toIso8601String().split('T').first,
+      'warranty_valid_upto': warrantyValidUpto
+          .toIso8601String()
+          .split('T')
+          .first,
+      'extended_warranty_upto': extendedWarrantyUpto
+          ?.toIso8601String()
+          .split('T')
+          .first,
       'customer_care_number': customerCareNumber,
       'warranty_status': warrantyStatus,
       'warranty_type': warrantyType,
@@ -196,7 +211,8 @@ class ApplianceWarrantyModel {
   final String invoiceNumber;
   final DateTime purchaseDate;
   final double purchaseAmount;
-  final String warrantyType; // 'standard', 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
+  final String
+  warrantyType; // 'standard', 'extended', 'amc', 'component', 'lifetime', 'no_warranty'
   final String? policyNumber;
   final String? amcProvider;
   final double? renewalAmount;
@@ -243,42 +259,41 @@ class ApplianceWarrantyModel {
     DateTime? extendedWarrantyUpto,
     String? customerCareNumber,
     String? warrantyStatus,
-  })  : _legacyProductName = productName,
-        _legacyProductCategory = productCategory,
-        _legacyBrand = brand,
-        _legacyModelNumber = modelNumber,
-        _legacySerialNumber = serialNumber,
-        _legacyWarrantyPeriodMonths = warrantyPeriodMonths,
-        _legacyWarrantyValidUpto = warrantyValidUpto,
-        _legacyExtendedWarrantyUpto = extendedWarrantyUpto,
-        _legacyCustomerCareNumber = customerCareNumber,
-        _legacyWarrantyStatus = warrantyStatus,
-        items = (items != null && items.isNotEmpty)
-            ? items
-            : (productName != null
-                ? [
-                    ApplianceItemModel(
-                      productName: productName,
-                      productCategory: productCategory ?? 'Appliances',
-                      brand: brand ?? 'Generic',
-                      modelNumber: modelNumber,
-                      serialNumber: serialNumber,
-                      purchaseAmount: purchaseAmount,
-                      warrantyPeriodMonths: warrantyPeriodMonths ?? 12,
-                      warrantyValidUpto: warrantyValidUpto ?? DateTime.now(),
-                      extendedWarrantyUpto: extendedWarrantyUpto,
-                      customerCareNumber: customerCareNumber,
-                      warrantyStatus: warrantyStatus ?? 'active',
-                      warrantyType: warrantyType,
-                      policyNumber: policyNumber,
-                      amcProvider: amcProvider,
-                    ),
-                  ]
-                : []);
+  }) : _legacyProductName = productName,
+       _legacyProductCategory = productCategory,
+       _legacyBrand = brand,
+       _legacyModelNumber = modelNumber,
+       _legacySerialNumber = serialNumber,
+       _legacyWarrantyPeriodMonths = warrantyPeriodMonths,
+       _legacyWarrantyValidUpto = warrantyValidUpto,
+       _legacyExtendedWarrantyUpto = extendedWarrantyUpto,
+       _legacyCustomerCareNumber = customerCareNumber,
+       _legacyWarrantyStatus = warrantyStatus,
+       items = (items != null && items.isNotEmpty)
+           ? items
+           : (productName != null
+                 ? [
+                     ApplianceItemModel(
+                       productName: productName,
+                       productCategory: productCategory ?? 'Appliances',
+                       brand: brand ?? 'Generic',
+                       modelNumber: modelNumber,
+                       serialNumber: serialNumber,
+                       purchaseAmount: purchaseAmount,
+                       warrantyPeriodMonths: warrantyPeriodMonths ?? 12,
+                       warrantyValidUpto: warrantyValidUpto ?? DateTime.now(),
+                       extendedWarrantyUpto: extendedWarrantyUpto,
+                       customerCareNumber: customerCareNumber,
+                       warrantyStatus: warrantyStatus ?? 'active',
+                       warrantyType: warrantyType,
+                       policyNumber: policyNumber,
+                       amcProvider: amcProvider,
+                     ),
+                   ]
+                 : []);
 
   // Primary item getters for backwards compatibility
-  ApplianceItemModel? get primaryItem =>
-      items.isNotEmpty ? items.first : null;
+  ApplianceItemModel? get primaryItem => items.isNotEmpty ? items.first : null;
 
   String get productName =>
       primaryItem?.productName ?? _legacyProductName ?? 'Appliance';
@@ -286,26 +301,24 @@ class ApplianceWarrantyModel {
   String get productCategory =>
       primaryItem?.productCategory ?? _legacyProductCategory ?? 'Appliances';
 
-  String get brand =>
-      primaryItem?.brand ?? _legacyBrand ?? 'Generic';
+  String get brand => primaryItem?.brand ?? _legacyBrand ?? 'Generic';
 
-  String? get modelNumber =>
-      primaryItem?.modelNumber ?? _legacyModelNumber;
+  String? get modelNumber => primaryItem?.modelNumber ?? _legacyModelNumber;
 
-  String? get serialNumber =>
-      primaryItem?.serialNumber ?? _legacySerialNumber;
+  String? get serialNumber => primaryItem?.serialNumber ?? _legacySerialNumber;
 
   int get warrantyPeriodMonths =>
       primaryItem?.warrantyPeriodMonths ?? _legacyWarrantyPeriodMonths ?? 12;
 
   DateTime get warrantyValidUpto =>
-      primaryItem?.warrantyValidUpto ?? _legacyWarrantyValidUpto ?? DateTime.now();
+      primaryItem?.warrantyValidUpto ??
+      _legacyWarrantyValidUpto ??
+      DateTime.now();
 
   DateTime? get extendedWarrantyUpto =>
       primaryItem?.extendedWarrantyUpto ?? _legacyExtendedWarrantyUpto;
 
-  DateTime get effectiveValidUpto =>
-      extendedWarrantyUpto ?? warrantyValidUpto;
+  DateTime get effectiveValidUpto => extendedWarrantyUpto ?? warrantyValidUpto;
 
   String? get customerCareNumber =>
       primaryItem?.customerCareNumber ?? _legacyCustomerCareNumber;
@@ -313,16 +326,15 @@ class ApplianceWarrantyModel {
   String get warrantyStatus =>
       primaryItem?.warrantyStatus ?? _legacyWarrantyStatus ?? 'active';
 
-  bool get isLifetime => warrantyType == 'lifetime' || (primaryItem?.isLifetime == true);
+  bool get isLifetime =>
+      warrantyType == 'lifetime' || (primaryItem?.isLifetime == true);
 
-  bool get hasWarranty =>
-      isLifetime || items.any((i) => i.hasWarranty);
+  bool get hasWarranty => isLifetime || items.any((i) => i.hasWarranty);
 
   bool get isExpired =>
       !isLifetime && items.isNotEmpty && items.every((i) => i.isExpired);
 
-  bool get isExpiringSoon =>
-      !isLifetime && items.any((i) => i.isExpiringSoon);
+  bool get isExpiringSoon => !isLifetime && items.any((i) => i.isExpiringSoon);
 
   int get remainingDays =>
       isLifetime ? 9999 : (primaryItem?.remainingDays ?? 0);
@@ -333,8 +345,7 @@ class ApplianceWarrantyModel {
 
   bool get hasMultipleItems => items.length > 1;
 
-  List<String> get allBrands =>
-      items.map((i) => i.brand).toSet().toList();
+  List<String> get allBrands => items.map((i) => i.brand).toSet().toList();
 
   String get brandsSummary {
     final bList = allBrands;
@@ -362,7 +373,9 @@ class ApplianceWarrantyModel {
 
   String get warrantyStatusDisplay {
     if (isLifetime) return 'LIFETIME';
-    if (!hasWarranty || warrantyStatus == 'no_warranty' || warrantyType == 'no_warranty') {
+    if (!hasWarranty ||
+        warrantyStatus == 'no_warranty' ||
+        warrantyType == 'no_warranty') {
       return 'NO WARRANTY';
     }
     if (warrantyType == 'amc') {
@@ -412,7 +425,8 @@ class ApplianceWarrantyModel {
       final first = this.items.first;
       final updatedFirst = first.copyWith(
         warrantyValidUpto: warrantyValidUpto ?? first.warrantyValidUpto,
-        extendedWarrantyUpto: extendedWarrantyUpto ?? first.extendedWarrantyUpto,
+        extendedWarrantyUpto:
+            extendedWarrantyUpto ?? first.extendedWarrantyUpto,
         customerCareNumber: customerCareNumber ?? first.customerCareNumber,
         warrantyStatus: warrantyStatus ?? first.warrantyStatus,
         warrantyType: warrantyType ?? first.warrantyType,
@@ -459,7 +473,9 @@ class ApplianceWarrantyModel {
 
     final effectiveDate = extUpto ?? validUpto;
     String computedStatus = 'active';
-    if (json['warranty_status'] == 'no_warranty' || periodMonths == 0 || wType == 'no_warranty') {
+    if (json['warranty_status'] == 'no_warranty' ||
+        periodMonths == 0 ||
+        wType == 'no_warranty') {
       computedStatus = 'no_warranty';
     } else if (wType == 'lifetime') {
       computedStatus = 'active';
@@ -473,8 +489,11 @@ class ApplianceWarrantyModel {
     List<ApplianceItemModel> parsedItems = [];
     if (json['items'] != null && json['items'] is List) {
       parsedItems = (json['items'] as List)
-          .map((itemJson) =>
-              ApplianceItemModel.fromJson(Map<String, dynamic>.from(itemJson as Map)))
+          .map(
+            (itemJson) => ApplianceItemModel.fromJson(
+              Map<String, dynamic>.from(itemJson as Map),
+            ),
+          )
           .toList();
     }
 
@@ -529,6 +548,7 @@ class ApplianceWarrantyModel {
     'extended_warranty_upto',
     'customer_care_number',
     'warranty_status',
+    'items',
   };
 
   Map<String, dynamic> toSupabaseMap() {
@@ -546,11 +566,21 @@ class ApplianceWarrantyModel {
       'invoice_number': invoiceNumber,
       'purchase_date': purchaseDate.toIso8601String().split('T').first,
       'purchase_amount': purchaseAmount,
-      'warranty_period_months': firstItem?.warrantyPeriodMonths ?? warrantyPeriodMonths,
-      'warranty_valid_upto': (firstItem?.warrantyValidUpto ?? warrantyValidUpto).toIso8601String().split('T').first,
-      'extended_warranty_upto': (firstItem?.extendedWarrantyUpto ?? extendedWarrantyUpto)?.toIso8601String().split('T').first,
-      'customer_care_number': firstItem?.customerCareNumber ?? customerCareNumber,
+      'warranty_period_months':
+          firstItem?.warrantyPeriodMonths ?? warrantyPeriodMonths,
+      'warranty_valid_upto': (firstItem?.warrantyValidUpto ?? warrantyValidUpto)
+          .toIso8601String()
+          .split('T')
+          .first,
+      'extended_warranty_upto':
+          (firstItem?.extendedWarrantyUpto ?? extendedWarrantyUpto)
+              ?.toIso8601String()
+              .split('T')
+              .first,
+      'customer_care_number':
+          firstItem?.customerCareNumber ?? customerCareNumber,
       'warranty_status': firstItem?.warrantyStatus ?? warrantyStatus,
+      'items': items.map((item) => item.toJson()).toList(),
     };
     return map;
   }

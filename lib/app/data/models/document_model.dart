@@ -80,10 +80,16 @@ class DocumentModel {
     this.isFavorite = false,
   });
 
-  bool get isPdf =>
-      fileType.toLowerCase() == 'pdf' || mimeType.contains('pdf');
+  bool get isPdf => fileType.toLowerCase() == 'pdf' || mimeType.contains('pdf');
   bool get isImage =>
-      ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].contains(fileType.toLowerCase()) ||
+      [
+        'png',
+        'jpg',
+        'jpeg',
+        'webp',
+        'gif',
+        'svg',
+      ].contains(fileType.toLowerCase()) ||
       mimeType.startsWith('image/');
   String get fileSizeFormatted => AppFormatters.formatFileSize(fileSize);
 
@@ -124,14 +130,16 @@ class DocumentModel {
     // Fallback: check if an explicit google drive link is stored in extra_attributes,
     // but only if filePath is NOT an uploaded storage file path (which contains directory slashes)
     if (!path.contains('/')) {
-      final gUrl = (extraAttributes['google_drive_url'] ??
-              extraAttributes['web_view_link'] ??
-              extraAttributes['web_content_link'])
-          ?.toString()
-          .toLowerCase()
-          .trim();
+      final gUrl =
+          (extraAttributes['google_drive_url'] ??
+                  extraAttributes['web_view_link'] ??
+                  extraAttributes['web_content_link'])
+              ?.toString()
+              .toLowerCase()
+              .trim();
       if (gUrl != null &&
-          (gUrl.contains('drive.google.com') || gUrl.contains('docs.google.com'))) {
+          (gUrl.contains('drive.google.com') ||
+              gUrl.contains('docs.google.com'))) {
         return true;
       }
     }
@@ -155,13 +163,15 @@ class DocumentModel {
       return path;
     }
 
-    final gUrl = (extraAttributes['google_drive_url'] ??
-            extraAttributes['web_view_link'] ??
-            extraAttributes['web_content_link'])
-        ?.toString()
-        .trim();
+    final gUrl =
+        (extraAttributes['google_drive_url'] ??
+                extraAttributes['web_view_link'] ??
+                extraAttributes['web_content_link'])
+            ?.toString()
+            .trim();
     if (gUrl != null &&
-        (gUrl.contains('drive.google.com') || gUrl.contains('docs.google.com'))) {
+        (gUrl.contains('drive.google.com') ||
+            gUrl.contains('docs.google.com'))) {
       return gUrl;
     }
 
@@ -241,13 +251,20 @@ class DocumentModel {
       if (warrantyMap['items'] == null && extra['appliance_items'] != null) {
         warrantyMap['items'] = extra['appliance_items'];
       }
-      if (extra['warranty_type'] != null) warrantyMap['warranty_type'] = extra['warranty_type'];
-      if (extra['policy_number'] != null) warrantyMap['policy_number'] = extra['policy_number'];
-      if (extra['amc_provider'] != null) warrantyMap['amc_provider'] = extra['amc_provider'];
-      if (extra['renewal_amount'] != null) warrantyMap['renewal_amount'] = extra['renewal_amount'];
-      if (extra['renewal_notes'] != null) warrantyMap['renewal_notes'] = extra['renewal_notes'];
-      if (extra['previous_document_id'] != null) warrantyMap['previous_document_id'] = extra['previous_document_id'];
-      if (extra['renewal_count'] != null) warrantyMap['renewal_count'] = extra['renewal_count'];
+      if (extra['warranty_type'] != null)
+        warrantyMap['warranty_type'] = extra['warranty_type'];
+      if (extra['policy_number'] != null)
+        warrantyMap['policy_number'] = extra['policy_number'];
+      if (extra['amc_provider'] != null)
+        warrantyMap['amc_provider'] = extra['amc_provider'];
+      if (extra['renewal_amount'] != null)
+        warrantyMap['renewal_amount'] = extra['renewal_amount'];
+      if (extra['renewal_notes'] != null)
+        warrantyMap['renewal_notes'] = extra['renewal_notes'];
+      if (extra['previous_document_id'] != null)
+        warrantyMap['previous_document_id'] = extra['previous_document_id'];
+      if (extra['renewal_count'] != null)
+        warrantyMap['renewal_count'] = extra['renewal_count'];
     } else if (extra['appliance_items'] != null) {
       warrantyMap = {
         'items': extra['appliance_items'],
@@ -256,13 +273,20 @@ class DocumentModel {
         'invoice_number': json['document_number'] ?? '',
         'purchase_date': json['created_at'],
         'purchase_amount': 0.0,
-        if (extra['warranty_type'] != null) 'warranty_type': extra['warranty_type'],
-        if (extra['policy_number'] != null) 'policy_number': extra['policy_number'],
-        if (extra['amc_provider'] != null) 'amc_provider': extra['amc_provider'],
-        if (extra['renewal_amount'] != null) 'renewal_amount': extra['renewal_amount'],
-        if (extra['renewal_notes'] != null) 'renewal_notes': extra['renewal_notes'],
-        if (extra['previous_document_id'] != null) 'previous_document_id': extra['previous_document_id'],
-        if (extra['renewal_count'] != null) 'renewal_count': extra['renewal_count'],
+        if (extra['warranty_type'] != null)
+          'warranty_type': extra['warranty_type'],
+        if (extra['policy_number'] != null)
+          'policy_number': extra['policy_number'],
+        if (extra['amc_provider'] != null)
+          'amc_provider': extra['amc_provider'],
+        if (extra['renewal_amount'] != null)
+          'renewal_amount': extra['renewal_amount'],
+        if (extra['renewal_notes'] != null)
+          'renewal_notes': extra['renewal_notes'],
+        if (extra['previous_document_id'] != null)
+          'previous_document_id': extra['previous_document_id'],
+        if (extra['renewal_count'] != null)
+          'renewal_count': extra['renewal_count'],
       };
     }
 
@@ -294,6 +318,10 @@ class DocumentModel {
 
     Map<String, dynamic>? personalMap = personal;
     if (personalMap != null) {
+      personalMap = Map<String, dynamic>.from(personalMap);
+      if (extra.containsKey('relationship')) {
+        personalMap['relationship'] = extra['relationship'];
+      }
       if (extra['insurance_company'] != null ||
           extra['policy_type'] != null ||
           extra['sum_insured'] != null ||
@@ -358,13 +386,18 @@ class DocumentModel {
           ? DateTime.tryParse(json['updated_at'] as String) ?? DateTime.now()
           : DateTime.now(),
       address: addr != null ? AddressModel.fromJson(addr) : null,
-      utilityMetadata: util != null ? UtilityMetadataModel.fromJson(util) : null,
-      applianceWarranty:
-          warrantyMap != null ? ApplianceWarrantyModel.fromJson(warrantyMap) : null,
+      utilityMetadata: util != null
+          ? UtilityMetadataModel.fromJson(util)
+          : null,
+      applianceWarranty: warrantyMap != null
+          ? ApplianceWarrantyModel.fromJson(warrantyMap)
+          : null,
       personalMetadata: personalMap != null
           ? PersonalDocumentMetadataModel.fromJson(personalMap)
           : null,
-      vehicleMetadata: vehicleMap != null ? VehicleDocumentMetadataModel.fromJson(vehicleMap) : null,
+      vehicleMetadata: vehicleMap != null
+          ? VehicleDocumentMetadataModel.fromJson(vehicleMap)
+          : null,
       isFavorite: favs != null && favs.isNotEmpty,
     );
   }

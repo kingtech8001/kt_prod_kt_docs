@@ -66,8 +66,9 @@ class DashboardView extends GetView<DashboardController> {
                           ? AppColors.warning
                           : AppColors.warrantyEmerald,
                       onTap: () {
-                        if (controller.expiringWarranties
-                            .any((d) => d.vehicleMetadata != null)) {
+                        if (controller.expiringWarranties.any(
+                          (d) => d.vehicleMetadata != null,
+                        )) {
                           Get.toNamed(AppRoutes.VEHICLE_DOCS);
                         } else {
                           Get.toNamed(AppRoutes.APPLIANCES);
@@ -205,7 +206,8 @@ class DashboardView extends GetView<DashboardController> {
                             runSpacing: AppConstants.paddingSmall,
                             children: [
                               OutlinedButton.icon(
-                                onPressed: () => Get.toNamed(AppRoutes.DOCUMENTS),
+                                onPressed: () =>
+                                    Get.toNamed(AppRoutes.DOCUMENTS),
                                 icon: const Icon(Icons.arrow_forward, size: 16),
                                 label: const Text('View All'),
                               ),
@@ -262,8 +264,9 @@ class DashboardView extends GetView<DashboardController> {
                     padding: const EdgeInsets.all(AppConstants.paddingHero),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusMedium,
+                      ),
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Column(
@@ -392,7 +395,9 @@ class DashboardView extends GetView<DashboardController> {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: hasOverdue
                             ? AppColors.errorLight.withValues(alpha: 0.3)
@@ -429,8 +434,11 @@ class DashboardView extends GetView<DashboardController> {
                         ),
                       ),
                       SizedBox(width: 2),
-                      Icon(Icons.arrow_drop_down,
-                          size: 16, color: AppColors.primary),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
                     ],
                   ),
                 ),
@@ -503,15 +511,17 @@ class DashboardView extends GetView<DashboardController> {
                 final expDate = doc.generalExpiryDate;
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
-                final days =
-                    expDate != null ? expDate.difference(today).inDays : 0;
+                final days = expDate != null
+                    ? expDate.difference(today).inDays
+                    : 0;
                 final isExpired = days < 0;
 
                 final badgeLabel = isExpired
                     ? (days == 0 ? 'Expired Today' : 'Expired ${-days} d ago')
                     : (days == 0 ? 'Expires Today' : '$days Days Left');
-                final badgeType =
-                    isExpired ? StatusBadgeType.error : StatusBadgeType.warning;
+                final badgeType = isExpired
+                    ? StatusBadgeType.error
+                    : StatusBadgeType.warning;
 
                 String subtitle = '';
                 if (isVehicle) {
@@ -545,95 +555,108 @@ class DashboardView extends GetView<DashboardController> {
                   leadBg = AppColors.secondary.withValues(alpha: 0.1);
                 }
 
-                return Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppConstants.paddingSmall),
-                      decoration: BoxDecoration(
-                        color: doc.isGoogleAttachment
-                            ? const Color(0xFFF0FDF4)
-                            : leadBg,
-                        borderRadius:
-                            BorderRadius.circular(AppConstants.radiusSmall),
-                        border: doc.isGoogleAttachment
-                            ? Border.all(
-                                color: const Color(0xFF86EFAC), width: 1)
-                            : null,
-                      ),
-                      child: doc.isGoogleAttachment
-                          ? const GoogleDriveLogo(size: 18)
-                          : Icon(leadIcon, color: leadColor, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              if (doc.isGoogleAttachment) ...[
-                                const GoogleDriveLogo(size: 14),
-                                const SizedBox(width: 5),
-                              ],
-                              Expanded(
-                                child: Text(
-                                  doc.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (doc.isGoogleAttachment) ...[
-                                const SizedBox(width: 6),
-                                const GoogleDriveBadge(compact: true),
-                              ],
-                            ],
-                          ),
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    StatusBadge(
-                      label: badgeLabel,
-                      type: badgeType,
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.border),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
+                return InkWell(
+                  onTap: () => controller.openExpiringDocumentDetail(doc),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(
+                          AppConstants.paddingSmall,
+                        ),
+                        decoration: BoxDecoration(
+                          color: doc.isGoogleAttachment
+                              ? const Color(0xFFF0FDF4)
+                              : leadBg,
                           borderRadius: BorderRadius.circular(
-                              AppConstants.radiusSmall),
+                            AppConstants.radiusSmall,
+                          ),
+                          border: doc.isGoogleAttachment
+                              ? Border.all(
+                                  color: const Color(0xFF86EFAC),
+                                  width: 1,
+                                )
+                              : null,
+                        ),
+                        child: doc.isGoogleAttachment
+                            ? const GoogleDriveLogo(size: 18)
+                            : Icon(leadIcon, color: leadColor, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                if (doc.isGoogleAttachment) ...[
+                                  const GoogleDriveLogo(size: 14),
+                                  const SizedBox(width: 5),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    doc.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (doc.isGoogleAttachment) ...[
+                                  const SizedBox(width: 6),
+                                  const GoogleDriveBadge(compact: true),
+                                ],
+                              ],
+                            ),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
-                      icon: const Icon(Icons.notifications_off_outlined,
-                          size: 13),
-                      label: const Text(
-                        'Not Remind',
-                        style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w500),
+                      const SizedBox(width: 8),
+                      StatusBadge(label: badgeLabel, type: badgeType),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: AppColors.border),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.radiusSmall,
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.notifications_off_outlined,
+                          size: 13,
+                        ),
+                        label: const Text(
+                          'Not Remind',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        onPressed: () => controller.dismissReminder(doc),
                       ),
-                      onPressed: () => controller.dismissReminder(doc),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -708,10 +731,14 @@ class DashboardView extends GetView<DashboardController> {
                         color: doc.isGoogleAttachment
                             ? const Color(0xFFF0FDF4)
                             : AppColors.primarySurface,
-                        borderRadius:
-                            BorderRadius.circular(AppConstants.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusSmall,
+                        ),
                         border: doc.isGoogleAttachment
-                            ? Border.all(color: const Color(0xFF86EFAC), width: 1)
+                            ? Border.all(
+                                color: const Color(0xFF86EFAC),
+                                width: 1,
+                              )
                             : null,
                       ),
                       child: doc.isGoogleAttachment
@@ -795,8 +822,9 @@ class DashboardView extends GetView<DashboardController> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < AppConstants.tabletBreakpoint;
-          final trashCountText =
-              m.trashCount == 1 ? '1 file' : '${m.trashCount} files';
+          final trashCountText = m.trashCount == 1
+              ? '1 file'
+              : '${m.trashCount} files';
           final trashSizeText = AppFormatters.formatFileSize(m.trashSizeBytes);
 
           final infoContent = Row(
@@ -893,10 +921,7 @@ class DashboardView extends GetView<DashboardController> {
               children: [
                 infoContent,
                 const SizedBox(height: AppConstants.paddingSmall + 4),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: actionButton,
-                ),
+                Align(alignment: Alignment.centerRight, child: actionButton),
               ],
             );
           }

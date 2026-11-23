@@ -3,50 +3,17 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/widgets/app_shimmer.dart';
-import 'package:kt_prod_kt_docs/core/utils/app_dialog.dart';
-import 'package:kt_prod_kt_docs/core/utils/app_logger.dart';
-import 'package:kt_prod_kt_docs/core/utils/file_api_helper.dart';
 import 'package:kt_prod_kt_docs/core/values/app_colors.dart';
 import 'package:kt_prod_kt_docs/core/values/app_constants.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// GetX-compliant interactive Image Lightbox Dialog loading bytes via API.
-/// Provides zoom, rotation, realistic skeleton loading, inline retry, and direct downloads.
-class ImageLightboxDialog extends StatelessWidget {
-  final String title;
-  final String? imageUrl;
-  final Uint8List? imageBytes;
-  final String? fileName;
-  final String? filePath;
-  final VoidCallback? onDownload;
+import 'package:kt_prod_kt_docs/app/controllers/image_preview_controller.dart';
+import 'package:kt_prod_kt_docs/app/bindings/preview_binding.dart';
 
-  ImageLightboxDialog({
-    super.key,
-    required this.title,
-    this.imageUrl,
-    this.imageBytes,
-    this.fileName,
-    this.filePath,
-    this.onDownload,
-  }) {
-    if (imageBytes != null && imageBytes!.isNotEmpty) {
-      _loadedBytes.value = imageBytes;
-      _isLoading.value = false;
-    } else if ((imageUrl != null && imageUrl!.trim().isNotEmpty) ||
-        (filePath != null && filePath!.trim().isNotEmpty)) {
-      _loadImageBytesViaApi();
-    } else {
-      _errorMessage.value = 'No image URL or binary data was provided.';
-      _isLoading.value = false;
-    }
-  }
-
-  final RxBool _isLoading = true.obs;
-  final RxString _errorMessage = ''.obs;
-  final Rxn<Uint8List> _loadedBytes = Rxn<Uint8List>();
-  final RxInt _quarterTurns = 0.obs;
-
+class ImageLightboxDialog extends GetView<ImagePreviewController> {
+  const ImageLightboxDialog._({required this.tag});
+  @override
+  final String tag;
   static void show({
     required String title,
     String? imageUrl,
@@ -55,134 +22,33 @@ class ImageLightboxDialog extends StatelessWidget {
     String? filePath,
     VoidCallback? onDownload,
   }) {
-    AppDialog.show(
-      ImageLightboxDialog(
-        title: title,
-        imageUrl: imageUrl,
-        imageBytes: imageBytes,
-        fileName: fileName,
-        filePath: filePath,
-        onDownload: onDownload,
-      ),
-      barrierColor: Colors.black87,
-    );
-  }
-
-  Future<void> _loadImageBytesViaApi() async {
-    _isLoading.value = true;
-    _errorMessage.value = '';
-
-    AppLogger.debug('IMAGE_LIGHTBOX', 'Loading image bytes via API: title="$title", url=$imageUrl, path=$filePath');
-
-    try {
-      final candidateUrl = imageUrl?.trim() ?? '';
-      final candidatePath = filePath?.trim() ?? '';
-
-      Uint8List? bytes;
-
-      if (candidateUrl.startsWith('http://') || candidateUrl.startsWith('https://')) {
-        try {
-          final fetched = await FileApiHelper.fetchBytes(candidateUrl);
-          if (fetched.isNotEmpty) {
-            bytes = fetched;
-          }
-        } catch (fetchErr) {
-          AppLogger.warning('IMAGE_LIGHTBOX', 'Direct image URL fetch failed: $fetchErr. Attempting storage fallback.');
-        }
-      }
-
-      if (bytes == null) {
-        final storagePath = candidatePath.isNotEmpty && !candidatePath.startsWith('http')
-            ? candidatePath
-            : (candidateUrl.isNotEmpty && !candidateUrl.startsWith('http') ? candidateUrl : null);
-
-        if (storagePath != null) {
-          final cleanPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
-
-          try {
-            AppLogger.info('IMAGE_LIGHTBOX', 'Downloading image directly from Supabase storage: "$cleanPath"');
-            final downloaded = await Supabase.instance.client.storage
-                .from(AppConstants.storageBucket)
-                .download(cleanPath);
-            if (downloaded.isNotEmpty) {
-              bytes = downloaded;
-            }
-          } catch (storageErr) {
-            AppLogger.warning('IMAGE_LIGHTBOX', 'Direct Supabase storage image download notice: $storageErr');
-          }
-
-          if (bytes == null) {
-            try {
-              final freshSignedUrl = await Supabase.instance.client.storage
-                  .from(AppConstants.storageBucket)
-                  .createSignedUrl(cleanPath, 3600);
-              final fetched = await FileApiHelper.fetchBytes(freshSignedUrl);
-              if (fetched.isNotEmpty) {
-                bytes = fetched;
-              }
-            } catch (signedErr) {
-              AppLogger.warning('IMAGE_LIGHTBOX', 'Fresh signed image URL fetch notice: $signedErr');
-            }
-          }
-        }
-      }
-
-      if (bytes == null || bytes.isEmpty) {
-        throw Exception('Unable to retrieve image data. Please check network connection or verify image storage.');
-      }
-
-      _loadedBytes.value = bytes;
-      _isLoading.value = false;
-      AppLogger.info('IMAGE_LIGHTBOX', 'Image bytes successfully loaded via API (${bytes.length} bytes).');
-    } catch (error, st) {
-      AppLogger.error('IMAGE_LIGHTBOX', 'Failed to load image via API: $error', error: error, stackTrace: st);
-      _errorMessage.value = error.toString().replaceFirst('Exception: ', '');
-      _isLoading.value = false;
-    }
-  }
-
-  void _rotateClockwise() {
-    _quarterTurns.value = (_quarterTurns.value + 1) % 4;
-  }
-
-  void _rotateCounterClockwise() {
-    _quarterTurns.value = (_quarterTurns.value - 1 + 4) % 4;
-  }
-
-  void _handleDownload() {
-    final resolvedName = fileName != null && fileName!.isNotEmpty
-        ? fileName!
-        : '$title.jpg';
-
-    if (_loadedBytes.value != null && _loadedBytes.value!.isNotEmpty) {
-      FileApiHelper.downloadFileFromBytes(
-        bytes: _loadedBytes.value!,
-        fileName: resolvedName,
-        mimeType: 'image/jpeg',
-      );
-      return;
-    }
-
-    if (onDownload != null) {
-      onDownload!();
-      return;
-    }
-
-    if (imageUrl != null && (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://'))) {
-      FileApiHelper.downloadFileFromUrl(
-        url: imageUrl!,
-        fileName: resolvedName,
-        mimeType: 'image/jpeg',
-      );
-      return;
-    }
+    final tag = PreviewBinding.nextTag();
+    PreviewBinding(
+      tag: tag,
+      pdf: false,
+      title: title,
+      url: imageUrl,
+      bytes: imageBytes,
+      fileName: fileName,
+      filePath: filePath,
+      onDownload: onDownload,
+    ).dependencies();
+    Get.find<ImagePreviewController>(
+      tag: tag,
+    ).present(ImageLightboxDialog._(tag: tag), tag);
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final dialogWidth = (size.width * 0.90).clamp(320.0, 1140.0);
-    final dialogHeight = (size.height * 0.88).clamp(420.0, 920.0);
+    final dialogWidth = (size.width - AppConstants.paddingMedium * 2).clamp(
+      0.0,
+      1140.0,
+    );
+    final dialogHeight = (size.height - AppConstants.paddingLarge * 2).clamp(
+      0.0,
+      920.0,
+    );
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -213,27 +79,26 @@ class ImageLightboxDialog extends StatelessWidget {
           children: [
             // 1. Image Viewer / Shimmer Skeleton / Error View
             Obx(() {
-              if (_isLoading.value) {
+              if (controller.isLoading.value) {
                 return const AppShimmer(child: DocumentPreviewSkeleton());
               }
 
-              if (_errorMessage.value.isNotEmpty) {
+              if (controller.errorMessage.value.isNotEmpty) {
                 return _buildErrorView();
               }
 
-              if (_loadedBytes.value != null) {
+              if (controller.loadedBytes.value != null) {
                 return RotatedBox(
-                  quarterTurns: _quarterTurns.value,
+                  quarterTurns: controller.quarterTurns.value,
                   child: PhotoView(
-                    imageProvider: MemoryImage(_loadedBytes.value!),
+                    imageProvider: MemoryImage(controller.loadedBytes.value!),
                     backgroundDecoration: const BoxDecoration(
                       color: Color(0xFF0B1120),
                     ),
                     minScale: PhotoViewComputedScale.contained * 0.8,
                     maxScale: PhotoViewComputedScale.covered * 3.5,
-                    loadingBuilder: (context, event) => const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    ),
+                    loadingBuilder: (context, event) =>
+                        const AppShimmer(child: DocumentPreviewSkeleton()),
                   ),
                 );
               }
@@ -254,7 +119,9 @@ class ImageLightboxDialog extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -262,9 +129,15 @@ class ImageLightboxDialog extends StatelessWidget {
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: AppColors.secondary.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.radiusSmall,
+                        ),
                       ),
-                      child: const Icon(Icons.image, color: Colors.white, size: 18),
+                      child: const Icon(
+                        Icons.image,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: AppConstants.paddingMedium),
                     Expanded(
@@ -272,7 +145,7 @@ class ImageLightboxDialog extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            title,
+                            controller.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -281,10 +154,11 @@ class ImageLightboxDialog extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (fileName != null && fileName!.isNotEmpty) ...[
+                          if (controller.fileName != null &&
+                              controller.fileName!.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(
-                              fileName!,
+                              controller.fileName!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -299,17 +173,20 @@ class ImageLightboxDialog extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.rotate_left, color: Colors.white),
                       tooltip: 'Rotate Left',
-                      onPressed: _rotateCounterClockwise,
+                      onPressed: controller.rotateCounterClockwise,
                     ),
                     IconButton(
                       icon: const Icon(Icons.rotate_right, color: Colors.white),
                       tooltip: 'Rotate Right',
-                      onPressed: _rotateClockwise,
+                      onPressed: controller.rotateClockwise,
                     ),
                     IconButton(
-                      icon: const Icon(Icons.download_outlined, color: Colors.white),
+                      icon: const Icon(
+                        Icons.download_outlined,
+                        color: Colors.white,
+                      ),
                       tooltip: 'Download Image',
-                      onPressed: _handleDownload,
+                      onPressed: controller.handleDownload,
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
@@ -353,7 +230,7 @@ class ImageLightboxDialog extends StatelessWidget {
               ),
               const SizedBox(height: AppConstants.paddingSmall),
               Text(
-                _errorMessage.value,
+                controller.errorMessage.value,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
@@ -373,12 +250,9 @@ class ImageLightboxDialog extends StatelessWidget {
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: _loadImageBytesViaApi,
+                    onPressed: controller.loadImageBytesViaApi,
                   ),
-                  TextButton(
-                    onPressed: Get.back,
-                    child: const Text('Dismiss'),
-                  ),
+                  TextButton(onPressed: Get.back, child: const Text('Dismiss')),
                 ],
               ),
             ],

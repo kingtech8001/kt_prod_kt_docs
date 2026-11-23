@@ -21,13 +21,20 @@ class VehicleDetailController extends GetxController {
   final vehicle = Rxn<MasterVehicleModel>();
   final isLoading = true.obs;
   final isSaving = false.obs;
+  final formError = ''.obs;
 
   // Role Permissions
   bool get canEdit {
     try {
       return AuthService.to.canEdit;
-    } catch (_) {
-      return true;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'VEHICLE_DETAIL_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -46,8 +53,10 @@ class VehicleDetailController extends GetxController {
   // Data Collections for History
   final documents = <DocumentModel>[].obs;
   final services = <VehicleServiceModel>[].obs;
-  final selectedHistoryTab = 0.obs; // 0 = Documents & Policies, 1 = Service History
-  final selectedDocSubFilter = 'All'.obs; // All, Insurance, PUC, RC & Registration
+  final selectedHistoryTab =
+      0.obs; // 0 = Documents & Policies, 1 = Service History
+  final selectedDocSubFilter =
+      'All'.obs; // All, Insurance, PUC, RC & Registration
 
   @override
   void onInit() {
@@ -98,8 +107,12 @@ class VehicleDetailController extends GetxController {
         await _loadHistory(match.vehicleNumber);
       }
     } catch (e, st) {
-      AppLogger.error('VEHICLE_DETAIL_CTRL', 'Error loading vehicle: $e',
-          error: e, stackTrace: st);
+      AppLogger.error(
+        'VEHICLE_DETAIL_CTRL',
+        'Error loading vehicle: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -115,12 +128,17 @@ class VehicleDetailController extends GetxController {
       );
       documents.assignAll(docsResponse.documents);
 
-      final serviceList =
-          await _dataset.getVehicleServices(vehicleId: vehicle.value?.id);
+      final serviceList = await _dataset.getVehicleServices(
+        vehicleId: vehicle.value?.id,
+      );
       services.assignAll(serviceList);
     } catch (e, st) {
-      AppLogger.error('VEHICLE_DETAIL_CTRL', 'Error loading history: $e',
-          error: e, stackTrace: st);
+      AppLogger.error(
+        'VEHICLE_DETAIL_CTRL',
+        'Error loading history: $e',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -133,17 +151,19 @@ class VehicleDetailController extends GetxController {
   }
 
   Future<void> saveVehicleDetails() async {
+    if (isSaving.value) return;
+    formError.value = '';
     final current = vehicle.value;
     if (current == null) return;
 
     if (!canEdit) {
-      AppSnackbar.showWarning('Permission Denied', 'Your role cannot edit vehicle details.');
+      formError.value = 'Your role cannot edit vehicle details.';
       return;
     }
 
     final regNumber = vehicleNumberController.text.trim().toUpperCase();
     if (regNumber.isEmpty) {
-      AppSnackbar.showError('Validation Error', 'Vehicle registration number is required.');
+      formError.value = 'Vehicle registration number is required.';
       return;
     }
 
@@ -183,9 +203,13 @@ class VehicleDetailController extends GetxController {
         'Vehicle details for $regNumber have been updated successfully.',
       );
     } catch (e, st) {
-      AppLogger.error('VEHICLE_DETAIL_CTRL', 'Error saving vehicle details: $e',
-          error: e, stackTrace: st);
-      AppSnackbar.showError('Save Failed', 'Could not save vehicle details: $e');
+      AppLogger.error(
+        'VEHICLE_DETAIL_CTRL',
+        'Error saving vehicle details: $e',
+        error: e,
+        stackTrace: st,
+      );
+      formError.value = 'Could not save vehicle details: $e';
     } finally {
       isSaving.value = false;
     }
@@ -197,19 +221,22 @@ class VehicleDetailController extends GetxController {
     if (filter == 'All') return documents;
     if (filter == 'Insurance') {
       return documents.where((d) {
-        final t = (d.vehicleMetadata?.docTypeName ?? d.subCategory).toLowerCase();
+        final t = (d.vehicleMetadata?.docTypeName ?? d.subCategory)
+            .toLowerCase();
         return t.contains('insurance') || t.contains('policy');
       }).toList();
     }
     if (filter == 'PUC') {
       return documents.where((d) {
-        final t = (d.vehicleMetadata?.docTypeName ?? d.subCategory).toLowerCase();
+        final t = (d.vehicleMetadata?.docTypeName ?? d.subCategory)
+            .toLowerCase();
         return t.contains('puc') || t.contains('emission');
       }).toList();
     }
     if (filter == 'RC & Registration') {
       return documents.where((d) {
-        final t = (d.vehicleMetadata?.docTypeName ?? d.subCategory).toLowerCase();
+        final t = (d.vehicleMetadata?.docTypeName ?? d.subCategory)
+            .toLowerCase();
         return t.contains('rc') ||
             t.contains('registration') ||
             t.contains('smart card') ||
@@ -222,14 +249,15 @@ class VehicleDetailController extends GetxController {
   // Document actions
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -259,7 +287,8 @@ class VehicleDetailController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -270,13 +299,19 @@ class VehicleDetailController extends GetxController {
         }
       }
 
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Downloaded', 'File downloading: ${doc.fileName}');
+      AppSnackbar.showSuccess(
+        'Downloaded',
+        'File downloading: ${doc.fileName}',
+      );
     } catch (e) {
       AppSnackbar.showError('Download Failed', 'Could not download file: $e');
     }
@@ -285,23 +320,24 @@ class VehicleDetailController extends GetxController {
   Future<void> openRenewDialog(DocumentModel doc) async {
     final success = await RenewVehicleDocDialog.show(
       previousDocument: doc,
-      onRenew: ({
-        required previousDocument,
-        required newMetadata,
-        required newTitle,
-        required fileBytes,
-        required fileName,
-        newDescription,
-      }) async {
-        await _dataset.renewVehicleDocument(
-          previousDocument: previousDocument,
-          newMetadata: newMetadata,
-          newTitle: newTitle,
-          fileBytes: fileBytes,
-          fileName: fileName,
-          newDescription: newDescription,
-        );
-      },
+      onRenew:
+          ({
+            required previousDocument,
+            required newMetadata,
+            required newTitle,
+            required fileBytes,
+            required fileName,
+            newDescription,
+          }) async {
+            await _dataset.renewVehicleDocument(
+              previousDocument: previousDocument,
+              newMetadata: newMetadata,
+              newTitle: newTitle,
+              fileBytes: fileBytes,
+              fileName: fileName,
+              newDescription: newDescription,
+            );
+          },
     );
 
     if (success == true) {

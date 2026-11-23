@@ -33,7 +33,10 @@ String _extractPdfTextWorker(Uint8List bytes) {
 
     final sortedPages = targetPages.toList()..sort();
     for (final pageIndex in sortedPages) {
-      final pageText = extractor.extractText(startPageIndex: pageIndex, endPageIndex: pageIndex);
+      final pageText = extractor.extractText(
+        startPageIndex: pageIndex,
+        endPageIndex: pageIndex,
+      );
       if (pageText.isNotEmpty) {
         buffer.writeln(pageText);
       }
@@ -41,7 +44,13 @@ String _extractPdfTextWorker(Uint8List bytes) {
 
     document.dispose();
     return buffer.toString();
-  } catch (_) {
+  } catch (error, stackTrace) {
+    AppLogger.error(
+      'DOCUMENT_SCANNER_SERVICE',
+      'Operation failed; applying fallback.',
+      error: error,
+      stackTrace: stackTrace,
+    );
     return '';
   }
 }
@@ -83,7 +92,10 @@ Future<String> _extractPdfTextAsync(
       final pageIndex = sortedPages[idx];
       // Yield to the event loop before each page extraction so Flutter can render frames, animations and loaders
       await Future.delayed(Duration.zero);
-      final pageText = extractor.extractText(startPageIndex: pageIndex, endPageIndex: pageIndex);
+      final pageText = extractor.extractText(
+        startPageIndex: pageIndex,
+        endPageIndex: pageIndex,
+      );
       if (pageText.isNotEmpty) {
         buffer.writeln(pageText);
       }
@@ -117,7 +129,10 @@ class DocumentScannerService {
     void Function(double progress)? onProgress,
   }) async {
     final stopwatch = Stopwatch()..start();
-    AppLogger.info('SCANNER', 'Starting document scan for "$fileName" (${bytes.length} bytes)');
+    AppLogger.info(
+      'SCANNER',
+      'Starting document scan for "$fileName" (${bytes.length} bytes)',
+    );
 
     String rawText = '';
     final isPdf = FileCompressor.isPdf(fileName);
@@ -127,16 +142,25 @@ class DocumentScannerService {
         // Flutter Web runs on a single JS thread. To prevent UI freezing,
         // extract text asynchronously page-by-page and yield to the event loop.
         rawText = await _extractPdfTextAsync(bytes, onProgress: onProgress);
-        AppLogger.debug('SCANNER', 'Extracted ${rawText.length} characters from PDF (web async): "$fileName"');
+        AppLogger.debug(
+          'SCANNER',
+          'Extracted ${rawText.length} characters from PDF (web async): "$fileName"',
+        );
       } else {
         try {
           // Offload heavy PDF parsing to background isolate via compute on native
           rawText = await compute(_extractPdfTextWorker, bytes);
-          AppLogger.debug('SCANNER', 'Extracted ${rawText.length} characters from PDF: "$fileName"');
+          AppLogger.debug(
+            'SCANNER',
+            'Extracted ${rawText.length} characters from PDF: "$fileName"',
+          );
         } catch (e) {
           // Fallback to inline async extraction if compute fails
           rawText = await _extractPdfTextAsync(bytes, onProgress: onProgress);
-          AppLogger.debug('SCANNER', 'Extracted ${rawText.length} characters (inline fallback): "$fileName"');
+          AppLogger.debug(
+            'SCANNER',
+            'Extracted ${rawText.length} characters (inline fallback): "$fileName"',
+          );
         }
       }
     }
@@ -157,8 +181,8 @@ class DocumentScannerService {
     AppLogger.info(
       'SCANNER',
       'Completed document scan in ${stopwatch.elapsedMilliseconds}ms. '
-      'Detected Category: ${result.detectedCategoryName} (${result.detectedCategoryCode}), '
-      'Subcategory: ${result.detectedSubcategory}, Filled Fields: ${result.filledFieldsCount}',
+          'Detected Category: ${result.detectedCategoryName} (${result.detectedCategoryCode}), '
+          'Subcategory: ${result.detectedSubcategory}, Filled Fields: ${result.filledFieldsCount}',
     );
 
     return result;
@@ -181,43 +205,165 @@ class DocumentScannerService {
     int vehicleScore = 0;
 
     // Utility scoring indicators
-    if (lower.contains('electricity') || lower.contains('light bill') || lower.contains('discom')) utilityScore += 5;
-    if (lower.contains('ugvcl') || lower.contains('dgvcl') || lower.contains('pgvcl') || lower.contains('mgvcl')) utilityScore += 8;
-    if (lower.contains('torrent power') || lower.contains('adani electricity') || lower.contains('tata power')) utilityScore += 8;
-    if (lower.contains('gujarat gas') || lower.contains('adani gas') || lower.contains('adani total gas') || lower.contains('mngl') || lower.contains('mgl') || lower.contains('igl')) utilityScore += 8;
-    if (lower.contains('piped natural gas') || lower.contains('png bill') || lower.contains('lpg')) utilityScore += 7;
-    if (lower.contains('consumer no') || lower.contains('consumer number') || lower.contains('meter no') || lower.contains('meter number')) utilityScore += 6;
-    if (lower.contains('kwh') || lower.contains('units consumed') || lower.contains('bill due date')) utilityScore += 5;
-    if (lower.contains('property tax') || lower.contains('amc tax') || lower.contains('house tax') || lower.contains('tenement no')) utilityScore += 8;
-    if (lower.contains('water bill') || lower.contains('drainage cess')) utilityScore += 8;
-    if (lower.contains('airtel broadband') || lower.contains('jio fiber') || lower.contains('act fibernet') || lower.contains('tata play fiber')) utilityScore += 7;
+    if (lower.contains('electricity') ||
+        lower.contains('light bill') ||
+        lower.contains('discom'))
+      utilityScore += 5;
+    if (lower.contains('ugvcl') ||
+        lower.contains('dgvcl') ||
+        lower.contains('pgvcl') ||
+        lower.contains('mgvcl'))
+      utilityScore += 8;
+    if (lower.contains('torrent power') ||
+        lower.contains('adani electricity') ||
+        lower.contains('tata power'))
+      utilityScore += 8;
+    if (lower.contains('gujarat gas') ||
+        lower.contains('adani gas') ||
+        lower.contains('adani total gas') ||
+        lower.contains('mngl') ||
+        lower.contains('mgl') ||
+        lower.contains('igl'))
+      utilityScore += 8;
+    if (lower.contains('piped natural gas') ||
+        lower.contains('png bill') ||
+        lower.contains('lpg'))
+      utilityScore += 7;
+    if (lower.contains('consumer no') ||
+        lower.contains('consumer number') ||
+        lower.contains('meter no') ||
+        lower.contains('meter number'))
+      utilityScore += 6;
+    if (lower.contains('kwh') ||
+        lower.contains('units consumed') ||
+        lower.contains('bill due date'))
+      utilityScore += 5;
+    if (lower.contains('property tax') ||
+        lower.contains('amc tax') ||
+        lower.contains('house tax') ||
+        lower.contains('tenement no'))
+      utilityScore += 8;
+    if (lower.contains('water bill') || lower.contains('drainage cess'))
+      utilityScore += 8;
+    if (lower.contains('airtel broadband') ||
+        lower.contains('jio fiber') ||
+        lower.contains('act fibernet') ||
+        lower.contains('tata play fiber'))
+      utilityScore += 7;
 
     // Vehicle scoring indicators
-    if (lower.contains('registration certificate') || lower.contains('form 23') || lower.contains('rc book')) vehicleScore += 10;
-    if (lower.contains('chassis no') || lower.contains('chassis number') || lower.contains('engine no') || lower.contains('engine number')) vehicleScore += 7;
-    if (lower.contains('hdfc ergo') || lower.contains('icici lombard') || lower.contains('bajaj allianz') || lower.contains('tata aig') || lower.contains('go digit') || lower.contains('acko general')) vehicleScore += 8;
-    if (lower.contains('motor policy') || lower.contains('two wheeler package') || lower.contains('private car package') || lower.contains('vehicle insurance')) vehicleScore += 9;
-    if (lower.contains('puc certificate') || lower.contains('pollution under control') || lower.contains('emission test certificate')) vehicleScore += 10;
-    if (lower.contains('fastag') || lower.contains('netc') || lower.contains('toll plaza') || lower.contains('toll pass')) vehicleScore += 10;
-    if (lower.contains('service center') || lower.contains('odometer') || lower.contains('engine oil change') || lower.contains('periodic maintenance')) vehicleScore += 7;
-    if (RegExp(r'\b[A-Z]{2}[ -]?[0-9]{1,2}[ -]?[A-Z]{1,3}[ -]?[0-9]{4}\b', caseSensitive: false).hasMatch(fullText)) vehicleScore += 5;
+    if (lower.contains('registration certificate') ||
+        lower.contains('form 23') ||
+        lower.contains('rc book'))
+      vehicleScore += 10;
+    if (lower.contains('chassis no') ||
+        lower.contains('chassis number') ||
+        lower.contains('engine no') ||
+        lower.contains('engine number'))
+      vehicleScore += 7;
+    if (lower.contains('hdfc ergo') ||
+        lower.contains('icici lombard') ||
+        lower.contains('bajaj allianz') ||
+        lower.contains('tata aig') ||
+        lower.contains('go digit') ||
+        lower.contains('acko general'))
+      vehicleScore += 8;
+    if (lower.contains('motor policy') ||
+        lower.contains('two wheeler package') ||
+        lower.contains('private car package') ||
+        lower.contains('vehicle insurance'))
+      vehicleScore += 9;
+    if (lower.contains('puc certificate') ||
+        lower.contains('pollution under control') ||
+        lower.contains('emission test certificate'))
+      vehicleScore += 10;
+    if (lower.contains('fastag') ||
+        lower.contains('netc') ||
+        lower.contains('toll plaza') ||
+        lower.contains('toll pass'))
+      vehicleScore += 10;
+    if (lower.contains('service center') ||
+        lower.contains('odometer') ||
+        lower.contains('engine oil change') ||
+        lower.contains('periodic maintenance'))
+      vehicleScore += 7;
+    if (RegExp(
+      r'\b[A-Z]{2}[ -]?[0-9]{1,2}[ -]?[A-Z]{1,3}[ -]?[0-9]{4}\b',
+      caseSensitive: false,
+    ).hasMatch(fullText))
+      vehicleScore += 5;
 
     // Identity scoring indicators
-    if (lower.contains('unique identification authority of india') || lower.contains('uidai') || lower.contains('aadhaar') || lower.contains('my aadhaar')) identityScore += 10;
-    if (RegExp(r'\b\d{4}\s\d{4}\s\d{4}\b').hasMatch(fullText)) identityScore += 8;
-    if (lower.contains('income tax department') || lower.contains('permanent account number') || lower.contains('pan card')) identityScore += 10;
-    if (RegExp(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b').hasMatch(fullText)) identityScore += 8;
-    if (lower.contains('driving licence') || lower.contains('driving license') || lower.contains('motor vehicles act') || lower.contains('transport department')) identityScore += 10;
-    if (lower.contains('election commission of india') || lower.contains('voter id') || lower.contains('elector photo')) identityScore += 10;
-    if (lower.contains('passport') || lower.contains('republic of india') || lower.contains('ministry of external affairs')) identityScore += 8;
+    if (lower.contains('unique identification authority of india') ||
+        lower.contains('uidai') ||
+        lower.contains('aadhaar') ||
+        lower.contains('my aadhaar'))
+      identityScore += 10;
+    if (RegExp(r'\b\d{4}\s\d{4}\s\d{4}\b').hasMatch(fullText))
+      identityScore += 8;
+    if (lower.contains('income tax department') ||
+        lower.contains('permanent account number') ||
+        lower.contains('pan card'))
+      identityScore += 10;
+    if (RegExp(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b').hasMatch(fullText))
+      identityScore += 8;
+    if (lower.contains('driving licence') ||
+        lower.contains('driving license') ||
+        lower.contains('motor vehicles act') ||
+        lower.contains('transport department'))
+      identityScore += 10;
+    if (lower.contains('election commission of india') ||
+        lower.contains('voter id') ||
+        lower.contains('elector photo'))
+      identityScore += 10;
+    if (lower.contains('passport') ||
+        lower.contains('republic of india') ||
+        lower.contains('ministry of external affairs'))
+      identityScore += 8;
 
     // Appliance / Warranty scoring indicators
-    if (lower.contains('tax invoice') || lower.contains('retail invoice') || lower.contains('cash memo')) applianceScore += 4;
-    if (lower.contains('croma') || lower.contains('reliance digital') || lower.contains('vijay sales') || lower.contains('poorvika') || lower.contains('amazon seller') || lower.contains('flipkart')) applianceScore += 7;
-    if (lower.contains('warranty card') || lower.contains('warranty certificate') || lower.contains('warranty validity') || lower.contains('guarantee period')) applianceScore += 8;
-    if (lower.contains('serial no') || lower.contains('serial number') || lower.contains('sl no') || lower.contains('model no') || lower.contains('model number')) applianceScore += 5;
-    if (lower.contains('havells') || lower.contains('samsung') || lower.contains('lg electronics') || lower.contains('daikin') || lower.contains('voltas') || lower.contains('blue star') || lower.contains('crompton') || lower.contains('whirlpool') || lower.contains('ifb') || lower.contains('racold') || lower.contains('ao smith')) applianceScore += 7;
-    if (lower.contains('ceiling fan') || lower.contains('air conditioner') || lower.contains('washing machine') || lower.contains('refrigerator') || lower.contains('water heater') || lower.contains('geyser') || lower.contains('laptop')) applianceScore += 6;
+    if (lower.contains('tax invoice') ||
+        lower.contains('retail invoice') ||
+        lower.contains('cash memo'))
+      applianceScore += 4;
+    if (lower.contains('croma') ||
+        lower.contains('reliance digital') ||
+        lower.contains('vijay sales') ||
+        lower.contains('poorvika') ||
+        lower.contains('amazon seller') ||
+        lower.contains('flipkart'))
+      applianceScore += 7;
+    if (lower.contains('warranty card') ||
+        lower.contains('warranty certificate') ||
+        lower.contains('warranty validity') ||
+        lower.contains('guarantee period'))
+      applianceScore += 8;
+    if (lower.contains('serial no') ||
+        lower.contains('serial number') ||
+        lower.contains('sl no') ||
+        lower.contains('model no') ||
+        lower.contains('model number'))
+      applianceScore += 5;
+    if (lower.contains('havells') ||
+        lower.contains('samsung') ||
+        lower.contains('lg electronics') ||
+        lower.contains('daikin') ||
+        lower.contains('voltas') ||
+        lower.contains('blue star') ||
+        lower.contains('crompton') ||
+        lower.contains('whirlpool') ||
+        lower.contains('ifb') ||
+        lower.contains('racold') ||
+        lower.contains('ao smith'))
+      applianceScore += 7;
+    if (lower.contains('ceiling fan') ||
+        lower.contains('air conditioner') ||
+        lower.contains('washing machine') ||
+        lower.contains('refrigerator') ||
+        lower.contains('water heater') ||
+        lower.contains('geyser') ||
+        lower.contains('laptop'))
+      applianceScore += 6;
 
     // Common Extracted Values
     final amounts = _extractAmounts(fullText);
@@ -236,7 +382,12 @@ class DocumentScannerService {
     String subCat = 'General Record';
     double confidence = 0.5;
 
-    final maxScore = [utilityScore, applianceScore, identityScore, vehicleScore].reduce((a, b) => a > b ? a : b);
+    final maxScore = [
+      utilityScore,
+      applianceScore,
+      identityScore,
+      vehicleScore,
+    ].reduce((a, b) => a > b ? a : b);
 
     if (maxScore >= 4) {
       if (maxScore == identityScore) {
@@ -309,7 +460,10 @@ class DocumentScannerService {
     }
 
     // Fallback General Result
-    String cleanTitle = fileName.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '').replaceAll('_', ' ').replaceAll('-', ' ');
+    String cleanTitle = fileName
+        .replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '')
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ');
     return DocumentScanResult(
       detectedCategoryCode: catCode,
       detectedCategoryName: catName,
@@ -367,16 +521,20 @@ class DocumentScannerService {
     } else if (lower.contains('gujarat gas')) {
       providerName = 'Gujarat Gas Limited';
       subcategory = 'Gas Bill (PNG / Piped)';
-    } else if (lower.contains('adani gas') || lower.contains('adani total gas')) {
+    } else if (lower.contains('adani gas') ||
+        lower.contains('adani total gas')) {
       providerName = 'Adani Total Gas';
       subcategory = 'Gas Bill (PNG / Piped)';
-    } else if (lower.contains('mngl') || lower.contains('maharashtra natural gas')) {
+    } else if (lower.contains('mngl') ||
+        lower.contains('maharashtra natural gas')) {
       providerName = 'MNGL (Maharashtra Natural Gas)';
       subcategory = 'Gas Bill (PNG / Piped)';
     } else if (lower.contains('mgl') || lower.contains('mahanagar gas')) {
       providerName = 'Mahanagar Gas (MGL)';
       subcategory = 'Gas Bill (PNG / Piped)';
-    } else if (lower.contains('property tax') || lower.contains('amc tax') || lower.contains('house tax')) {
+    } else if (lower.contains('property tax') ||
+        lower.contains('amc tax') ||
+        lower.contains('house tax')) {
       subcategory = 'Property Tax / House Tax';
       providerName = lower.contains('amc') || lower.contains('ahmedabad')
           ? 'Ahmedabad Municipal Corporation'
@@ -400,27 +558,23 @@ class DocumentScannerService {
           : (lower.contains('bharat') ? 'Bharat Gas' : 'HP Gas');
     }
 
-    final consumerNumber = _extractRegex(
-      fullText,
-      [
-        r'Consumer\s*(?:No|Number|ID|#)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
-        r'Connection\s*(?:No|Number|ID)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
-        r'Account\s*(?:No|Number)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
-        r'Customer\s*(?:No|Number|ID)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
-        r'Tenement\s*(?:No|Number)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
-      ],
-    );
+    final consumerNumber = _extractRegex(fullText, [
+      r'Consumer\s*(?:No|Number|ID|#)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
+      r'Connection\s*(?:No|Number|ID)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
+      r'Account\s*(?:No|Number)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
+      r'Customer\s*(?:No|Number|ID)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
+      r'Tenement\s*(?:No|Number)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
+    ]);
 
-    final meterNumber = _extractRegex(
-      fullText,
-      [
-        r'Meter\s*(?:No|Number|ID|#)?[:\s\.-]*([A-Z0-9\/-]{5,20})',
-      ],
-    );
+    final meterNumber = _extractRegex(fullText, [
+      r'Meter\s*(?:No|Number|ID|#)?[:\s\.-]*([A-Z0-9\/-]{5,20})',
+    ]);
 
     final billAmount = amounts.isNotEmpty ? amounts.first : null;
     final billDate = dates.isNotEmpty ? dates.first : null;
-    final dueDate = dates.length > 1 ? dates[1] : billDate?.add(const Duration(days: 15));
+    final dueDate = dates.length > 1
+        ? dates[1]
+        : billDate?.add(const Duration(days: 15));
 
     final docTitle = providerName.isNotEmpty
         ? '$providerName - $subcategory'
@@ -467,20 +621,27 @@ class DocumentScannerService {
     String? idNumber;
     String authority = 'Government of India';
 
-    if (lower.contains('aadhaar') || lower.contains('uidai') || lower.contains('unique identification')) {
+    if (lower.contains('aadhaar') ||
+        lower.contains('uidai') ||
+        lower.contains('unique identification')) {
       subcategory = 'Aadhaar Card';
       authority = 'Unique Identification Authority of India (UIDAI)';
       final match = RegExp(r'\b(\d{4}\s\d{4}\s\d{4})\b').firstMatch(fullText);
       idNumber = match?.group(1);
-    } else if (lower.contains('permanent account number') || lower.contains('pan card') || lower.contains('income tax department')) {
+    } else if (lower.contains('permanent account number') ||
+        lower.contains('pan card') ||
+        lower.contains('income tax department')) {
       subcategory = 'PAN Card';
       authority = 'Income Tax Department, Government of India';
       final match = RegExp(r'\b([A-Z]{5}[0-9]{4}[A-Z])\b').firstMatch(fullText);
       idNumber = match?.group(1);
-    } else if (lower.contains('driving licence') || lower.contains('driving license')) {
+    } else if (lower.contains('driving licence') ||
+        lower.contains('driving license')) {
       subcategory = 'Driving License';
       authority = 'Transport Department';
-      final match = RegExp(r'\b([A-Z]{2}[0-9]{2}\s?[0-9]{11})\b').firstMatch(fullText);
+      final match = RegExp(
+        r'\b([A-Z]{2}[0-9]{2}\s?[0-9]{11})\b',
+      ).firstMatch(fullText);
       idNumber = match?.group(1);
     } else if (lower.contains('passport')) {
       subcategory = 'Passport';
@@ -594,7 +755,11 @@ class DocumentScannerService {
     if (vehicleNumber != null) {
       final cleanVeh = vehicleNumber.replaceAll('-', '').replaceAll(' ', '');
       for (final v in knownVehicles) {
-        if (v.vehicleNumber.replaceAll('-', '').replaceAll(' ', '').toUpperCase() == cleanVeh) {
+        if (v.vehicleNumber
+                .replaceAll('-', '')
+                .replaceAll(' ', '')
+                .toUpperCase() ==
+            cleanVeh) {
           matchedVehicle = v;
           vehicleNumber = v.vehicleNumber;
           break;
@@ -603,7 +768,8 @@ class DocumentScannerService {
     }
 
     // Subcategory classification
-    final isInsurance = lower.contains('insurance') ||
+    final isInsurance =
+        lower.contains('insurance') ||
         lower.contains('policy') ||
         lower.contains('schedule/receipt') ||
         lower.contains('own damage') ||
@@ -618,7 +784,8 @@ class DocumentScannerService {
     if (isInsurance) {
       subcategory = 'Insurance Policy';
     } else if (lower.contains('puc certificate') ||
-        (lower.contains('pollution under control') && lower.contains('certificate')) ||
+        (lower.contains('pollution under control') &&
+            lower.contains('certificate')) ||
         lower.contains('emission test certificate')) {
       subcategory = 'PUC Certificate';
     } else if (lower.contains('registration certificate') ||
@@ -646,8 +813,18 @@ class DocumentScannerService {
     ).allMatches(fullText);
 
     const blacklistedWords = {
-      'DETAILS', 'PERIOD', 'SCHEDULE', 'HOLDER', 'TYPE',
-      'COVER', 'STATUS', 'RECEIPT', 'WORDINGS', 'DOCUMENT', 'SUMMARY', 'ISSUE'
+      'DETAILS',
+      'PERIOD',
+      'SCHEDULE',
+      'HOLDER',
+      'TYPE',
+      'COVER',
+      'STATUS',
+      'RECEIPT',
+      'WORDINGS',
+      'DOCUMENT',
+      'SUMMARY',
+      'ISSUE',
     };
 
     for (final m in policyMatches) {
@@ -691,7 +868,8 @@ class DocumentScannerService {
       if (raw != null) detectedPremium = double.tryParse(raw);
     }
 
-    final premiumAmount = detectedPremium ?? (amounts.isNotEmpty ? amounts.first : null);
+    final premiumAmount =
+        detectedPremium ?? (amounts.isNotEmpty ? amounts.first : null);
 
     // Period / Dates extraction
     DateTime? issueDate;
@@ -729,13 +907,15 @@ class DocumentScannerService {
     bool isBundledInsurance = false;
     int bundledYears = 3;
 
-    final isTwoWheeler = lower.contains('two wheeler') ||
+    final isTwoWheeler =
+        lower.contains('two wheeler') ||
         lower.contains('motorcycle') ||
         lower.contains('scooter') ||
         matchedVehicle?.vehicleType.toLowerCase().contains('two') == true;
     if (isTwoWheeler) bundledYears = 5;
 
-    final isBundledKeyword = lower.contains('bundled') ||
+    final isBundledKeyword =
+        lower.contains('bundled') ||
         lower.contains('1 yr od') ||
         lower.contains('1-yr od') ||
         lower.contains('1 year od') ||
@@ -759,7 +939,11 @@ class DocumentScannerService {
     } else if (isBundledKeyword) {
       isBundledInsurance = true;
       if (issueDate != null) {
-        tpExpiryDate = DateTime(issueDate.year + bundledYears, issueDate.month, issueDate.day);
+        tpExpiryDate = DateTime(
+          issueDate.year + bundledYears,
+          issueDate.month,
+          issueDate.day,
+        );
       }
     }
 
@@ -780,7 +964,9 @@ class DocumentScannerService {
       city: detectedCity,
       postalCode: postalCode,
       vehicleFields: {
-        'vehicleId': matchedVehicle?.id.isNotEmpty == true ? matchedVehicle?.id : null,
+        'vehicleId': matchedVehicle?.id.isNotEmpty == true
+            ? matchedVehicle?.id
+            : null,
         'vehicleNumber': vehicleNumber ?? matchedVehicle?.vehicleNumber,
         'vehicleName': matchedVehicle?.displayName,
         'docTypeName': subcategory,
@@ -811,7 +997,14 @@ class DocumentScannerService {
     for (final fmt in formats) {
       try {
         return DateFormat(fmt).parseLoose(clean);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'DOCUMENT_SCANNER_SERVICE',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     }
     return null;
   }
@@ -847,9 +1040,26 @@ class DocumentScannerService {
 
     // Detect Brand
     final brands = [
-      'Havells', 'Samsung', 'LG', 'Voltas', 'Daikin', 'Blue Star', 'Crompton',
-      'Whirlpool', 'IFB', 'Philips', 'Sony', 'Apple', 'Dell', 'HP', 'Lenovo',
-      'Racold', 'AO Smith', 'Bajaj', 'Orient', 'Usha'
+      'Havells',
+      'Samsung',
+      'LG',
+      'Voltas',
+      'Daikin',
+      'Blue Star',
+      'Crompton',
+      'Whirlpool',
+      'IFB',
+      'Philips',
+      'Sony',
+      'Apple',
+      'Dell',
+      'HP',
+      'Lenovo',
+      'Racold',
+      'AO Smith',
+      'Bajaj',
+      'Orient',
+      'Usha',
     ];
     for (var b in brands) {
       if (lower.contains(b.toLowerCase())) {
@@ -861,7 +1071,9 @@ class DocumentScannerService {
     // Detect Appliance Subcategory
     if (lower.contains('fan') || lower.contains('ceiling fan')) {
       subcategory = 'Ceiling / Table Fans';
-    } else if (lower.contains('air conditioner') || lower.contains(' ac ') || lower.contains('split ac')) {
+    } else if (lower.contains('air conditioner') ||
+        lower.contains(' ac ') ||
+        lower.contains('split ac')) {
       subcategory = 'Air Conditioners (AC)';
     } else if (lower.contains('washing machine') || lower.contains('dryer')) {
       subcategory = 'Washing Machines';
@@ -869,36 +1081,31 @@ class DocumentScannerService {
       subcategory = 'Refrigerators';
     } else if (lower.contains('geyser') || lower.contains('water heater')) {
       subcategory = 'Geysers / Water Heaters';
-    } else if (lower.contains('laptop') || lower.contains('computer') || lower.contains('notebook')) {
+    } else if (lower.contains('laptop') ||
+        lower.contains('computer') ||
+        lower.contains('notebook')) {
       subcategory = 'Laptops & Computers';
-    } else if (lower.contains('television') || lower.contains(' tv ') || lower.contains('led tv')) {
+    } else if (lower.contains('television') ||
+        lower.contains(' tv ') ||
+        lower.contains('led tv')) {
       subcategory = 'Televisions (TV)';
     } else if (lower.contains('microwave') || lower.contains('oven')) {
       subcategory = 'Microwave & Kitchen Appliances';
     }
 
-    final invoiceNumber = _extractRegex(
-      fullText,
-      [
-        r'Invoice\s*(?:No|Number|#)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
-        r'Bill\s*(?:No|Number|#)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
-      ],
-    );
+    final invoiceNumber = _extractRegex(fullText, [
+      r'Invoice\s*(?:No|Number|#)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
+      r'Bill\s*(?:No|Number|#)?[:\s\.-]*([A-Z0-9\/-]{5,25})',
+    ]);
 
-    final serialNumber = _extractRegex(
-      fullText,
-      [
-        r'Serial\s*(?:No|Number|ID|#)?[:\s\.-]*([A-Z0-9]{6,25})',
-        r'S\/N[:\s\.-]*([A-Z0-9]{6,25})',
-      ],
-    );
+    final serialNumber = _extractRegex(fullText, [
+      r'Serial\s*(?:No|Number|ID|#)?[:\s\.-]*([A-Z0-9]{6,25})',
+      r'S\/N[:\s\.-]*([A-Z0-9]{6,25})',
+    ]);
 
-    final modelNumber = _extractRegex(
-      fullText,
-      [
-        r'Model\s*(?:No|Number|#)?[:\s\.-]*([A-Z0-9\/-]{4,20})',
-      ],
-    );
+    final modelNumber = _extractRegex(fullText, [
+      r'Model\s*(?:No|Number|#)?[:\s\.-]*([A-Z0-9\/-]{4,20})',
+    ]);
 
     final purchaseAmount = amounts.isNotEmpty ? amounts.first : null;
     final purchaseDate = dates.isNotEmpty ? dates.first : null;
@@ -937,7 +1144,7 @@ class DocumentScannerService {
             'purchaseAmount': purchaseAmount,
             'warrantyMonths': 12,
             'warrantyValidUpto': warrantyValidUpto,
-          }
+          },
         ],
       },
       rawText: rawText,
@@ -985,11 +1192,24 @@ class DocumentScannerService {
       final day = int.tryParse(m.group(1) ?? '');
       final month = int.tryParse(m.group(2) ?? '');
       final year = int.tryParse(m.group(3) ?? '');
-      if (day != null && month != null && year != null && year >= 1990 && year <= 2040 && month <= 12 && day <= 31) {
+      if (day != null &&
+          month != null &&
+          year != null &&
+          year >= 1990 &&
+          year <= 2040 &&
+          month <= 12 &&
+          day <= 31) {
         try {
           final dt = DateTime(year, month, day);
           if (!dates.contains(dt)) dates.add(dt);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'DOCUMENT_SCANNER_SERVICE',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
     }
 
@@ -999,25 +1219,50 @@ class DocumentScannerService {
       final year = int.tryParse(m.group(1) ?? '');
       final month = int.tryParse(m.group(2) ?? '');
       final day = int.tryParse(m.group(3) ?? '');
-      if (day != null && month != null && year != null && year >= 1990 && year <= 2040 && month <= 12 && day <= 31) {
+      if (day != null &&
+          month != null &&
+          year != null &&
+          year >= 1990 &&
+          year <= 2040 &&
+          month <= 12 &&
+          day <= 31) {
         try {
           final dt = DateTime(year, month, day);
           if (!dates.contains(dt)) dates.add(dt);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'DOCUMENT_SCANNER_SERVICE',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
     }
 
     // DD MMM YYYY
-    final ddMmmYyyy = RegExp(patterns[2], caseSensitive: false).allMatches(text);
+    final ddMmmYyyy = RegExp(
+      patterns[2],
+      caseSensitive: false,
+    ).allMatches(text);
     for (var m in ddMmmYyyy) {
       final day = int.tryParse(m.group(1) ?? '');
       final monStr = m.group(2) ?? '';
       final year = int.tryParse(m.group(3) ?? '');
       if (day != null && year != null && year >= 1990 && year <= 2040) {
         try {
-          final parsed = DateFormat('dd MMM yyyy').parseLoose('$day $monStr $year');
+          final parsed = DateFormat(
+            'dd MMM yyyy',
+          ).parseLoose('$day $monStr $year');
           if (!dates.contains(parsed)) dates.add(parsed);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'DOCUMENT_SCANNER_SERVICE',
+            'Operation failed; applying fallback.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
     }
 
@@ -1027,14 +1272,25 @@ class DocumentScannerService {
   static String? _extractCity(String text, List<String> knownCities) {
     final lower = text.toLowerCase();
     for (var city in knownCities) {
-      if (city.toLowerCase() != 'all cities' && lower.contains(city.toLowerCase())) {
+      if (city.toLowerCase() != 'all cities' &&
+          lower.contains(city.toLowerCase())) {
         return city;
       }
     }
 
     final defaultCities = [
-      'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar',
-      'Bhavnagar', 'Jamnagar', 'Mumbai', 'Pune', 'Delhi', 'Bengaluru', 'Hyderabad'
+      'Ahmedabad',
+      'Surat',
+      'Vadodara',
+      'Rajkot',
+      'Gandhinagar',
+      'Bhavnagar',
+      'Jamnagar',
+      'Mumbai',
+      'Pune',
+      'Delhi',
+      'Bengaluru',
+      'Hyderabad',
     ];
     for (var city in defaultCities) {
       if (lower.contains(city.toLowerCase())) {

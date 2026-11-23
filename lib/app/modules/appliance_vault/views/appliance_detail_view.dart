@@ -1,3 +1,5 @@
+import 'package:kt_prod_kt_docs/app/widgets/inline_form_error.dart';
+import 'package:kt_prod_kt_docs/app/widgets/detail_skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/appliance_warranty_model.dart';
@@ -19,16 +21,12 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
   Widget build(BuildContext context) {
     return WebScaffold(
       title: 'Appliance & Warranty Details',
-      subtitle: 'Manage appliance serial numbers, invoice metadata, customer care, and track warranty & AMC renewal lineage',
+      subtitle:
+          'Manage appliance serial numbers, invoice metadata, customer care, and track warranty & AMC renewal lineage',
       currentRoute: AppRoutes.APPLIANCES,
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(40),
-              child: CircularProgressIndicator(),
-            ),
-          );
+          return const DetailSkeleton();
         }
 
         final doc = controller.document.value;
@@ -37,7 +35,11 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: AppColors.error,
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'Appliance document not found',
@@ -56,7 +58,8 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
 
         final w = doc.applianceWarranty;
         final primaryItem = w?.primaryItem;
-        final productName = primaryItem?.productName ?? w?.productName ?? doc.title;
+        final productName =
+            primaryItem?.productName ?? w?.productName ?? doc.title;
         final brand = primaryItem?.brand ?? w?.brand ?? 'Appliance';
 
         return RefreshIndicator(
@@ -71,6 +74,7 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    InlineFormError(message: controller.formError.value),
                     // 1. Back Navigation Row
                     _buildBackNavigationRow(productName),
                     const SizedBox(height: AppConstants.paddingMedium),
@@ -86,7 +90,9 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                     // 4. Responsive 2-Column Main Section
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final isDesktop = constraints.maxWidth >= AppConstants.desktopBreakpoint;
+                        final isDesktop =
+                            constraints.maxWidth >=
+                            AppConstants.desktopBreakpoint;
 
                         if (isDesktop) {
                           return Row(
@@ -138,7 +144,11 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: const [
-                Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.textSecondary),
+                Icon(
+                  Icons.arrow_back_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Appliance Vault',
@@ -153,7 +163,10 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
           ),
         ),
         const SizedBox(width: 4),
-        const Text('/', style: TextStyle(color: AppColors.border, fontSize: 13)),
+        const Text(
+          '/',
+          style: TextStyle(color: AppColors.border, fontSize: 13),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -238,20 +251,27 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                         const SizedBox(width: 8),
                         StatusBadge(
                           label: w?.warrantyStatusDisplay ?? 'ACTIVE',
-                          type: isLifetime || (!isExpired && hasWarranty && !isExpiringSoon)
+                          type:
+                              isLifetime ||
+                                  (!isExpired && hasWarranty && !isExpiringSoon)
                               ? StatusBadgeType.success
                               : (isExpiringSoon
-                                  ? StatusBadgeType.warning
-                                  : StatusBadgeType.inactive),
+                                    ? StatusBadgeType.warning
+                                    : StatusBadgeType.inactive),
                         ),
                         if ((w?.renewalCount ?? 0) > 0) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: Text(
                               'Cycle #${w!.renewalCount + 1}',
@@ -309,8 +329,15 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
               if (controller.canDelete)
                 TextButton.icon(
                   onPressed: controller.confirmMoveToTrash,
-                  icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-                  label: const Text('Delete', style: TextStyle(color: AppColors.error)),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.error,
+                  ),
+                  label: const Text(
+                    'Delete',
+                    style: TextStyle(color: AppColors.error),
+                  ),
                 ),
             ],
           ),
@@ -339,7 +366,9 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 600;
-        final itemWidth = isNarrow ? (constraints.maxWidth - 12) / 2 : (constraints.maxWidth - 36) / 4;
+        final itemWidth = isNarrow
+            ? (constraints.maxWidth - 12) / 2
+            : (constraints.maxWidth - 36) / 4;
 
         return Wrap(
           spacing: 12,
@@ -364,7 +393,9 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 value: w?.warrantyTypeDisplay ?? 'Standard',
                 subtitle: w?.amcProvider ?? 'Manufacturer',
                 icon: Icons.verified_user_outlined,
-                accentColor: w?.warrantyType == 'amc' ? Colors.teal : Colors.indigo,
+                accentColor: w?.warrantyType == 'amc'
+                    ? Colors.teal
+                    : Colors.indigo,
               ),
             ),
             SizedBox(
@@ -374,8 +405,8 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 value: isLifetime
                     ? 'Lifetime'
                     : (hasWarranty && w?.effectiveValidUpto != null
-                        ? AppFormatters.formatDate(w!.effectiveValidUpto)
-                        : 'No Expiry'),
+                          ? AppFormatters.formatDate(w!.effectiveValidUpto)
+                          : 'No Expiry'),
                 subtitle: expirySubtitle,
                 icon: Icons.calendar_today_outlined,
                 accentColor: isExpired ? AppColors.error : AppColors.success,
@@ -466,14 +497,16 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 Row(
                   children: [
                     Text(
-                      w?.warrantyTypeDisplay ?? 'Standard Manufacturer Warranty',
+                      w?.warrantyTypeDisplay ??
+                          'Standard Manufacturer Warranty',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: txt,
                       ),
                     ),
-                    if (w?.amcProvider != null && w!.amcProvider!.isNotEmpty) ...[
+                    if (w?.amcProvider != null &&
+                        w!.amcProvider!.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Text(
                         '(${w.amcProvider})',
@@ -491,10 +524,10 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                   isLifetime
                       ? 'Protected by permanent lifetime guarantee. No expiration date.'
                       : (wType == 'no_warranty'
-                          ? 'This document is filed as an asset invoice / repair bill without active warranty.'
-                          : (isExp
-                              ? 'Warranty coverage expired on ${AppFormatters.formatDate(w?.effectiveValidUpto)}. Renew to restore protection.'
-                              : 'Valid until ${AppFormatters.formatDate(w?.effectiveValidUpto)} ($days days remaining).')),
+                            ? 'This document is filed as an asset invoice / repair bill without active warranty.'
+                            : (isExp
+                                  ? 'Warranty coverage expired on ${AppFormatters.formatDate(w?.effectiveValidUpto)}. Renew to restore protection.'
+                                  : 'Valid until ${AppFormatters.formatDate(w?.effectiveValidUpto)} ($days days remaining).')),
                   style: TextStyle(
                     fontSize: 12,
                     color: txt.withValues(alpha: 0.9),
@@ -504,7 +537,11 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                   const SizedBox(height: 4),
                   Text(
                     'Coverage Terms: ${w.renewalNotes}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontStyle: FontStyle.italic),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ],
@@ -515,7 +552,10 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
     );
   }
 
-  Widget _buildEditableDetailsCard(DocumentModel doc, ApplianceWarrantyModel? w) {
+  Widget _buildEditableDetailsCard(
+    DocumentModel doc,
+    ApplianceWarrantyModel? w,
+  ) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -541,18 +581,31 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
               if (controller.canEdit)
                 Obx(() {
                   return ElevatedButton.icon(
-                    onPressed: controller.isSaving.value ? null : controller.saveApplianceDetails,
+                    onPressed: controller.isSaving.value
+                        ? null
+                        : controller.saveApplianceDetails,
                     icon: controller.isSaving.value
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.check, size: 14),
-                    label: Text(controller.isSaving.value ? 'Saving...' : 'Save Details'),
+                    label: Text(
+                      controller.isSaving.value ? 'Saving...' : 'Save Details',
+                    ),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   );
                 }),
@@ -567,7 +620,13 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Store / Vendor Name', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    const Text(
+                      'Store / Vendor Name',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.storeVendorController,
@@ -585,7 +644,13 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Invoice / Bill Number', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    const Text(
+                      'Invoice / Bill Number',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.invoiceNumberController,
@@ -609,7 +674,13 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Billing Name', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    const Text(
+                      'Billing Name',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.billingNameController,
@@ -627,15 +698,26 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Purchase Amount (₹)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    const Text(
+                      'Purchase Amount (₹)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.purchaseAmountController,
                       enabled: controller.canEdit,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
                         hintText: 'e.g. 45000',
-                        prefixIcon: Icon(Icons.currency_rupee_outlined, size: 16),
+                        prefixIcon: Icon(
+                          Icons.currency_rupee_outlined,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -652,14 +734,23 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Customer Care Number', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    const Text(
+                      'Customer Care Number',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller.customerCareController,
                       enabled: controller.canEdit,
                       decoration: const InputDecoration(
                         hintText: 'e.g. 1800 102 9300',
-                        prefixIcon: Icon(Icons.phone_in_talk_outlined, size: 16),
+                        prefixIcon: Icon(
+                          Icons.phone_in_talk_outlined,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -670,10 +761,19 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Premise / City Location', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    const Text(
+                      'Premise / City Location',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(8),
@@ -681,14 +781,22 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textMuted),
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              doc.address?.city != null && doc.address!.city.isNotEmpty
+                              doc.address?.city != null &&
+                                      doc.address!.city.isNotEmpty
                                   ? '${doc.address!.city}${doc.address?.premiseName != null ? " • ${doc.address!.premiseName}" : ""}'
                                   : 'All Premises',
-                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textPrimary,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -706,7 +814,10 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
     );
   }
 
-  Widget _buildCoveredProductsCard(ApplianceWarrantyModel? w, DocumentModel doc) {
+  Widget _buildCoveredProductsCard(
+    ApplianceWarrantyModel? w,
+    DocumentModel doc,
+  ) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -733,10 +844,12 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
           ),
           const Divider(height: 20),
           if (w != null && w.items.isNotEmpty)
-            ...w.items.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildProductItemCard(item),
-                ))
+            ...w.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildProductItemCard(item),
+              ),
+            )
           else
             _buildProductItemCard(
               ApplianceItemModel(
@@ -771,7 +884,11 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.devices_other_outlined, size: 18, color: AppColors.primary),
+                child: const Icon(
+                  Icons.devices_other_outlined,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -788,18 +905,25 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                     ),
                     Text(
                       '${item.brand} • Model: ${item.modelNumber ?? "N/A"}',
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
               ),
               StatusBadge(
                 label: item.warrantyStatusDisplay,
-                type: item.isLifetime || (!item.isExpired && item.hasWarranty && !item.isExpiringSoon)
+                type:
+                    item.isLifetime ||
+                        (!item.isExpired &&
+                            item.hasWarranty &&
+                            !item.isExpiringSoon)
                     ? StatusBadgeType.success
                     : (item.isExpiringSoon
-                        ? StatusBadgeType.warning
-                        : StatusBadgeType.inactive),
+                          ? StatusBadgeType.warning
+                          : StatusBadgeType.inactive),
               ),
             ],
           ),
@@ -810,11 +934,21 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Serial Number (S/N)', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    const Text(
+                      'Serial Number (S/N)',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       item.serialNumber ?? 'Not recorded',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -823,15 +957,25 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Standard Warranty', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    const Text(
+                      'Standard Warranty',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       item.isLifetime
                           ? 'Lifetime'
                           : (item.hasWarranty
-                              ? '${item.warrantyPeriodMonths} Mos (${AppFormatters.formatDate(item.warrantyValidUpto)})'
-                              : 'No Warranty'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                ? '${item.warrantyPeriodMonths} Mos (${AppFormatters.formatDate(item.warrantyValidUpto)})'
+                                : 'No Warranty'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -846,11 +990,21 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Extended / AMC Upto', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                      const Text(
+                        'Extended / AMC Upto',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         AppFormatters.formatDate(item.extendedWarrantyUpto),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -860,11 +1014,21 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Provider', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                        const Text(
+                          'Provider',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           item.amcProvider!,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ],
                     ),
@@ -893,7 +1057,11 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
             children: [
               Row(
                 children: const [
-                  Icon(Icons.history_rounded, size: 18, color: AppColors.primary),
+                  Icon(
+                    Icons.history_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'WARRANTY & RENEWAL HISTORY',
@@ -908,7 +1076,10 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
               ),
               Obx(() {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(12),
@@ -916,7 +1087,11 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                   ),
                   child: Text(
                     '${controller.historyDocs.length} Cycles',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 );
               }),
@@ -931,16 +1106,27 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                 child: Center(
                   child: Column(
                     children: const [
-                      Icon(Icons.history_toggle_off_outlined, size: 40, color: AppColors.textMuted),
+                      Icon(
+                        Icons.history_toggle_off_outlined,
+                        size: 40,
+                        color: AppColors.textMuted,
+                      ),
                       SizedBox(height: 8),
                       Text(
                         'No past warranty renewals or AMCs on file',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         'Use "Renew / Extend Warranty" to attach new certificates or AMCs.',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
@@ -1017,17 +1203,16 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                         ? const Icon(Icons.check, size: 12, color: Colors.white)
                         : Text(
                             '$versionNum',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                   ),
                 ),
                 if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: AppColors.border,
-                    ),
-                  ),
+                  Expanded(child: Container(width: 2, color: AppColors.border)),
               ],
             ),
           ),
@@ -1039,10 +1224,14 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
               margin: const EdgeInsets.only(bottom: 14),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isCurrent ? AppColors.primary.withValues(alpha: 0.04) : AppColors.surface,
+                color: isCurrent
+                    ? AppColors.primary.withValues(alpha: 0.04)
+                    : AppColors.surface,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isCurrent ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border,
+                  color: isCurrent
+                      ? AppColors.primary.withValues(alpha: 0.4)
+                      : AppColors.border,
                 ),
               ),
               child: Column(
@@ -1051,28 +1240,45 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: badgeColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: badgeColor.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Text(
-                          warranty?.warrantyTypeDisplay ?? 'Manufacturer Invoice',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: badgeColor),
+                          warranty?.warrantyTypeDisplay ??
+                              'Manufacturer Invoice',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: badgeColor,
+                          ),
                         ),
                       ),
                       if (isCurrent) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
                             'CURRENT ACTIVE',
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ],
@@ -1080,8 +1286,11 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                       StatusBadge(
                         label: isLifetime
                             ? 'LIFETIME'
-                            : (wType == 'no_warranty' ? 'NO WARRANTY' : (isExpired ? 'EXPIRED' : 'ACTIVE')),
-                        type: isLifetime || (!isExpired && wType != 'no_warranty')
+                            : (wType == 'no_warranty'
+                                  ? 'NO WARRANTY'
+                                  : (isExpired ? 'EXPIRED' : 'ACTIVE')),
+                        type:
+                            isLifetime || (!isExpired && wType != 'no_warranty')
                             ? StatusBadgeType.success
                             : StatusBadgeType.inactive,
                       ),
@@ -1090,18 +1299,32 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                   const SizedBox(height: 6),
                   Text(
                     doc.title,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      if (warranty?.amcProvider != null && warranty!.amcProvider!.isNotEmpty) ...[
-                        Text('Provider: ${warranty.amcProvider}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      if (warranty?.amcProvider != null &&
+                          warranty!.amcProvider!.isNotEmpty) ...[
+                        Text(
+                          'Provider: ${warranty.amcProvider}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                         const SizedBox(width: 10),
                       ],
                       Text(
                         'Ref: ${warranty?.policyNumber ?? warranty?.invoiceNumber ?? doc.documentNumber ?? "N/A"}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -1111,27 +1334,41 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                       Text(
                         isLifetime
                             ? 'Lifetime Validity'
-                            : (validUpto != null ? 'Valid Until: ${AppFormatters.formatDate(validUpto)}' : 'No Expiry Tracked'),
+                            : (validUpto != null
+                                  ? 'Valid Until: ${AppFormatters.formatDate(validUpto)}'
+                                  : 'No Expiry Tracked'),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isExpired ? AppColors.error : AppColors.textPrimary,
+                          color: isExpired
+                              ? AppColors.error
+                              : AppColors.textPrimary,
                         ),
                       ),
-                      if (warranty?.renewalAmount != null && warranty!.renewalAmount! > 0) ...[
+                      if (warranty?.renewalAmount != null &&
+                          warranty!.renewalAmount! > 0) ...[
                         const SizedBox(width: 10),
                         Text(
                           'Cost: ₹${warranty.renewalAmount!.toStringAsFixed(0)}',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ],
                     ],
                   ),
-                  if (warranty?.renewalNotes != null && warranty!.renewalNotes!.isNotEmpty) ...[
+                  if (warranty?.renewalNotes != null &&
+                      warranty!.renewalNotes!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Notes: ${warranty.renewalNotes}',
-                      style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.textMuted),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                   const Divider(height: 14),
@@ -1140,7 +1377,10 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                     children: [
                       Text(
                         'Logged ${AppFormatters.formatDate(doc.createdAt)}',
-                        style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1148,16 +1388,36 @@ class ApplianceDetailView extends GetView<ApplianceDetailController> {
                           InkWell(
                             onTap: () => controller.previewDocument(doc),
                             child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              child: Text('Preview', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              child: Text(
+                                'Preview',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           InkWell(
                             onTap: () => controller.downloadDocument(doc),
                             child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              child: Text('Download', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              child: Text(
+                                'Download',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
                         ],

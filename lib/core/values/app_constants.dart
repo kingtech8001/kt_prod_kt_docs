@@ -4,11 +4,16 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 class AppConstants {
   AppConstants._();
+  static const int historyPageSize = 25;
+  static const double detailSkeletonHeaderHeight = 80;
+  static const double detailSkeletonFieldHeight = 56;
+  static const double detailSkeletonNotesHeight = 120;
+  static const int detailSkeletonFieldCount = 8;
 
   // App Metadata
   static const String appName = 'DocHolder';
   static const String appTagline = 'King Technology Document Holder & Vault';
-  static final RxString _appVersion = '1.0.11'.obs;
+  static final RxString _appVersion = '1.0.12'.obs;
   static String get appVersion => _appVersion.value;
   static set appVersion(String value) => _appVersion.value = value;
 
@@ -30,7 +35,6 @@ class AppConstants {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNjA5NDU5MjAwLCJleHAiOjMzMjYwOTc2MDAwfQ.OBb1rjgP0-MKYhcpGdS0ahbyZaDR_B9jTQPI6nXLKhg';
   static const String storageBucket = 'documents';
   static const String webBaseUrl = 'https://kt-vault.kingtechnology.com';
-
 
   // King Technology Media Engine API Configuration
   static const String apiEngineBaseUrl = 'https://apiengine.kingtechnology.in';

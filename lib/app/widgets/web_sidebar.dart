@@ -35,7 +35,7 @@ class WebSidebar extends StatelessWidget {
         child: InkWell(
           onTap: () {
             if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
-              Navigator.of(context).pop();
+              Get.back();
             }
             if (currentRoute != route) {
               Get.offNamed(route);
@@ -67,15 +67,18 @@ class WebSidebar extends StatelessWidget {
                           ? AppColors.sidebarTextActive
                           : AppColors.sidebarText,
                       fontSize: 14,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                     ),
                   ),
                 ),
                 if (badge != null)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: badgeColor ?? AppColors.primary,
                       borderRadius: BorderRadius.circular(10),
@@ -100,11 +103,16 @@ class WebSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final authService = Get.isRegistered<AuthService>() ? AuthService.to : null;
+      final authService = Get.isRegistered<AuthService>()
+          ? AuthService.to
+          : null;
       final activeProfile = profile ?? authService?.currentProfile.value;
       final isAdmin = authService?.isAdmin ?? (activeProfile?.isAdmin ?? false);
-      final displayName = authService?.userName ?? (activeProfile?.fullName ?? 'Admin');
-      final userRole = authService?.userRoleDisplay ?? (activeProfile?.role.toUpperCase() ?? 'ADMIN');
+      final displayName =
+          authService?.userName ?? (activeProfile?.fullName ?? 'Admin');
+      final userRole =
+          authService?.userRoleDisplay ??
+          (activeProfile?.role.toUpperCase() ?? 'ADMIN');
 
       return Container(
         width: 250,
@@ -265,7 +273,7 @@ class WebSidebar extends StatelessWidget {
                     child: InkWell(
                       onTap: () {
                         if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
-                          Navigator.of(context).pop();
+                          Get.back();
                         }
                         if (currentRoute != AppRoutes.PROFILE) {
                           Get.offNamed(AppRoutes.PROFILE);
@@ -274,14 +282,19 @@ class WebSidebar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       hoverColor: AppColors.sidebarHover,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 6,
+                        ),
                         child: Row(
                           children: [
                             CircleAvatar(
                               radius: 18,
                               backgroundColor: AppColors.primary,
                               child: Text(
-                                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A',
+                                displayName.isNotEmpty
+                                    ? displayName[0].toUpperCase()
+                                    : 'A',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
@@ -321,8 +334,11 @@ class WebSidebar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.logout,
-                        color: AppColors.sidebarText, size: 18),
+                    icon: const Icon(
+                      Icons.logout,
+                      color: AppColors.sidebarText,
+                      size: 18,
+                    ),
                     tooltip: 'Sign Out',
                     onPressed: onSignOut,
                   ),
@@ -344,7 +360,10 @@ class WebSidebar extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(4),

@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/datasets/dashboard_dataset.dart';
 import 'package:kt_prod_kt_docs/app/data/models/dashboard_metrics_model.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
+import 'package:kt_prod_kt_docs/app/routes/app_routes.dart';
 import 'package:kt_prod_kt_docs/app/widgets/document_edit_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/image_lightbox_dialog.dart';
 import 'package:kt_prod_kt_docs/app/widgets/pdf_viewer_dialog.dart';
@@ -28,7 +29,10 @@ class DashboardController extends GetxController {
   }
 
   Future<void> loadDashboardData() async {
-    AppLogger.debug('DASHBOARD_CTRL', 'Loading dashboard data via DashboardDataset...');
+    AppLogger.debug(
+      'DASHBOARD_CTRL',
+      'Loading dashboard data via DashboardDataset...',
+    );
     isLoading.value = true;
     try {
       final bundle = await _dataset.getDashboardBundle();
@@ -55,14 +59,15 @@ class DashboardController extends GetxController {
   Future<void> previewDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Previewing document: ${doc.title}');
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -92,6 +97,45 @@ class DashboardController extends GetxController {
     }
   }
 
+  /// Opens the appropriate full detail screen for an expiry alert.
+  Future<void> openExpiringDocumentDetail(DocumentModel doc) async {
+    try {
+      if (doc.applianceWarranty != null) {
+        await Get.toNamed(AppRoutes.APPLIANCE_DETAIL, arguments: doc);
+      } else if (doc.personalMetadata != null) {
+        await Get.toNamed(AppRoutes.PERSONAL_DOC_DETAIL, arguments: doc);
+      } else if (doc.vehicleMetadata != null) {
+        final vehicle = await _dataset.getVehicleByNumber(
+          doc.vehicleMetadata!.vehicleNumber,
+        );
+        if (vehicle == null) {
+          AppSnackbar.showError(
+            'Vehicle Not Found',
+            'The vehicle for this document is no longer available.',
+          );
+          return;
+        }
+        await Get.toNamed(AppRoutes.VEHICLE_DETAIL, arguments: vehicle);
+      } else {
+        AppSnackbar.showError(
+          'Details Unavailable',
+          'This alert does not have a supported detail screen.',
+        );
+        return;
+      }
+
+      await loadDashboardData();
+    } catch (e, st) {
+      AppLogger.error(
+        'DASHBOARD_CTRL',
+        'Failed to open expiry alert details for ${doc.id}: $e',
+        error: e,
+        stackTrace: st,
+      );
+      AppSnackbar.showError('Unable to Open Details', e.toString());
+    }
+  }
+
   Future<void> downloadDocument(DocumentModel doc) async {
     AppLogger.debug('DASHBOARD_CTRL', 'Downloading document: ${doc.title}');
     try {
@@ -99,7 +143,8 @@ class DashboardController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -109,13 +154,19 @@ class DashboardController extends GetxController {
           return;
         }
       }
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
+      AppSnackbar.showSuccess(
+        'Download Started',
+        '${doc.fileName} is downloading.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'DASHBOARD_CTRL',
@@ -124,12 +175,21 @@ class DashboardController extends GetxController {
         stackTrace: st,
       );
       try {
-        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(
+          doc.filePath,
+          download: true,
+        );
         final uri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'DASHBOARD_CONTROLLER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         AppSnackbar.showError('Download Failed', e.toString());
       }
     }
@@ -235,44 +295,45 @@ class DashboardController extends GetxController {
   void openEditDocumentDialog(DocumentModel doc) async {
     final updated = await DocumentEditDialog.show(
       document: doc,
-      onSave: ({
-        required title,
-        description,
-        documentNumber,
-        applianceWarranty,
-        vehicleMetadata,
-        newFileName,
-        newFileBytes,
-        newMimeType,
-        attachmentUrl,
-      }) async {
-        try {
-          await _dataset.updateDocumentDetails(
-            documentId: doc.id,
-            title: title,
-            description: description,
-            documentNumber: documentNumber,
-            applianceWarranty: applianceWarranty,
-            vehicleMetadata: vehicleMetadata,
-            newFileName: newFileName,
-            newFileBytes: newFileBytes,
-            newMimeType: newMimeType,
-            categoryCode: doc.categoryCode,
-            subCategory: doc.subCategory,
-            attachmentUrl: attachmentUrl,
-          );
-          await loadDashboardData();
-        } catch (e, st) {
-          AppLogger.error(
-            'DASHBOARD_CTRL',
-            'Document update failed: $e',
-            error: e,
-            stackTrace: st,
-          );
-          // Inline error is displayed inside DocumentEditDialog; rethrow so dialog can handle it
-          rethrow;
-        }
-      },
+      onSave:
+          ({
+            required title,
+            description,
+            documentNumber,
+            applianceWarranty,
+            vehicleMetadata,
+            newFileName,
+            newFileBytes,
+            newMimeType,
+            attachmentUrl,
+          }) async {
+            try {
+              await _dataset.updateDocumentDetails(
+                documentId: doc.id,
+                title: title,
+                description: description,
+                documentNumber: documentNumber,
+                applianceWarranty: applianceWarranty,
+                vehicleMetadata: vehicleMetadata,
+                newFileName: newFileName,
+                newFileBytes: newFileBytes,
+                newMimeType: newMimeType,
+                categoryCode: doc.categoryCode,
+                subCategory: doc.subCategory,
+                attachmentUrl: attachmentUrl,
+              );
+              await loadDashboardData();
+            } catch (e, st) {
+              AppLogger.error(
+                'DASHBOARD_CTRL',
+                'Document update failed: $e',
+                error: e,
+                stackTrace: st,
+              );
+              // Inline error is displayed inside DocumentEditDialog; rethrow so dialog can handle it
+              rethrow;
+            }
+          },
     );
 
     if (updated == true) {

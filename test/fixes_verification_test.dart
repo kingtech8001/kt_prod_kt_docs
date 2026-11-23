@@ -1307,7 +1307,8 @@ void main() {
       expect(supabaseMap.containsKey('policy_number'), isFalse);
       expect(supabaseMap.containsKey('renewal_amount'), isFalse);
       expect(supabaseMap.containsKey('renewal_notes'), isFalse);
-      expect(supabaseMap.containsKey('items'), isFalse);
+      // The live metadata schema includes the items JSONB column.
+      expect(supabaseMap['items'], fullWarranty.items.map((item) => item.toJson()).toList());
       for (final key in supabaseMap.keys) {
         expect(ApplianceWarrantyModel.supabaseColumns.contains(key), isTrue,
             reason: 'Column $key is not present in appliance_warranty_metadata table schema');
@@ -1315,7 +1316,7 @@ void main() {
 
       // Verify default toJson() is also table-safe
       expect(defaultJson.containsKey('amc_provider'), isFalse);
-      expect(defaultJson.containsKey('items'), isFalse);
+      expect(defaultJson['items'], supabaseMap['items']);
 
       // Verify full export json retains extended attributes
       expect(fullExportJson['amc_provider'], equals('Urban Company'));

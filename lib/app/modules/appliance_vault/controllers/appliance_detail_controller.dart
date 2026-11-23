@@ -21,6 +21,7 @@ class ApplianceDetailController extends GetxController {
   final document = Rxn<DocumentModel>();
   final isLoading = true.obs;
   final isSaving = false.obs;
+  final formError = ''.obs;
 
   // Editable Form Controllers
   final titleController = TextEditingController();
@@ -43,17 +44,28 @@ class ApplianceDetailController extends GetxController {
 
   bool get canEdit {
     try {
-      final role = AuthService.to.currentProfile.value?.role.toLowerCase();
-      return role == 'admin' || role == 'super_admin' || role == 'editor';
-    } catch (_) {
-      return true;
+      return AuthService.to.canEdit;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'APPLIANCE_DETAIL_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
   bool get canDelete {
     try {
       return AuthService.to.isAdmin;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'APPLIANCE_DETAIL_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return false;
     }
   }
@@ -88,7 +100,10 @@ class ApplianceDetailController extends GetxController {
       } else {
         final docId = Get.parameters['id'];
         if (docId != null && docId.isNotEmpty) {
-          final res = await _dataset.getApplianceVault(searchQuery: docId, pageSize: 1);
+          final res = await _dataset.getApplianceVault(
+            searchQuery: docId,
+            pageSize: 1,
+          );
           if (res.documents.isNotEmpty) {
             _populateFromDocument(res.documents.first);
             await loadHistory();
@@ -96,7 +111,12 @@ class ApplianceDetailController extends GetxController {
         }
       }
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_DETAIL_CTRL', 'Error loading appliance details: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'APPLIANCE_DETAIL_CTRL',
+        'Error loading appliance details: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Error', 'Failed to load appliance details: $e');
     } finally {
       isLoading.value = false;
@@ -111,7 +131,8 @@ class ApplianceDetailController extends GetxController {
     storeVendorController.text = w?.storeVendorName ?? '';
     invoiceNumberController.text = w?.invoiceNumber ?? doc.documentNumber ?? '';
     billingNameController.text = w?.billingName ?? '';
-    purchaseAmountController.text = (w?.purchaseAmount != null && w!.purchaseAmount > 0)
+    purchaseAmountController.text =
+        (w?.purchaseAmount != null && w!.purchaseAmount > 0)
         ? w.purchaseAmount.toStringAsFixed(0)
         : '';
     customerCareController.text = w?.customerCareNumber ?? '';
@@ -137,42 +158,60 @@ class ApplianceDetailController extends GetxController {
       );
       historyDocs.assignAll(list);
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_DETAIL_CTRL', 'Error loading history: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'APPLIANCE_DETAIL_CTRL',
+        'Error loading history: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
   Future<void> saveApplianceDetails() async {
+    if (isSaving.value) return;
+    formError.value = '';
     final doc = document.value;
     if (doc == null) return;
 
     if (!canEdit) {
-      AppSnackbar.showWarning('Permission Denied', 'Your role cannot edit document details.');
+      formError.value = 'Your role cannot edit document details.';
       return;
     }
 
     isSaving.value = true;
     try {
-      final amount = double.tryParse(purchaseAmountController.text.trim()) ?? (doc.applianceWarranty?.purchaseAmount ?? 0.0);
-      final updatedWarranty = (doc.applianceWarranty ?? ApplianceWarrantyModel(
-        billingName: billingNameController.text.trim(),
-        storeVendorName: storeVendorController.text.trim(),
-        invoiceNumber: invoiceNumberController.text.trim(),
-        purchaseDate: purchaseDate.value ?? DateTime.now(),
-        purchaseAmount: amount,
-      )).copyWith(
-        storeVendorName: storeVendorController.text.trim(),
-        invoiceNumber: invoiceNumberController.text.trim(),
-        billingName: billingNameController.text.trim(),
-        purchaseAmount: amount,
-        customerCareNumber: customerCareController.text.trim(),
-        policyNumber: policyNumberController.text.trim().isNotEmpty ? policyNumberController.text.trim() : null,
-        amcProvider: amcProviderController.text.trim().isNotEmpty ? amcProviderController.text.trim() : null,
-        renewalNotes: notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
-        purchaseDate: purchaseDate.value,
-        warrantyValidUpto: warrantyValidUpto.value,
-        extendedWarrantyUpto: extendedWarrantyUpto.value,
-        warrantyType: warrantyType.value,
-      );
+      final amount =
+          double.tryParse(purchaseAmountController.text.trim()) ??
+          (doc.applianceWarranty?.purchaseAmount ?? 0.0);
+      final updatedWarranty =
+          (doc.applianceWarranty ??
+                  ApplianceWarrantyModel(
+                    billingName: billingNameController.text.trim(),
+                    storeVendorName: storeVendorController.text.trim(),
+                    invoiceNumber: invoiceNumberController.text.trim(),
+                    purchaseDate: purchaseDate.value ?? DateTime.now(),
+                    purchaseAmount: amount,
+                  ))
+              .copyWith(
+                storeVendorName: storeVendorController.text.trim(),
+                invoiceNumber: invoiceNumberController.text.trim(),
+                billingName: billingNameController.text.trim(),
+                purchaseAmount: amount,
+                customerCareNumber: customerCareController.text.trim(),
+                policyNumber: policyNumberController.text.trim().isNotEmpty
+                    ? policyNumberController.text.trim()
+                    : null,
+                amcProvider: amcProviderController.text.trim().isNotEmpty
+                    ? amcProviderController.text.trim()
+                    : null,
+                renewalNotes: notesController.text.trim().isNotEmpty
+                    ? notesController.text.trim()
+                    : null,
+                purchaseDate: purchaseDate.value,
+                warrantyValidUpto: warrantyValidUpto.value,
+                extendedWarrantyUpto: extendedWarrantyUpto.value,
+                warrantyType: warrantyType.value,
+              );
 
       await _dataset.updateDocumentDetails(
         documentId: doc.id,
@@ -189,11 +228,19 @@ class ApplianceDetailController extends GetxController {
         applianceWarranty: updatedWarranty,
       );
 
-      AppSnackbar.showSuccess('Changes Saved', 'Appliance details updated successfully.');
+      AppSnackbar.showSuccess(
+        'Changes Saved',
+        'Appliance details updated successfully.',
+      );
       await loadHistory();
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_DETAIL_CTRL', 'Error saving details: $e', error: e, stackTrace: st);
-      AppSnackbar.showError('Error', 'Failed to save changes: $e');
+      AppLogger.error(
+        'APPLIANCE_DETAIL_CTRL',
+        'Error saving details: $e',
+        error: e,
+        stackTrace: st,
+      );
+      formError.value = 'Failed to save changes: $e';
     } finally {
       isSaving.value = false;
     }
@@ -205,28 +252,32 @@ class ApplianceDetailController extends GetxController {
 
     final renewed = await RenewApplianceWarrantyDialog.show(
       previousDocument: doc,
-      onRenew: ({
-        required previousDocument,
-        required newWarranty,
-        required newTitle,
-        required fileBytes,
-        required fileName,
-        newDescription,
-      }) async {
-        final created = await _dataset.renewApplianceWarranty(
-          previousDocument: previousDocument,
-          newWarranty: newWarranty,
-          newTitle: newTitle,
-          fileBytes: fileBytes,
-          fileName: fileName,
-          newDescription: newDescription,
-        );
-        _populateFromDocument(created);
-      },
+      onRenew:
+          ({
+            required previousDocument,
+            required newWarranty,
+            required newTitle,
+            required fileBytes,
+            required fileName,
+            newDescription,
+          }) async {
+            final created = await _dataset.renewApplianceWarranty(
+              previousDocument: previousDocument,
+              newWarranty: newWarranty,
+              newTitle: newTitle,
+              fileBytes: fileBytes,
+              fileName: fileName,
+              newDescription: newDescription,
+            );
+            _populateFromDocument(created);
+          },
     );
 
     if (renewed == true) {
-      AppSnackbar.showSuccess('Warranty Renewed', 'New warranty cycle logged successfully.');
+      AppSnackbar.showSuccess(
+        'Warranty Renewed',
+        'New warranty cycle logged successfully.',
+      );
       await loadHistory();
     }
   }
@@ -236,14 +287,15 @@ class ApplianceDetailController extends GetxController {
     if (doc == null) return;
 
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -263,7 +315,12 @@ class ApplianceDetailController extends GetxController {
         );
       }
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_DETAIL_CTRL', 'Error opening preview: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'APPLIANCE_DETAIL_CTRL',
+        'Error opening preview: $e',
+        error: e,
+        stackTrace: st,
+      );
       AppSnackbar.showError('Preview Error', e.toString());
     }
   }
@@ -277,7 +334,8 @@ class ApplianceDetailController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -288,22 +346,42 @@ class ApplianceDetailController extends GetxController {
         }
       }
 
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
+      AppSnackbar.showSuccess(
+        'Download Started',
+        '${doc.fileName} is downloading.',
+      );
     } catch (e, st) {
-      AppLogger.error('APPLIANCE_DETAIL_CTRL', 'Error downloading: $e', error: e, stackTrace: st);
+      AppLogger.error(
+        'APPLIANCE_DETAIL_CTRL',
+        'Error downloading: $e',
+        error: e,
+        stackTrace: st,
+      );
       try {
-        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(
+          doc.filePath,
+          download: true,
+        );
         final uri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'APPLIANCE_DETAIL_CONTROLLER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         AppSnackbar.showError('Download Error', e.toString());
       }
     }
@@ -313,7 +391,10 @@ class ApplianceDetailController extends GetxController {
     final doc = document.value;
     if (doc == null) return;
     if (!canDelete) {
-      AppSnackbar.showWarning('Permission Denied', 'Your role does not have permission to delete documents.');
+      AppSnackbar.showWarning(
+        'Permission Denied',
+        'Your role does not have permission to delete documents.',
+      );
       return;
     }
 
@@ -323,9 +404,17 @@ class ApplianceDetailController extends GetxController {
         try {
           await _dataset.softDeleteDocument(doc.id);
           Get.back();
-          AppSnackbar.showWarning('Moved to Trash', '${doc.title} moved to trash bin.');
+          AppSnackbar.showWarning(
+            'Moved to Trash',
+            '${doc.title} moved to trash bin.',
+          );
         } catch (e, st) {
-          AppLogger.error('APPLIANCE_DETAIL_CTRL', 'Error moving to trash: $e', error: e, stackTrace: st);
+          AppLogger.error(
+            'APPLIANCE_DETAIL_CTRL',
+            'Error moving to trash: $e',
+            error: e,
+            stackTrace: st,
+          );
           AppSnackbar.showError('Error', e.toString());
         }
       },

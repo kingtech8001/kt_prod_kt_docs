@@ -1,3 +1,5 @@
+import 'package:kt_prod_kt_docs/app/widgets/inline_form_error.dart';
+import 'package:kt_prod_kt_docs/app/widgets/detail_skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kt_prod_kt_docs/app/data/models/document_model.dart';
@@ -20,7 +22,7 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
       currentRoute: AppRoutes.VEHICLE_DOCS,
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return const DetailSkeleton();
         }
 
         final vehicle = controller.vehicle.value;
@@ -29,7 +31,11 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.car_crash_outlined, size: 64, color: AppColors.textMuted),
+                const Icon(
+                  Icons.car_crash_outlined,
+                  size: 64,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Vehicle Not Found',
@@ -57,6 +63,7 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    InlineFormError(message: controller.formError.value),
                     _buildHeader(context, vehicle),
                     const SizedBox(height: AppConstants.paddingLarge),
                     _buildVehicleDetailsCard(context, vehicle),
@@ -129,7 +136,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                 height: 60,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.radiusMedium,
+                  ),
                   border: Border.all(
                     color: AppColors.primary.withValues(alpha: 0.25),
                   ),
@@ -163,8 +172,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceMuted,
-                            borderRadius:
-                                BorderRadius.circular(AppConstants.radiusSmall),
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.radiusSmall,
+                            ),
                             border: Border.all(color: AppColors.border),
                           ),
                           child: Text(
@@ -198,7 +208,10 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
                       side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                     icon: const Icon(Icons.build_outlined, size: 16),
                     label: const Text('Log Service'),
@@ -213,7 +226,10 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
     );
   }
 
-  Widget _buildVehicleDetailsCard(BuildContext context, MasterVehicleModel vehicle) {
+  Widget _buildVehicleDetailsCard(
+    BuildContext context,
+    MasterVehicleModel vehicle,
+  ) {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingLarge),
       decoration: BoxDecoration(
@@ -229,7 +245,11 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.edit_note_rounded, color: AppColors.primary, size: 22),
+                  Icon(
+                    Icons.edit_note_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Vehicle Specifications & Identity (Editable)',
@@ -242,30 +262,37 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                 ],
               ),
               if (controller.canEdit)
-                Obx(() => ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                Obx(
+                  () => ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
                       ),
-                      icon: controller.isSaving.value
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.check_rounded, size: 18),
-                      label: Text(
-                        controller.isSaving.value ? 'Saving...' : 'Save Vehicle Details',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      onPressed: controller.isSaving.value
-                          ? null
-                          : controller.saveVehicleDetails,
-                    )),
+                    ),
+                    icon: controller.isSaving.value
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.check_rounded, size: 18),
+                    label: Text(
+                      controller.isSaving.value
+                          ? 'Saving...'
+                          : 'Save Vehicle Details',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    onPressed: controller.isSaving.value
+                        ? null
+                        : controller.saveVehicleDetails,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: AppConstants.paddingLarge),
@@ -281,28 +308,36 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                   _buildFormField(
                     label: 'Registration / Plate Number *',
                     controller: controller.vehicleNumberController,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     icon: Icons.pin_outlined,
                     enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Vehicle Nickname / Alias',
                     controller: controller.nicknameController,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     icon: Icons.label_outline,
                     enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Brand / Make (e.g. Honda, Hyundai, Tata)',
                     controller: controller.brandMakeController,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     icon: Icons.branding_watermark_outlined,
                     enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Model Name (e.g. SP 125, Creta, City)',
                     controller: controller.modelNameController,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     icon: Icons.two_wheeler_outlined,
                     enabled: controller.canEdit,
                   ),
@@ -314,42 +349,59 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                       'Four Wheeler',
                       'Commercial',
                       'Electric Vehicle',
-                      'Other'
+                      'Other',
                     ],
                     onChanged: (val) {
-                      if (val != null) controller.selectedVehicleType.value = val;
+                      if (val != null)
+                        controller.selectedVehicleType.value = val;
                     },
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     enabled: controller.canEdit,
                   ),
                   _buildDropdownField(
                     label: 'Fuel Type',
                     value: controller.selectedFuelType.value,
-                    items: const ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid'],
+                    items: const [
+                      'Petrol',
+                      'Diesel',
+                      'CNG',
+                      'Electric',
+                      'Hybrid',
+                    ],
                     onChanged: (val) {
                       if (val != null) controller.selectedFuelType.value = val;
                     },
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Registered Owner Name',
                     controller: controller.ownerNameController,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     icon: Icons.person_outline,
                     enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Chassis Number (VIN)',
                     controller: controller.chassisNumberController,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     icon: Icons.tag,
                     enabled: controller.canEdit,
                   ),
                   _buildFormField(
                     label: 'Engine Number',
                     controller: controller.engineNumberController,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     icon: Icons.engineering_outlined,
                     enabled: controller.canEdit,
                   ),
@@ -357,7 +409,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                     context: context,
                     label: 'Registration / Purchase Date',
                     date: controller.registrationDate.value,
-                    width: isTwoCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth,
+                    width: isTwoCol
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth,
                     onSelected: (dt) => controller.registrationDate.value = dt,
                     enabled: controller.canEdit,
                   ),
@@ -397,7 +451,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
             decoration: InputDecoration(
               prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
               filled: true,
-              fillColor: enabled ? AppColors.surfaceMuted : AppColors.surfaceMuted.withValues(alpha: 0.5),
+              fillColor: enabled
+                  ? AppColors.surfaceMuted
+                  : AppColors.surfaceMuted.withValues(alpha: 0.5),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 borderSide: const BorderSide(color: AppColors.border),
@@ -408,13 +464,21 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
               ),
               disabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+                borderSide: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
             style: TextStyle(
               fontSize: 14,
@@ -451,10 +515,14 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: enabled ? AppColors.surfaceMuted : AppColors.surfaceMuted.withValues(alpha: 0.5),
+              color: enabled
+                  ? AppColors.surfaceMuted
+                  : AppColors.surfaceMuted.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
               border: Border.all(
-                color: enabled ? AppColors.border : AppColors.border.withValues(alpha: 0.5),
+                color: enabled
+                    ? AppColors.border
+                    : AppColors.border.withValues(alpha: 0.5),
               ),
             ),
             child: DropdownButtonHideUnderline(
@@ -462,16 +530,20 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                 value: items.contains(value) ? value : items.first,
                 isExpanded: true,
                 items: items
-                    .map((item) => DropdownMenuItem(
-                          value: item,
-                          child: Text(
-                            item,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-                            ),
+                    .map(
+                      (item) => DropdownMenuItem(
+                        value: item,
+                        child: Text(
+                          item,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: enabled
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
                           ),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
                 onChanged: enabled ? onChanged : null,
               ),
@@ -511,7 +583,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                       context: context,
                       initialDate: date ?? DateTime.now(),
                       firstDate: DateTime(1980),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 10),
+                      ),
                     );
                     if (picked != null) onSelected(picked);
                   }
@@ -520,15 +594,23 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               decoration: BoxDecoration(
-                color: enabled ? AppColors.surfaceMuted : AppColors.surfaceMuted.withValues(alpha: 0.5),
+                color: enabled
+                    ? AppColors.surfaceMuted
+                    : AppColors.surfaceMuted.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 border: Border.all(
-                  color: enabled ? AppColors.border : AppColors.border.withValues(alpha: 0.5),
+                  color: enabled
+                      ? AppColors.border
+                      : AppColors.border.withValues(alpha: 0.5),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 10),
                   Text(
                     date != null
@@ -537,7 +619,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                     style: TextStyle(
                       fontSize: 14,
                       color: date != null
-                          ? (enabled ? AppColors.textPrimary : AppColors.textMuted)
+                          ? (enabled
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted)
                           : AppColors.textSecondary,
                     ),
                   ),
@@ -550,7 +634,10 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
     );
   }
 
-  Widget _buildHistorySection(BuildContext context, MasterVehicleModel vehicle) {
+  Widget _buildHistorySection(
+    BuildContext context,
+    MasterVehicleModel vehicle,
+  ) {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingLarge),
       decoration: BoxDecoration(
@@ -562,23 +649,27 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Tabs: Documents & Policies vs Service & Maintenance
-          Obx(() => Row(
-                children: [
-                  _buildTabButton(
-                    title: 'Documents & Policies (${controller.documents.length})',
-                    icon: Icons.description_outlined,
-                    isSelected: controller.selectedHistoryTab.value == 0,
-                    onTap: () => controller.selectedHistoryTab.value = 0,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildTabButton(
-                    title: 'Service & Maintenance (${controller.services.length})',
-                    icon: Icons.build_circle_outlined,
-                    isSelected: controller.selectedHistoryTab.value == 1,
-                    onTap: () => controller.selectedHistoryTab.value = 1,
-                  ),
-                ],
-              )),
+          Obx(
+            () => Row(
+              children: [
+                _buildTabButton(
+                  title:
+                      'Documents & Policies (${controller.documents.length})',
+                  icon: Icons.description_outlined,
+                  isSelected: controller.selectedHistoryTab.value == 0,
+                  onTap: () => controller.selectedHistoryTab.value = 0,
+                ),
+                const SizedBox(width: 12),
+                _buildTabButton(
+                  title:
+                      'Service & Maintenance (${controller.services.length})',
+                  icon: Icons.build_circle_outlined,
+                  isSelected: controller.selectedHistoryTab.value == 1,
+                  onTap: () => controller.selectedHistoryTab.value = 1,
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: AppConstants.paddingMedium),
           const Divider(),
           const SizedBox(height: AppConstants.paddingMedium),
@@ -647,7 +738,11 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
           children: [
             const Text(
               'Filter Doc Type: ',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(width: 8),
             for (final f in ['All', 'Insurance', 'PUC', 'RC & Registration'])
@@ -665,7 +760,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                     labelStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
-                      color: isSel ? AppColors.primary : AppColors.textSecondary,
+                      color: isSel
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                     ),
                   );
                 }),
@@ -680,11 +777,18 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: Column(
                 children: [
-                  const Icon(Icons.folder_open_outlined, size: 48, color: AppColors.textMuted),
+                  const Icon(
+                    Icons.folder_open_outlined,
+                    size: 48,
+                    color: AppColors.textMuted,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'No documents found for this filter.',
-                    style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -719,8 +823,8 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
           color: isExpired
               ? AppColors.error.withValues(alpha: 0.4)
               : (isExpiringSoon
-                  ? AppColors.warning.withValues(alpha: 0.4)
-                  : AppColors.border),
+                    ? AppColors.warning.withValues(alpha: 0.4)
+                    : AppColors.border),
         ),
       ),
       child: Row(
@@ -733,7 +837,9 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
               border: Border.all(color: AppColors.border),
             ),
             child: Icon(
-              doc.isPdf ? Icons.picture_as_pdf : Icons.insert_drive_file_outlined,
+              doc.isPdf
+                  ? Icons.picture_as_pdf
+                  : Icons.insert_drive_file_outlined,
               color: doc.isPdf ? AppColors.error : AppColors.primary,
               size: 22,
             ),
@@ -760,7 +866,10 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                     const SizedBox(width: 8),
                     if (meta?.renewalCount != null && meta!.renewalCount > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -791,10 +900,14 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
           ),
           const SizedBox(width: AppConstants.paddingMedium),
           StatusBadge(
-            label: isExpired ? 'EXPIRED' : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE'),
+            label: isExpired
+                ? 'EXPIRED'
+                : (isExpiringSoon ? 'EXPIRING' : 'ACTIVE'),
             type: isExpired
                 ? StatusBadgeType.error
-                : (isExpiringSoon ? StatusBadgeType.warning : StatusBadgeType.success),
+                : (isExpiringSoon
+                      ? StatusBadgeType.warning
+                      : StatusBadgeType.success),
           ),
           const SizedBox(width: AppConstants.paddingMedium),
           Wrap(
@@ -814,7 +927,11 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
                   (meta.docTypeName.toLowerCase().contains('insurance') ||
                       meta.docTypeName.toLowerCase().contains('puc')))
                 IconButton(
-                  icon: const Icon(Icons.autorenew_rounded, size: 20, color: AppColors.primary),
+                  icon: const Icon(
+                    Icons.autorenew_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
                   tooltip: 'Renew Document',
                   onPressed: () => controller.openRenewDialog(doc),
                 ),
@@ -834,7 +951,11 @@ class VehicleDetailView extends GetView<VehicleDetailController> {
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Column(
             children: [
-              const Icon(Icons.build_outlined, size: 48, color: AppColors.textMuted),
+              const Icon(
+                Icons.build_outlined,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'No service & maintenance records logged yet.',

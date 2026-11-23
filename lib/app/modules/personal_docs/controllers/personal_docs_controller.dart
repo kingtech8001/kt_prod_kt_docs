@@ -53,17 +53,28 @@ class PersonalDocsController extends GetxController {
   bool get canDelete {
     try {
       return AuthService.to.isAdmin;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'PERSONAL_DOCS_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return false;
     }
   }
 
   bool get canEdit {
     try {
-      final role = AuthService.to.currentProfile.value?.role.toLowerCase();
-      return role == 'admin' || role == 'super_admin' || role == 'editor';
-    } catch (_) {
-      return true;
+      return AuthService.to.canEdit;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'PERSONAL_DOCS_CONTROLLER',
+        'Operation failed; applying fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -234,14 +245,15 @@ class PersonalDocsController extends GetxController {
 
   Future<void> previewDocument(DocumentModel doc) async {
     try {
-      final resolvedUrl = (doc.isGoogleAttachment ||
+      final resolvedUrl =
+          (doc.isGoogleAttachment ||
               doc.filePath.startsWith('gdrive://') ||
               doc.filePath.startsWith('http://') ||
               doc.filePath.startsWith('https://'))
           ? (doc.googleAttachmentUrl ??
-              (doc.filePath.startsWith('gdrive://')
-                  ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
-                  : doc.filePath))
+                (doc.filePath.startsWith('gdrive://')
+                    ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/preview'
+                    : doc.filePath))
           : await _dataset.getSignedPreviewUrl(doc.filePath);
 
       if (doc.isImage) {
@@ -277,7 +289,8 @@ class PersonalDocsController extends GetxController {
           doc.filePath.startsWith('gdrive://') ||
           doc.filePath.startsWith('http://') ||
           doc.filePath.startsWith('https://')) {
-        final gUrl = doc.googleAttachmentUrl ??
+        final gUrl =
+            doc.googleAttachmentUrl ??
             (doc.filePath.startsWith('gdrive://')
                 ? 'https://drive.google.com/file/d/${doc.filePath.replaceFirst("gdrive://", "")}/view?usp=sharing'
                 : doc.filePath);
@@ -287,13 +300,19 @@ class PersonalDocsController extends GetxController {
           return;
         }
       }
-      final signedUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+      final signedUrl = await _dataset.getSignedPreviewUrl(
+        doc.filePath,
+        download: true,
+      );
       await FileApiHelper.downloadFileFromUrl(
         url: signedUrl,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
       );
-      AppSnackbar.showSuccess('Download Started', '${doc.fileName} is downloading.');
+      AppSnackbar.showSuccess(
+        'Download Started',
+        '${doc.fileName} is downloading.',
+      );
     } catch (e, st) {
       AppLogger.error(
         'PERSONAL_DOCS_CTRL',
@@ -302,12 +321,21 @@ class PersonalDocsController extends GetxController {
         stackTrace: st,
       );
       try {
-        final fallbackUrl = await _dataset.getSignedPreviewUrl(doc.filePath, download: true);
+        final fallbackUrl = await _dataset.getSignedPreviewUrl(
+          doc.filePath,
+          download: true,
+        );
         final uri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        AppLogger.error(
+          'PERSONAL_DOCS_CONTROLLER',
+          'Operation failed; applying fallback.',
+          error: error,
+          stackTrace: stackTrace,
+        );
         AppSnackbar.showError('Download Error', e.toString());
       }
     }
@@ -410,33 +438,34 @@ class PersonalDocsController extends GetxController {
 
     final success = await RenewPersonalDocDialog.show(
       previousDocument: doc,
-      onRenew: ({
-        required previousDocument,
-        required newMetadata,
-        required newTitle,
-        required fileBytes,
-        required fileName,
-        newDescription,
-      }) async {
-        try {
-          await _dataset.renewPersonalDocument(
-            previousDocument: previousDocument,
-            newMetadata: newMetadata,
-            newTitle: newTitle,
-            fileBytes: fileBytes,
-            fileName: fileName,
-            newDescription: newDescription,
-          );
-        } catch (e, st) {
-          AppLogger.error(
-            'PERSONAL_DOCS_CTRL',
-            'Error submitting personal document renewal / re-upload: $e',
-            error: e,
-            stackTrace: st,
-          );
-          rethrow;
-        }
-      },
+      onRenew:
+          ({
+            required previousDocument,
+            required newMetadata,
+            required newTitle,
+            required fileBytes,
+            required fileName,
+            newDescription,
+          }) async {
+            try {
+              await _dataset.renewPersonalDocument(
+                previousDocument: previousDocument,
+                newMetadata: newMetadata,
+                newTitle: newTitle,
+                fileBytes: fileBytes,
+                fileName: fileName,
+                newDescription: newDescription,
+              );
+            } catch (e, st) {
+              AppLogger.error(
+                'PERSONAL_DOCS_CTRL',
+                'Error submitting personal document renewal / re-upload: $e',
+                error: e,
+                stackTrace: st,
+              );
+              rethrow;
+            }
+          },
     );
 
     if (success == true) {
